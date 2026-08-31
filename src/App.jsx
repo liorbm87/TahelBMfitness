@@ -50,7 +50,12 @@ const formatPhoneForWhatsApp = (phone) => {
 const openWhatsApp = (phone, message) => {
   const formatted = formatPhoneForWhatsApp(phone);
   const url = `https://wa.me/${formatted}?text=${encodeURIComponent(message)}`;
-  window.open(url, '_blank');
+  // זיהוי מכשיר נייד: מונע את קריסת האתר בעת אישור מתאמן על ידי שימוש בניווט ישיר במקום חלון חדש
+  if (/Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)) {
+    window.location.href = url;
+  } else {
+    window.open(url, '_blank');
+  }
 };
 
 const triggerMakeWebhook = async (webhookUrl, eventType, data) => {
@@ -341,13 +346,16 @@ const UserView = ({
   const isRenewalNeeded = useMemo(() => {
     if (!currentUser || !currentUser.health_declaration) return false;
     if (currentUser.needs_renewal) return true;
-    const parts = currentUser.health_declaration.signed_at.split(/[\/\-\.]/);
-    if (parts.length === 3) {
-      const signDate = new Date(parts[2], parts[1] - 1, parts[0]);
-      const twoYearsAgo = new Date();
-      twoYearsAgo.setFullYear(twoYearsAgo.getFullYear() - 2);
-      if (signDate < twoYearsAgo) return true;
-    }
+    try {
+      const cleanDate = currentUser.health_declaration.signed_at.replace(/[^\d\/\-\.]/g, '');
+      const parts = cleanDate.split(/[\/\-\.]/);
+      if (parts.length >= 3) {
+        const signDate = new Date(parts[2], parts[1] - 1, parts[0]);
+        const twoYearsAgo = new Date();
+        twoYearsAgo.setFullYear(twoYearsAgo.getFullYear() - 2);
+        if (signDate < twoYearsAgo) return true;
+      }
+    } catch(e) {}
     return false;
   }, [currentUser]);
 
@@ -641,19 +649,25 @@ const UserView = ({
             <div className="space-y-3 mt-3">
               {[
                 { id: 'q1', text: '1. האם הרופא שלך אמר לך שאתה סובל ממחלת לב?' },
-                { id: 'q2a', text: '2(א). האם אתה חש כאבים בחזה בזמן מנוחה?' },
-                { id: 'q2b', text: '2(ב). האם אתה חש כאבים בחזה במהלך פעילויות שיגרה ביום-יום?' },
-                { id: 'q2c', text: '2(ג). האם אתה חש כאבים בחזה בזמן שאתה מבצע פעילות גופנית?' },
-                { id: 'q3a', text: '3(א). איבדת שיווי משקל עקב סחרחורת? סמן לא- אם הסחרחורת נבעה מנשימת יתר.' },
-                { id: 'q3b', text: '3(ב). איבדת את הכרתך?' },
-                { id: 'q4a', text: '4(א). רופא אבחן אסטמה ולכן ב-3 החודשים האחרונים נזקקת לטיפול תרופתי?' },
-                { id: 'q4b', text: '4(ב). רופא אבחן אסטמה ולכן ב-3 החודשים האחרונים סבלת מקוצר נשימה/צפצופים?' },
-                { id: 'q5a', text: '5(א). האם אחד מבני משפחתך מדרגת קרבה ראשונה נפטר ממחלת לב?' },
-                { id: 'q5b', text: '5(ב). האם אחד מבני משפחתך מדרגת קרבה ראשונה נפטר ממוות פתאומי בגיל מוקדם?' },
+                { id: 'q2_header', type: 'header', text: '2. האם אתה חש כאבים בחזה (אנא סמן את תשובתך בכל אחת מהאפשרויות המפורטות מטה)-' },
+                { id: 'q2a', text: '(א) בזמן מנוחה?' },
+                { id: 'q2b', text: '(ב) במהלך פעילויות שיגרה ביום-יום?' },
+                { id: 'q2c', text: '(ג) בזמן שאתה מבצע פעילות גופנית?' },
+                { id: 'q3_header', type: 'header', text: '3. האם במהלך השנה החולפת (אנא סמן את תשובתך בכל אחת מהאפשרויות המפורטות מטה)-' },
+                { id: 'q3a', text: '(א) איבדת שיווי משקל עקב סחרחורת? סמן לא- אם הסחרחורת נבעה מנשימת יתר (כולל במהלך פעילות גופנית נמרצת).' },
+                { id: 'q3b', text: '(ב) איבדת את הכרתך?' },
+                { id: 'q4_header', type: 'header', text: '4. האם רופא אבחן שאתה סובל ממחלת האסטמה ולכן בשלושת החודשים האחרונים (אנא סמן את תשובתך בכל אחת מהאפשרויות המפורטות מטה)-' },
+                { id: 'q4a', text: '(א) נזקקת לטיפול תרופתי?' },
+                { id: 'q4b', text: '(ב) סבלת מקוצר נשימה או צפצופים?' },
+                { id: 'q5_header', type: 'header', text: '5. האם אחד מבני משפחתך מדרגת קרבה ראשונה נפטר (אנא סמן את תשובתך בכל אחת מהאפשרויות המפורטות מטה)--' },
+                { id: 'q5a', text: '(א) ממחלת לב?' },
+                { id: 'q5b', text: '(ב) ממוות פתאומי בגיל מוקדם? (לפני גיל 55 אם מדובר בגבר, ולפני גיל 65 אם זו אישה)' },
                 { id: 'q6', text: '6. האם הרופא שלך אמר לך ב-5 השנים האחרונות לבצע פעילות גופנית רק תחת השגחה רפואית?' },
-                { id: 'q7', text: '7. האם הינך סובל ממחלה קבועה (כרונית) שעשויה למנוע או להגביל פעילות גופנית?' },
+                { id: 'q7', text: '7. האם הינך סובל ממחלה קבועה (כרונית), שאינה נזכרת בשאלות לעיל ועשויה למנוע או להגביל אותך בביצוע פעילות גופנית?' },
                 { id: 'q8', text: '8. לנשים בהריון:- האם ההריון הזה או כל הריון קודם הוגדר הריון בסיכון?!' }
-              ].map(q => (
+              ].map(q => {
+                if (q.type === 'header') return <div key={q.id} className="text-[11px] font-bold text-amber-900 mt-2 mb-1">{q.text}</div>;
+                return (
                 <div key={q.id} className="text-[11px] font-semibold mb-2 border-b border-amber-100 pb-2 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-1">
                   <span>{q.text}</span>
                   <div className="flex gap-3">
@@ -675,7 +689,8 @@ const UserView = ({
                     </label>
                   </div>
                 </div>
-              ))}
+              );
+            })}
             </div>
 
             {formData.has_medical_condition && (
@@ -707,10 +722,15 @@ const UserView = ({
               </ol>
               
               <div className="pt-2">
-                <p className="font-bold underline mb-1">הצהרת בריאות:</p>
+                <p className="font-bold underline mb-1">הצהרה:</p>
                 <p>א. במהלך תקופת האימונים ייעשה כל מאמץ לשמור על בריאותך ובטיחותך באימונים. אף על פי כן, כמו בכל תכנית אימונים, ישנם סיכונים. בהיענותך לקיים פעילות גופנית במסגרת זו הנך מצהיר/ה כי ככל הידוע לך אין כל מניעה להשתתפותך בפעילות זו.</p>
                 <p>ב. אנו ממליצים לעבור בדיקת רופא לפני כל תחילת תכנית אימונים בייחוד אם הנך סובל/ת מבעיות לב/ לחץ דם גבוה/ כאבים בחזה/ עברת ניתוחים בעבר/ סוכרת/ אסטמה/ אפילפסיה או כל פציעה משמעותית גופנית.</p>
                 <p>ג. בחתימה על מסמך זה הנך מקבל על עצמך אחריות מלאה למצבך הבריאותי ומסיר כל אחריות מתהל בן משה, כעת ובעתיד לכל שינוי במצבך הבריאותי כתוצאה מפעילות גופנית זו לרבות: התקף לב, כאבי שרירים, קרעים בשריר, שברים, פגיעות חום, כאבי ברכיים, גב או כל כאב אחר ומוות.</p>
+              </div>
+
+              <div className="pt-4 pb-2">
+                <p className="font-bold underline mb-1">הצהרת בריאות:</p>
+                <p>אני הח"מ מצהיר/ה בזה כי מצב בריאותי תקין וכי איני סובל/ת מכל מחלה ומגבלה, שיש בהם כדי להשפיע או למנוע את השתתפותי בכל פעילות גופנית. במידה והנני סובל/ת מבעיות כאמור, הנני מתחייב לפרטן על גבי מסמך זה וכן בעל פה למאמן הכושר. במידה ולא אעשה כן, הרי שכל פגיעה בי בעת קיום הפעילות הנ"ל הינה על אחריותי בלבד. הנני מתחייב להודיע על כל שינוי שיחול במצבי הבריאותי ו/או בכושרי הפיזי. כמו כן הנני מצהיר/ה שכל הפרטים אשר מסרתי ומילאתי לעיל, הינם נכונים.</p>
               </div>
             </div>
 
@@ -1078,7 +1098,7 @@ const AdminDashboard = ({
 
   const processMessageText = (text, user, workout) => {
     const workoutLink = `${window.location.origin}?workout=${workout.id}`;
-    const workoutDetails = `${workout.type} ב-${workout.date.split('-').reverse().join('/')} בשעה ${workout.time}`;
+    const workoutDetails = `${workout.type} ב-${workout.date.split('-').reverse().join('/')} בשעה ${workout.time} במיקום: ${workout.location}`;
     return text
       .replace(/\[שם פרטי\]/g, user.full_name.split(' ')[0])
       .replace(/\[פרטי האימון\]/g, workoutDetails)
@@ -1181,8 +1201,9 @@ const AdminDashboard = ({
     setTrainees(prev => prev.map(t => t.id === trainee.id ? { ...t, is_approved: true } : t));
     const currentSiteUrl = window.location.origin;
     const msg = `היי ${trainee.full_name}! 👋 אושרת בהצלחה באתר שלי! אפשר עכשיו להירשם לאימונים כאן: ${currentSiteUrl}`;
-    // שימוש בניווט ישיר שאינו נחסם במכשירי טלפון בניגוד לחלון חדש
-    window.location.href = `https://wa.me/${formatPhoneForWhatsApp(trainee.phone)}?text=${encodeURIComponent(msg)}`;
+    setTimeout(() => {
+      openWhatsApp(trainee.phone, msg);
+    }, 150);
   };
 
   const handleRejectTrainee = (traineeId) => {
@@ -1268,14 +1289,21 @@ const AdminDashboard = ({
   };
 
   const checkAdminNeedsRenewal = (t) => {
+    if (!t) return false;
     if (t.needs_renewal) return true;
     if (!t.health_declaration?.signed_at) return true;
-    const parts = t.health_declaration.signed_at.split(/[\/\-\.]/);
-    if (parts.length === 3) {
-      const signDate = new Date(parts[2], parts[1] - 1, parts[0]);
-      const twoYearsAgo = new Date();
-      twoYearsAgo.setFullYear(twoYearsAgo.getFullYear() - 2);
-      return signDate < twoYearsAgo;
+    try {
+      // ניקוי LTR/RTL Marks נסתרים ממכשירי אייפון שקוטעים את האפליקציה
+      const cleanDate = t.health_declaration.signed_at.replace(/[^\d\/\-\.]/g, ''); 
+      const parts = cleanDate.split(/[\/\-\.]/);
+      if (parts.length >= 3) {
+        const signDate = new Date(parts[2], parts[1] - 1, parts[0]);
+        const twoYearsAgo = new Date();
+        twoYearsAgo.setFullYear(twoYearsAgo.getFullYear() - 2);
+        return signDate < twoYearsAgo;
+      }
+    } catch(e) {
+      return true; // במקרה של שגיאת תאריך פשוט נדרוש מהמתאמנת מילוי מחדש
     }
     return false;
   };
@@ -1329,12 +1357,13 @@ const AdminDashboard = ({
             <h1 className="text-3xl font-black text-black">טופס הצהרת בריאות</h1>
             <h2 className="text-lg font-bold mt-1 text-gray-800">למבקש להתאמן באימוני כושר</h2>
           </div>
-          <div className="text-xs mb-3 space-y-0.5">
-          <p>השאלון הבא נועד לבדוק את כשירותך הגופנית במטרה להתאים עבורך באופן אישי את התכנית הטובה ביותר. על כן, עליי לדעת האם ישנה בעיה רפואית כלשהיא הדורשת התייחסות ספציפית ו/או עלולה להיות גורם מגביל כלשהוא.</p>
-        </div>
           <div className="flex flex-col items-center">
             {settings.logoUrl && <img src={settings.logoUrl} alt="לוגו" className="h-24 object-contain" />}
           </div>
+        </div>
+        <div className="text-[9px] mb-2 leading-snug">
+          <p>השאלון הבא נועד לבדוק את כשירותך הגופנית במטרה להתאים עבורך באופן אישי את התכנית הטובה ביותר.</p>
+          <p>על כן, עליי לדעת האם ישנה בעיה רפואית כלשהיא הדורשת התייחסות ספציפית ו/או עלולה להיות גורם מגביל כלשהוא. כל הפרטים בשאלון זה הינם חסויים. יש לסמן במקום המתאים.</p>
         </div>
         <div className="grid grid-cols-2 gap-2 bg-gray-100 p-3 rounded-lg mb-4 text-xs font-bold border border-gray-300">
           <p>שם ושם משפחה: {t.full_name}</p>
@@ -1343,23 +1372,42 @@ const AdminDashboard = ({
           <p>טלפון: {t.phone}</p>
         </div>
         <h3 className="text-lg font-bold mb-2 bg-gray-200 p-1.5 rounded">חלק א': שאלון רפואי</h3>
-        <div className="text-xs space-y-1 mb-4">
-          <p className="mb-1">האם סומנו מגבלות רפואיות או תשובות 'כן' בשאלון הדיגיטלי? <span className="font-bold">{t.health_declaration?.has_medical_condition ? 'כן' : 'לא'}</span></p>
+        <div className="text-[9px] space-y-0.5 mb-2">
+          <p className="mb-0.5 text-[10px] font-bold">האם סומנו מגבלות רפואיות או תשובות 'כן' בשאלון הדיגיטלי? <span className="text-red-600">{t.health_declaration?.has_medical_condition ? 'כן' : 'לא'}</span></p>
           {t.health_declaration?.answers && [
-            { id: 'q1', text: '1. מחלת לב?' }, { id: 'q2a', text: '2א. כאבים בחזה במנוחה?' }, { id: 'q2b', text: '2ב. כאבים בחזה בשגרה?' }, { id: 'q2c', text: '2ג. כאבים בחזה בפעילות?' }, { id: 'q3a', text: '3א. אובדן שיווי משקל/סחרחורת?' }, { id: 'q3b', text: '3ב. אובדן הכרה?' }, { id: 'q4a', text: '4א. אסטמה/טיפול תרופתי?' }, { id: 'q4b', text: '4ב. אסטמה/קוצר נשימה?' }, { id: 'q5a', text: '5א. משפחה - מחלת לב?' }, { id: 'q5b', text: '5ב. משפחה - מוות פתאומי?' }, { id: 'q6', text: '6. אימון רק בהשגחה?' }, { id: 'q7', text: '7. מחלה קבועה מגבילה?' }, { id: 'q8', text: '8. הריון בסיכון?' }
-          ].map(q => (
-            <div key={q.id} className="border-b border-gray-200 pb-0.5 flex justify-between gap-4">
-              <span className="text-[11px] text-gray-700 leading-tight">{q.text}</span>
-              <span className="font-bold text-[11px]">{t.health_declaration.answers[q.id] ? 'כן' : 'לא'}</span>
+            { id: 'q1', text: '1. האם הרופא שלך אמר לך שאתה סובל ממחלת לב?' },
+            { id: 'q2_header', type: 'header', text: '2. האם אתה חש כאבים בחזה (אנא סמן את תשובתך בכל אחת מהאפשרויות המפורטות מטה)-' },
+            { id: 'q2a', text: '(א) בזמן מנוחה?' },
+            { id: 'q2b', text: '(ב) במהלך פעילויות שיגרה ביום-יום?' },
+            { id: 'q2c', text: '(ג) בזמן שאתה מבצע פעילות גופנית?' },
+            { id: 'q3_header', type: 'header', text: '3. האם במהלך השנה החולפת (אנא סמן את תשובתך בכל אחת מהאפשרויות המפורטות מטה)-' },
+            { id: 'q3a', text: '(א) איבדת שיווי משקל עקב סחרחורת? סמן לא- אם הסחרחורת נבעה מנשימת יתר (כולל במהלך פעילות גופנית נמרצת).' },
+            { id: 'q3b', text: '(ב) איבדת את הכרתך?' },
+            { id: 'q4_header', type: 'header', text: '4. האם רופא אבחן שאתה סובל ממחלת האסטמה ולכן בשלושת החודשים האחרונים (אנא סמן את תשובתך בכל אחת מהאפשרויות המפורטות מטה)-' },
+            { id: 'q4a', text: '(א) נזקקת לטיפול תרופתי?' },
+            { id: 'q4b', text: '(ב) סבלת מקוצר נשימה או צפצופים?' },
+            { id: 'q5_header', type: 'header', text: '5. האם אחד מבני משפחתך מדרגת קרבה ראשונה נפטר (אנא סמן את תשובתך בכל אחת מהאפשרויות המפורטות מטה)--' },
+            { id: 'q5a', text: '(א) ממחלת לב?' },
+            { id: 'q5b', text: '(ב) ממוות פתאומי בגיל מוקדם? (לפני גיל 55 אם מדובר בגבר, ולפני גיל 65 אם זו אישה)' },
+            { id: 'q6', text: '6. האם הרופא שלך אמר לך ב-5 השנים האחרונות לבצע פעילות גופנית רק תחת השגחה רפואית?' },
+            { id: 'q7', text: '7. האם הינך סובל ממחלה קבועה (כרונית), שאינה נזכרת בשאלות לעיל ועשויה למנוע או להגביל אותך בביצוע פעילות גופנית?' },
+            { id: 'q8', text: '8. לנשים בהריון:- האם ההריון הזה או כל הריון קודם הוגדר הריון בסיכון?!' }
+          ].map(q => {
+            if (q.type === 'header') return <div key={q.id} className="font-bold text-gray-800 mt-1">{q.text}</div>;
+            return (
+            <div key={q.id} className="border-b border-gray-100 flex justify-between gap-2">
+              <span className="text-[9px] text-gray-700 leading-none pr-1">{q.text}</span>
+              <span className="font-bold text-[9px]">{t.health_declaration.answers[q.id] ? 'כן' : 'לא'}</span>
             </div>
-          ))}
-          {t.health_declaration?.medical_cert_url && <p className="mt-1 text-red-600 font-bold">צורף אישור רפואי חיצוני.</p>}
+          )})}
+          {t.health_declaration?.medical_cert_url && <p className="mt-1 text-red-600 font-bold text-[10px]">צורף אישור רפואי חיצוני.</p>}
         </div>
-        <h3 className="text-lg font-bold mb-2 bg-gray-200 p-1.5 rounded">חלק ב': הצהרה</h3>
-        <div className="text-[10px] mb-3 leading-normal space-y-1">
+        <h3 className="text-lg font-bold mb-2 bg-gray-200 p-1.5 rounded">חלק ב': הצהרה והצהרת בריאות</h3>
+        <div className="text-[9px] mb-3 leading-tight space-y-1">
           <p>א. במהלך תקופת האימונים ייעשה כל מאמץ לשמור על בריאותך ובטיחותך באימונים. אף על פי כן, כמו בכל תכנית אימונים, ישנם סיכונים. בהיענותך לקיים פעילות גופנית במסגרת זו הנך מצהיר/ה כי ככל הידוע לך אין כל מניעה להשתתפותך בפעילות זו.</p>
           <p>ב. אנו ממליצים לעבור בדיקת רופא לפני כל תחילת תכנית אימונים בייחוד אם הנך סובל/ת מבעיות לב/ לחץ דם גבוה/ כאבים בחזה/ עברת ניתוחים בעבר/ סוכרת/ אסטמה/ אפילפסיה או כל פציעה משמעותית גופנית.</p>
           <p>ג. בחתימה על מסמך זה הנך מקבל על עצמך אחריות מלאה למצבך הבריאותי ומסיר כל אחריות מתהל בן משה, כעת ובעתיד לכל שינוי במצבך הבריאותי כתוצאה מפעילות גופנית זו לרבות: התקף לב, כאבי שרירים, קרעים בשריר, שברים, פגיעות חום, כאבי ברכיים, גב או כל כאב אחר ומוות.</p>
+          <p className="font-bold pt-1">אני הח"מ מצהיר/ה בזה כי מצב בריאותי תקין וכי איני סובל/ת מכל מחלה ומגבלה, שיש בהם כדי להשפיע או למנוע את השתתפותי בכל פעילות גופנית. במידה והנני סובל/ת מבעיות כאמור, הנני מתחייב לפרטן על גבי מסמך זה וכן בעל פה למאמן הכושר. במידה ולא אעשה כן, הרי שכל פגיעה בי בעת קיום הפעילות הנ"ל הינה על אחריותי בלבד. הנני מתחייב להודיע על כל שינוי שיחול במצבי הבריאותי ו/או בכושרי הפיזי. כמו כן הנני מצהיר/ה שכל הפרטים אשר מסרתי ומילאתי לעיל, הינם נכונים.</p>
         </div>
         <div className="flex justify-between items-end border-t border-gray-400 pt-3 mt-4">
           <div>
@@ -1825,7 +1873,9 @@ const AdminDashboard = ({
                     <button 
                       onClick={() => {
                         if(window.confirm('לדרוש הצהרת בריאות חדשה? המתאמנת תקבל חלונית דרישה בכניסה הבאה לאתר.')) {
-                          setTrainees(prev => prev.map(tr => tr.id === t.id ? {...tr, is_approved: false, needs_renewal: true} : tr));
+                          setTimeout(() => {
+                            setTrainees(prev => prev.map(tr => tr.id === t.id ? {...tr, is_approved: false, needs_renewal: true} : tr));
+                          }, 150);
                         }
                       }}
                       className="bg-amber-100 text-amber-800 hover:bg-amber-200 text-xs font-bold px-2 py-2 rounded-xl flex items-center gap-1 min-w-[90px]"
@@ -2491,7 +2541,7 @@ export default function App() {
                 setSettings={setSettings}
                 onRefresh={loadGlobalState}
               />
-              
+
             ) : (
               <UserView 
                 trainees={trainees}
