@@ -2196,10 +2196,28 @@ export default function App() {
 
   const [isDataLoaded, setIsDataLoaded] = useState(false);
 
-  // עדכון כותרת הדפדפן והלוגו הקטן בלשונית (Favicon)
+  // עדכון כותרת הדפדפן, הלוגו הקטן ותגיות השיתוף (Open Graph) לפייסבוק/וואטסאפ
   useEffect(() => {
     document.title = "תהל בן משה - מאמנת כושר";
+    
+    // פונקציית עזר להזרקת תגיות Meta לשיתוף ברשתות חברתיות
+    const setOgMetaTag = (property, content) => {
+      let meta = document.querySelector(`meta[property="${property}"]`);
+      if (!meta) {
+        meta = document.createElement('meta');
+        meta.setAttribute('property', property);
+        document.head.appendChild(meta);
+      }
+      meta.setAttribute('content', content);
+    };
+
+    // הגדרת הכותרת והתיאור שיופיעו בוואטסאפ
+    setOgMetaTag('og:title', 'תהל בן משה - מאמנת כושר');
+    setOgMetaTag('og:description', 'תהל פיטנס - סטודיו לאימוני כוח וחיטוב. הכל אישי!');
+    setOgMetaTag('og:type', 'website');
+
     if (settings.logoUrl) {
+      // עדכון ה-Favicon (הסמל הקטן בלשונית)
       let link = document.querySelector("link[rel~='icon']");
       if (!link) {
         link = document.createElement('link');
@@ -2207,6 +2225,9 @@ export default function App() {
         document.getElementsByTagName('head')[0].appendChild(link);
       }
       link.href = settings.logoUrl;
+      
+      // הגדרת הלוגו כתמונה שמופיעה כשמשתפים את הקישור
+      setOgMetaTag('og:image', settings.logoUrl);
     }
   }, [settings.logoUrl]);
 
