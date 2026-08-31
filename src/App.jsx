@@ -215,10 +215,9 @@ const MainHeader = ({ settings, isAdmin, onOpenAdminLogin, onLogout, currentUser
     <div className="flex flex-col items-center justify-center pt-8 pb-4 space-y-6">
       {/* לוגו מרכזי גדול */}
       <div
-        onClick={() => window.location.reload()}
         onDoubleClick={onOpenAdminLogin}
         className="cursor-pointer select-none transition transform hover:scale-105 active:scale-95"
-        title="לחיצה רגילה: רענון וליציאה | דאבל קליק: כניסת מנהלת"
+        title="דאבל קליק: כניסת מנהלת"
       >
         {settings.logoUrl ? (
           <img src={settings.logoUrl} alt="תהל כושר" className="h-32 sm:h-40 object-contain drop-shadow-xl" />
@@ -1664,7 +1663,7 @@ const AdminDashboard = ({
 };
 
 // ============================================================================
-// 8. רכיב האפליקציה הראשי (APP COMPONENT)
+// 8. רכיב האפליקציה הראשי (APP COMPONENT - SUPABASE GLOBAL SYNC)
 // ============================================================================
 export default function App() {
   const [settings, setSettings] = useState(DEFAULT_SETTINGS);
@@ -1675,7 +1674,22 @@ export default function App() {
   
   const [isAdminLoggedIn, setIsAdminLoggedIn] = useState(false);
   const [isAdminLoginModalOpen, setIsAdminLoginModalOpen] = useState(false);
-  const [currentUser, setCurrentUser] = useState(INITIAL_TRAINEES[0]);
+  
+  // מתאמן חדש יתחיל כ-null (יצטרך להירשם), אבל האתר יזכור אותו לפי המכשיר שלו
+  const [currentUser, setCurrentUser] = useState(() => {
+    const savedUser = localStorage.getItem('tahel_current_user');
+    return savedUser ? JSON.parse(savedUser) : null;
+  });
+
+  useEffect(() => {
+    if (currentUser) {
+      localStorage.setItem('tahel_current_user', JSON.stringify(currentUser));
+    } else {
+      localStorage.removeItem('tahel_current_user');
+    }
+  }, [currentUser]);
+
+  const [isDataLoaded, setIsDataLoaded] = useState(false);
 
   // עדכון כותרת הדפדפן והלוגו הקטן בלשונית (Favicon)
   useEffect(() => {
@@ -1691,26 +1705,38 @@ export default function App() {
     }
   }, [settings.logoUrl]);
 
+  // טעינת הנתונים מ-Supabase בפתיחת האתר (סנכרון גלובלי)
   useEffect(() => {
-    const savedSettings = localStorage.getItem('tahel_settings');
-    if (savedSettings) setSettings(JSON.parse(savedSettings));
-
-    const savedWorkouts = localStorage.getItem('tahel_workouts');
-    if (savedWorkouts) setWorkouts(JSON.parse(savedWorkouts));
-
-    const savedTrainees = localStorage.getItem('tahel_trainees');
-    if (savedTrainees) setTrainees(JSON.parse(savedTrainees));
-
-    const savedRegs = localStorage.getItem('tahel_registrations');
-    if (savedRegs) setRegistrations(JSON.parse(savedRegs));
+    const loadGlobalState = async () => {
+      try {
+        const { data, error } = await supabase.from('global_app_state').select('state_data').eq('id', 1).single();
+        if (data && data.state_data && Object.keys(data.state_data).length > 0) {
+          setSettings(data.state_data.settings || DEFAULT_SETTINGS);
+          setWorkouts(data.state_data.workouts || INITIAL_WORKOUTS);
+          setTrainees(data.state_data.trainees || INITIAL_TRAINEES);
+          setRegistrations(data.state_data.registrations || INITIAL_REGISTRATIONS);
+          setWaitlist(data.state_data.waitlist || INITIAL_WAITLIST);
+        }
+      } catch (err) {
+        console.error("Error loading from Supabase:", err);
+      } finally {
+        setIsDataLoaded(true);
+      }
+    };
+    loadGlobalState();
   }, []);
 
+  // שמירת הנתונים ל-Supabase אוטומטית בכל שינוי
   useEffect(() => {
-    localStorage.setItem('tahel_settings', JSON.stringify(settings));
-    localStorage.setItem('tahel_workouts', JSON.stringify(workouts));
-    localStorage.setItem('tahel_trainees', JSON.stringify(trainees));
-    localStorage.setItem('tahel_registrations', JSON.stringify(registrations));
-  }, [settings, workouts, trainees, registrations]);
+    if (!isDataLoaded) return;
+    
+    const saveGlobalState = async () => {
+      const stateToSave = { settings, workouts, trainees, registrations, waitlist };
+      await supabase.from('global_app_state').upsert({ id: 1, state_data: stateToSave });
+    };
+    
+    saveGlobalState();
+  }, [settings, workouts, trainees, registrations, waitlist, isDataLoaded]);
 
   return (
     <Router>
