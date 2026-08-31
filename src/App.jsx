@@ -107,7 +107,7 @@ const exportToPdf = (elementId, filename) => {
 // ============================================================================
 // 4. כותרת, לוגו מרכזי ואזור אישי (MAIN HEADER)
 // ============================================================================
-const MainHeader = ({ settings, isAdmin, onOpenAdminLogin, onLogout, currentUser, setCurrentUser, setTrainees }) => {
+const MainHeader = ({ settings, isAdmin, onOpenAdminLogin, onLogout, currentUser, setCurrentUser, setTrainees, onRefresh }) => {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [editForm, setEditForm] = useState({ full_name: '', phone: '', email: '' });
 
@@ -160,10 +160,13 @@ const MainHeader = ({ settings, isAdmin, onOpenAdminLogin, onLogout, currentUser
 
       {/* תפריט פעולות מרכזי (למנהלת או למתאמן) */}
       {isAdmin ? (
-        <div className="flex items-center gap-4 bg-white/80 p-3 rounded-2xl shadow-sm border border-amber-100">
+        <div className="flex flex-wrap justify-center items-center gap-3 bg-white/80 p-3 rounded-2xl shadow-sm border border-amber-100">
           <span className="bg-amber-100 text-amber-800 text-sm px-4 py-2 rounded-full font-bold flex items-center gap-1">
-            <ShieldAlert size={16} /> פאנל מנהלת פעיל
+            <ShieldAlert size={16} /> מנהלת פעיל
           </span>
+          <button onClick={() => { if(onRefresh) { onRefresh(); alert('הנתונים רועננו בהצלחה!'); } }} className="bg-blue-50 text-blue-600 hover:bg-blue-100 px-4 py-2 rounded-xl text-sm font-bold flex items-center gap-1 transition" title="רענן נתונים מהשרת">
+            <RefreshCw size={16} /> רענון
+          </button>
           <button
             onClick={onLogout}
             className="bg-red-50 text-red-600 hover:bg-red-100 px-4 py-2 rounded-xl text-sm font-bold flex items-center gap-1 transition"
@@ -371,6 +374,18 @@ const UserView = ({
   const [loginPassword, setLoginPassword] = useState(''); 
   const isRegistered = !!currentUser;
   const isApproved = currentUser?.is_approved;
+
+  // האזנה לקישור דינמי של אימון מהוואטסאפ וגלילה אליו
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const wId = params.get('workout');
+    if (wId) {
+      setTimeout(() => {
+        const el = document.getElementById(`workout-${wId}`);
+        if (el) el.scrollIntoView({ behavior: 'smooth' });
+      }, 500);
+    }
+  }, [workouts]);
 
   const handleLoginSubmit = (e) => {
     e.preventDefault();
@@ -620,7 +635,7 @@ const UserView = ({
               <FileText size={18} /> שאלון רפואי לאימון גופני
             </h4>
             <p className="text-[11px] text-gray-700 leading-tight">
-              השאלון הבא נועד לבדוק את כשירותך הגופנית במטרה להתאים עבורך באופן אישי את התכנית הטובה ביותר. כל הפרטים בשאלון זה הינם חסויים. יש לסמן במקום המתאים.
+              השאלון הבא נועד לבדוק את כשירותך הגופנית במטרה להתאים עבורך באופן אישי את התכנית הטובה ביותר. על כן, עליי לדעת האם ישנה בעיה רפואית כלשהיא הדורשת התייחסות ספציפית ו/או עלולה להיות גורם מגביל כלשהוא. כל הפרטים בשאלון זה הינם חסויים. יש לסמן במקום המתאים.
             </p>
 
             <div className="space-y-3 mt-3">
@@ -628,16 +643,16 @@ const UserView = ({
                 { id: 'q1', text: '1. האם הרופא שלך אמר לך שאתה סובל ממחלת לב?' },
                 { id: 'q2a', text: '2(א). האם אתה חש כאבים בחזה בזמן מנוחה?' },
                 { id: 'q2b', text: '2(ב). האם אתה חש כאבים בחזה במהלך פעילויות שיגרה ביום-יום?' },
-                { id: 'q2c', text: '2(ג). האם אתה חש כאבים בחזה בזמן פעילות גופנית?' },
-                { id: 'q3a', text: '3(א). איבדת שיווי משקל עקב סחרחורת (שלא מנשימת יתר)?' },
+                { id: 'q2c', text: '2(ג). האם אתה חש כאבים בחזה בזמן שאתה מבצע פעילות גופנית?' },
+                { id: 'q3a', text: '3(א). איבדת שיווי משקל עקב סחרחורת? סמן לא- אם הסחרחורת נבעה מנשימת יתר.' },
                 { id: 'q3b', text: '3(ב). איבדת את הכרתך?' },
-                { id: 'q4a', text: '4(א). רופא אבחן אסטמה, וב-3 החודשים האחרונים נזקקת לטיפול תרופתי?' },
-                { id: 'q4b', text: '4(ב). רופא אבחן אסטמה, וב-3 החודשים האחרונים סבלת מקוצר נשימה/צפצופים?' },
-                { id: 'q5a', text: '5(א). האם בן משפחה דרגה ראשונה נפטר ממחלת לב?' },
-                { id: 'q5b', text: '5(ב). האם בן משפחה דרגה ראשונה נפטר ממוות פתאומי בגיל מוקדם?' },
-                { id: 'q6', text: '6. האם נאמר לך ב-5 השנים האחרונות להתאמן רק תחת השגחה רפואית?' },
-                { id: 'q7', text: '7. האם הינך סובל ממחלה קבועה שעשויה להגביל פעילות גופנית?' },
-                { id: 'q8', text: '8. לנשים בהריון: האם ההריון הזה או הריון קודם הוגדר בסיכון?' }
+                { id: 'q4a', text: '4(א). רופא אבחן אסטמה ולכן ב-3 החודשים האחרונים נזקקת לטיפול תרופתי?' },
+                { id: 'q4b', text: '4(ב). רופא אבחן אסטמה ולכן ב-3 החודשים האחרונים סבלת מקוצר נשימה/צפצופים?' },
+                { id: 'q5a', text: '5(א). האם אחד מבני משפחתך מדרגת קרבה ראשונה נפטר ממחלת לב?' },
+                { id: 'q5b', text: '5(ב). האם אחד מבני משפחתך מדרגת קרבה ראשונה נפטר ממוות פתאומי בגיל מוקדם?' },
+                { id: 'q6', text: '6. האם הרופא שלך אמר לך ב-5 השנים האחרונות לבצע פעילות גופנית רק תחת השגחה רפואית?' },
+                { id: 'q7', text: '7. האם הינך סובל ממחלה קבועה (כרונית) שעשויה למנוע או להגביל פעילות גופנית?' },
+                { id: 'q8', text: '8. לנשים בהריון:- האם ההריון הזה או כל הריון קודם הוגדר הריון בסיכון?!' }
               ].map(q => (
                 <div key={q.id} className="text-[11px] font-semibold mb-2 border-b border-amber-100 pb-2 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-1">
                   <span>{q.text}</span>
@@ -684,10 +699,19 @@ const UserView = ({
             )}
 
             <div className="text-[10px] text-gray-600 leading-relaxed space-y-1.5 pt-3">
-              <p className="font-bold underline">הצהרת בריאות:</p>
-              <p>
-                אני הח"מ מצהיר/ה בזה כי מצב בריאותי תקין וכי איני סובל/ת מכל מחלה ומגבלה, שיש בהם כדי להשפיע או למנוע את השתתפותי בכל פעילות גופנית. במידה והנני סובל/ת מבעיות כאמור, הנני מתחייב לפרטן על גבי מסמך זה וכן בעל פה למאמן הכושר. במידה ולא אעשה כן, הרי שכל פגיעה בי בעת קיום הפעילות הנ"ל הינה על אחריותי בלבד. הנני מתחייב להודיע על כל שינוי שיחול במצבי הבריאותי ו/או בכושרי הפיזי. כמו כן הנני מצהיר/ה שכל הפרטים אשר מסרתי ומילאתי לעיל, הינם נכונים.
-              </p>
+              <p className="font-bold text-amber-900 text-xs">הנחיות כלליות</p>
+              <ol className="list-decimal pr-4 space-y-1">
+                <li>אם סימנת כן באחת השאלות בשאלון הרפואי לעיל - לצורך קבלתך לאימונים עלייך להמציא גם תעודה רפואית מרופא לפיה הרופא מאשר כי אין סיכון לבריאותך באימון גופני. תעודה רפואית זו תתקבל רק אם לא עברו 3 חודשים ממועד הנפקתה, לפני תחילת האימונים.</li>
+                <li>אם ענית לא לכל השאלות בשאלון הרפואי לעיל - מלא את ההצהרה שלהלן וחתום עליה.</li>
+                <li>בכל מקרה של שינוי במצבך הרפואי, יש להתייעץ עם רופא לגבי המשך פעילות.</li>
+              </ol>
+              
+              <div className="pt-2">
+                <p className="font-bold underline mb-1">הצהרת בריאות:</p>
+                <p>א. במהלך תקופת האימונים ייעשה כל מאמץ לשמור על בריאותך ובטיחותך באימונים. אף על פי כן, כמו בכל תכנית אימונים, ישנם סיכונים. בהיענותך לקיים פעילות גופנית במסגרת זו הנך מצהיר/ה כי ככל הידוע לך אין כל מניעה להשתתפותך בפעילות זו.</p>
+                <p>ב. אנו ממליצים לעבור בדיקת רופא לפני כל תחילת תכנית אימונים בייחוד אם הנך סובל/ת מבעיות לב/ לחץ דם גבוה/ כאבים בחזה/ עברת ניתוחים בעבר/ סוכרת/ אסטמה/ אפילפסיה או כל פציעה משמעותית גופנית.</p>
+                <p>ג. בחתימה על מסמך זה הנך מקבל על עצמך אחריות מלאה למצבך הבריאותי ומסיר כל אחריות מתהל בן משה, כעת ובעתיד לכל שינוי במצבך הבריאותי כתוצאה מפעילות גופנית זו לרבות: התקף לב, כאבי שרירים, קרעים בשריר, שברים, פגיעות חום, כאבי ברכיים, גב או כל כאב אחר ומוות.</p>
+              </div>
             </div>
 
             <div className="flex items-start gap-2 pt-2 border-t border-amber-200">
@@ -852,7 +876,8 @@ const UserView = ({
               return (
                 <div 
                   key={workout.id}
-                  className={`bg-white/95 backdrop-blur-md p-5 rounded-3xl shadow-lg border transition duration-200 ${
+                  id={`workout-${workout.id}`}
+                  className={`bg-white/95 backdrop-blur-md p-5 rounded-3xl shadow-lg border transition duration-200 scroll-mt-24 ${
                     isUserRegistered ? 'border-emerald-400 bg-emerald-50/20' : 'border-gray-100 hover:border-amber-300'
                   }`}
                 >
@@ -1029,9 +1054,13 @@ const AdminDashboard = ({
   trainees = [], setTrainees, 
   registrations = [], setRegistrations, 
   waitlist = [], setWaitlist,
-  settings, setSettings 
+  settings, setSettings, onRefresh 
 }) => {
   const [activeTab, setActiveTab] = useState('overview');
+
+  useEffect(() => {
+    if (onRefresh) onRefresh();
+  }, [activeTab]);
   
   const [newWorkout, setNewWorkout] = useState({
     type: 'אימון כוח וחיטוב',
@@ -1043,9 +1072,20 @@ const AdminDashboard = ({
     notes: ''
   });
 
-  const [broadcastModalWorkout, setBroadcastModalWorkout] = useState(null);
-  const [broadcastText, setBroadcastText] = useState('היי בנות! תזכורת לאימון שלנו היום בסטודיו. נא להגיע 5 דקות לפני עם מגבת ומים!');
-  const [sentBroadcastUserIds, setSentBroadcastUserIds] = useState([]);
+  const [messageModal, setMessageModal] = useState(null); // { workout, type: 'broadcast' | 'invite' }
+  const [messageText, setMessageText] = useState('');
+  const [sentMessageUserIds, setSentMessageUserIds] = useState([]);
+
+  const processMessageText = (text, user, workout) => {
+    const workoutLink = `${window.location.origin}?workout=${workout.id}`;
+    const workoutDetails = `${workout.type} ב-${workout.date.split('-').reverse().join('/')} בשעה ${workout.time}`;
+    return text
+      .replace(/\[שם פרטי\]/g, user.full_name.split(' ')[0])
+      .replace(/\[פרטי האימון\]/g, workoutDetails)
+      .replace(/\[מחיר\]/g, workout.price + ' ₪')
+      .replace(/\[כתובת האתר\]/g, window.location.origin)
+      .replace(/\[קישור האימון\]/g, workoutLink);
+  };
   const [financeMonth, setFinanceMonth] = useState('2026-08');
   const [editWorkoutData, setEditWorkoutData] = useState(null); // סטייט לעריכת אימון
   
@@ -1141,7 +1181,8 @@ const AdminDashboard = ({
     setTrainees(prev => prev.map(t => t.id === trainee.id ? { ...t, is_approved: true } : t));
     const currentSiteUrl = window.location.origin;
     const msg = `היי ${trainee.full_name}! 👋 אושרת בהצלחה באתר שלי! אפשר עכשיו להירשם לאימונים כאן: ${currentSiteUrl}`;
-    openWhatsApp(trainee.phone, msg);
+    // שימוש בניווט ישיר שאינו נחסם במכשירי טלפון בניגוד לחלון חדש
+    window.location.href = `https://wa.me/${formatPhoneForWhatsApp(trainee.phone)}?text=${encodeURIComponent(msg)}`;
   };
 
   const handleRejectTrainee = (traineeId) => {
@@ -1286,8 +1327,11 @@ const AdminDashboard = ({
         <div className="flex justify-between items-end border-b-2 border-black pb-4 mb-4">
           <div>
             <h1 className="text-3xl font-black text-black">טופס הצהרת בריאות</h1>
-            <h2 className="text-lg font-bold mt-1 text-gray-800">למבקש להתאמן בחדר כושר</h2>
+            <h2 className="text-lg font-bold mt-1 text-gray-800">למבקש להתאמן באימוני כושר</h2>
           </div>
+          <div className="text-xs mb-3 space-y-0.5">
+          <p>השאלון הבא נועד לבדוק את כשירותך הגופנית במטרה להתאים עבורך באופן אישי את התכנית הטובה ביותר. על כן, עליי לדעת האם ישנה בעיה רפואית כלשהיא הדורשת התייחסות ספציפית ו/או עלולה להיות גורם מגביל כלשהוא.</p>
+        </div>
           <div className="flex flex-col items-center">
             {settings.logoUrl && <img src={settings.logoUrl} alt="לוגו" className="h-24 object-contain" />}
           </div>
@@ -1312,13 +1356,15 @@ const AdminDashboard = ({
           {t.health_declaration?.medical_cert_url && <p className="mt-1 text-red-600 font-bold">צורף אישור רפואי חיצוני.</p>}
         </div>
         <h3 className="text-lg font-bold mb-2 bg-gray-200 p-1.5 rounded">חלק ב': הצהרה</h3>
-        <p className="text-xs mb-3 leading-normal">
-          אני, החתום מטה, מצהיר כי קראתי והבנתי את כל השאלון הרפואי ומילאתי אותו בעצמי. אני מצהיר כי מסרתי ידיעות מלאות ונכונות אודות מצבי הרפואי בעבר ובהווה. ידוע לי כי לאחר שנתיים מיום חתימתי על הצהרת בריאות זו, אדרש להמציא הצהרת בריאות חדשה.
-        </p>
+        <div className="text-[10px] mb-3 leading-normal space-y-1">
+          <p>א. במהלך תקופת האימונים ייעשה כל מאמץ לשמור על בריאותך ובטיחותך באימונים. אף על פי כן, כמו בכל תכנית אימונים, ישנם סיכונים. בהיענותך לקיים פעילות גופנית במסגרת זו הנך מצהיר/ה כי ככל הידוע לך אין כל מניעה להשתתפותך בפעילות זו.</p>
+          <p>ב. אנו ממליצים לעבור בדיקת רופא לפני כל תחילת תכנית אימונים בייחוד אם הנך סובל/ת מבעיות לב/ לחץ דם גבוה/ כאבים בחזה/ עברת ניתוחים בעבר/ סוכרת/ אסטמה/ אפילפסיה או כל פציעה משמעותית גופנית.</p>
+          <p>ג. בחתימה על מסמך זה הנך מקבל על עצמך אחריות מלאה למצבך הבריאותי ומסיר כל אחריות מתהל בן משה, כעת ובעתיד לכל שינוי במצבך הבריאותי כתוצאה מפעילות גופנית זו לרבות: התקף לב, כאבי שרירים, קרעים בשריר, שברים, פגיעות חום, כאבי ברכיים, גב או כל כאב אחר ומוות.</p>
+        </div>
         <div className="flex justify-between items-end border-t border-gray-400 pt-3 mt-4">
           <div>
             <p className="font-bold mb-1">חתימת המתאמן/ת:</p>
-            {t.health_declaration?.signature_url ? <img src={t.health_declaration.signature_url} className="h-10" /> : <p className="text-gray-400 italic">לא נחתם</p>}
+            {t.health_declaration?.signature_url ? <img src={t.health_declaration.signature_url} className="max-h-12 w-auto object-contain" /> : <p className="text-gray-400 italic">לא נחתם</p>}
           </div>
           <p className="font-bold">תאריך: {t.health_declaration?.signed_at || '___________'}</p>
         </div>
@@ -1326,7 +1372,7 @@ const AdminDashboard = ({
           <div className="mt-4 border-t-2 border-dashed border-gray-400 pt-3">
             <h4 className="font-bold text-sm mb-1">הסכמה בכתב של אחד מהורי הקטין</h4>
             <p className="text-xs mb-2">אני {t.health_declaration.parent_name} (ת.ז: {t.health_declaration.parent_id}) מסכים/ה כי בני/בתי יתאמן בסטודיו.</p>
-            {t.health_declaration.parent_signature_url && <img src={t.health_declaration.parent_signature_url} className="h-10" />}
+            {t.health_declaration.parent_signature_url && <img src={t.health_declaration.parent_signature_url} className="max-h-12 w-auto object-contain" />}
           </div>
         )}
       </div>
@@ -1566,15 +1612,27 @@ const AdminDashboard = ({
                       </p>
                     </div>
 
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center flex-wrap gap-2">
                       <button 
                         onClick={() => {
-                          setBroadcastModalWorkout(workout);
-                          setSentBroadcastUserIds([]);
+                          setMessageModal({ workout, type: 'broadcast' });
+                          setMessageText('היי [שם פרטי]! תזכורת לאימון [פרטי האימון] שלנו היום. מחכה לך!');
+                          setSentMessageUserIds([]);
                         }}
                         className="bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 px-3 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5"
                       >
-                        <MessageCircle size={15} /> תפוצה למשתתפים (Broadcast)
+                        <MessageCircle size={15} /> תפוצה למשתתפים
+                      </button>
+
+                      <button 
+                        onClick={() => {
+                          setMessageModal({ workout, type: 'invite' });
+                          setMessageText('היי [שם פרטי]! נפתח רישום ל[פרטי האימון]. עלות: [מחיר]. להרשמה מהירה לחצי כאן: [קישור האימון]');
+                          setSentMessageUserIds([]);
+                        }}
+                        className="bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 px-3 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5"
+                      >
+                        <Send size={15} /> שלח הודעה להרשמה
                       </button>
 
                       <button 
@@ -2022,67 +2080,66 @@ const AdminDashboard = ({
         </div>
       )}
 
-      {broadcastModalWorkout && (
+      {messageModal && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-3xl p-6 max-w-lg w-full shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto m-auto">
+          <div className="bg-white rounded-3xl p-6 max-w-lg w-full shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto">
             <div className="flex justify-between items-center border-b pb-3">
               <h3 className="font-bold text-base text-gray-900">
-                שליחת הודעת תפוצה לאימון {broadcastModalWorkout.type}
+                {messageModal.type === 'broadcast' ? 'תפוצה למשתתפים' : 'שליחת הזמנה להרשמה'} - {messageModal.workout.type}
               </h3>
-              <button onClick={() => setBroadcastModalWorkout(null)} className="text-gray-400 hover:text-gray-600">
+              <button onClick={() => setMessageModal(null)} className="text-gray-400 hover:text-gray-600">
                 <X size={20} />
               </button>
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-gray-700 mb-1">נוסח ההודעה:</label>
+              <label className="block text-xs font-bold text-gray-700 mb-1">נוסח ההודעה (לחצי על התגיות להוספה):</label>
+              <div className="flex flex-wrap gap-1 mb-2">
+                {['[שם פרטי]', '[פרטי האימון]', '[מחיר]', '[כתובת האתר]', '[קישור האימון]'].map(tag => (
+                  <button key={tag} onClick={() => setMessageText(prev => prev + ' ' + tag)} className="bg-gray-100 hover:bg-amber-100 text-gray-700 text-[10px] px-2 py-1 rounded-lg border font-semibold transition cursor-pointer">
+                    {tag}
+                  </button>
+                ))}
+              </div>
               <textarea 
-                value={broadcastText}
-                onChange={(e) => setBroadcastText(e.target.value)}
-                className="w-full p-3 border rounded-xl text-xs outline-none"
-                rows={3}
+                value={messageText}
+                onChange={(e) => setMessageText(e.target.value)}
+                className="w-full p-3 border rounded-xl text-xs outline-none focus:border-amber-400"
+                rows={4}
               />
             </div>
 
             <div>
-              <h4 className="text-xs font-bold text-gray-700 mb-2">נרשמי האימון - לחצי לשליחה אחד-אחד:</h4>
-              <div className="space-y-2 max-h-48 overflow-y-auto">
-                {registrations
-                  .filter(r => r.workout_id === broadcastModalWorkout.id)
-                  .map(r => {
-                    const user = trainees.find(t => t.id === r.user_id);
-                    if (!user) return null;
-
-                    const isSent = sentBroadcastUserIds.includes(user.id);
-
-                    return (
-                      <div key={user.id} className="flex justify-between items-center bg-gray-50 p-2.5 rounded-xl text-xs">
-                        <span className="font-bold text-gray-800">{user.full_name} ({user.phone})</span>
-
-                        <button 
-                          onClick={() => {
-                            openWhatsApp(user.phone, broadcastText);
-                            if (!isSent) {
-                              setSentBroadcastUserIds(prev => [...prev, user.id]);
-                            }
-                          }}
-                          className={`px-3 py-1.5 rounded-xl font-bold flex items-center gap-1 transition ${
-                            isSent ? 'bg-emerald-100 text-emerald-800' : 'bg-emerald-500 hover:bg-emerald-600 text-white shadow-sm'
-                          }`}
-                        >
-                          {isSent ? <CheckCircle2 size={14} /> : <MessageCircle size={14} />}
-                          <span>{isSent ? 'נשלח ✓' : 'שלחי בוואטסאפ'}</span>
-                        </button>
-                      </div>
-                    );
-                  })}
+              <h4 className="text-xs font-bold text-gray-700 mb-2">רשימת נמענים - לחצי לשליחה:</h4>
+              <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
+                {(messageModal.type === 'broadcast' 
+                  ? registrations.filter(r => r.workout_id === messageModal.workout.id).map(r => trainees.find(t => t.id === r.user_id)).filter(Boolean)
+                  : trainees.filter(t => t.is_approved && !t.is_archived && !registrations.some(r => r.workout_id === messageModal.workout.id && r.user_id === t.id))
+                ).map(user => {
+                  const isSent = sentMessageUserIds.includes(user.id);
+                  return (
+                    <div key={user.id} className="flex justify-between items-center bg-gray-50 p-2.5 rounded-xl text-xs border border-gray-100">
+                      <span className="font-bold text-gray-800">{user.full_name} <span className="font-normal text-[10px] text-gray-500">({user.phone})</span></span>
+                      <button 
+                        onClick={() => {
+                          const finalMsg = processMessageText(messageText, user, messageModal.workout);
+                          openWhatsApp(user.phone, finalMsg);
+                          if (!isSent) setSentMessageUserIds(prev => [...prev, user.id]);
+                        }}
+                        className={`px-3 py-1.5 rounded-lg font-bold flex items-center gap-1 transition ${
+                          isSent ? 'bg-emerald-100 text-emerald-800' : 'bg-emerald-500 hover:bg-emerald-600 text-white shadow-sm'
+                        }`}
+                      >
+                        {isSent ? <CheckCircle2 size={14} /> : <MessageCircle size={14} />}
+                        <span>{isSent ? 'נשלח ✓' : 'שלחי'}</span>
+                      </button>
+                    </div>
+                  );
+                })}
               </div>
             </div>
 
-            <button 
-              onClick={() => setBroadcastModalWorkout(null)}
-              className="w-full bg-gray-900 text-white font-bold py-2.5 rounded-xl text-xs mt-2"
-            >
+            <button onClick={() => setMessageModal(null)} className="w-full bg-gray-900 text-white font-bold py-2.5 rounded-xl text-xs mt-2 hover:bg-gray-800 transition">
               סגרי חלון
             </button>
           </div>
@@ -2092,7 +2149,7 @@ const AdminDashboard = ({
       {/* מודאל עריכת אימון */}
       {editWorkoutData && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-3xl p-6 max-w-lg w-full shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto m-auto">
+          <div className="bg-white rounded-3xl p-6 max-w-lg w-full shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto">
             <div className="flex justify-between items-center border-b pb-3">
               <h3 className="font-bold text-base text-gray-900">עריכת אימון: {editWorkoutData.type}</h3>
               <button onClick={() => setEditWorkoutData(null)} className="text-gray-400 hover:text-gray-600"><X size={20} /></button>
@@ -2126,10 +2183,56 @@ const AdminDashboard = ({
                 <label className="block font-bold text-gray-700 mb-1">הערות</label>
                 <input type="text" value={editWorkoutData.notes || ''} onChange={(e) => setEditWorkoutData({...editWorkoutData, notes: e.target.value})} className="w-full p-2.5 bg-gray-50 border rounded-xl outline-none" />
               </div>
-              <div className="sm:col-span-2 pt-2">
-                <button type="submit" className="w-full bg-amber-500 text-white font-bold py-3 rounded-xl hover:bg-amber-600 shadow-md transition">שמירת שינויים</button>
+              <div className="sm:col-span-2 pt-2 pb-4 border-b border-gray-100">
+                <button type="submit" className="w-full bg-amber-500 text-white font-bold py-3 rounded-xl hover:bg-amber-600 shadow-md transition">שמירת שינויים באימון</button>
               </div>
             </form>
+
+            <div className="mt-4">
+              <h4 className="font-bold text-sm text-gray-900 mb-3">ניהול משתתפים לאימון זה:</h4>
+              <div className="flex gap-2 mb-3">
+                <select 
+                  className="flex-1 p-2.5 bg-gray-50 border rounded-xl text-xs outline-none"
+                  onChange={(e) => {
+                    if(!e.target.value) return;
+                    const newReg = { id: 'r_' + Date.now(), workout_id: editWorkoutData.id, user_id: e.target.value, payment_status: 'unpaid', created_at: new Date().toISOString() };
+                    setRegistrations(prev => [...prev, newReg]);
+                    e.target.value = '';
+                    alert('המתאמן/ת צורפ/ה בהצלחה לאימון!');
+                  }}
+                >
+                  <option value="">+ בחרי מתאמנת להוספה לאימון...</option>
+                  {trainees.filter(t => t.is_approved && !t.is_archived && !registrations.some(r => r.workout_id === editWorkoutData.id && r.user_id === t.id)).map(t => (
+                    <option key={t.id} value={t.id}>{t.full_name} ({t.phone})</option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="space-y-2 max-h-40 overflow-y-auto pr-1">
+                {registrations.filter(r => r.workout_id === editWorkoutData.id).map(r => {
+                  const u = trainees.find(t => t.id === r.user_id);
+                  if(!u) return null;
+                  return (
+                    <div key={r.id} className="flex justify-between items-center bg-gray-50 p-2.5 rounded-xl border border-gray-100 text-xs">
+                      <span className="font-bold text-gray-800">{u.full_name}</span>
+                      <button 
+                        onClick={() => {
+                          if(window.confirm(`להסיר את ${u.full_name} מהאימון?`)) {
+                            if(window.confirm('אזהרה כפולה: פעולה זו תמחק את הרישום שלה לאימון זה לחלוטין. להמשיך?')) {
+                              setRegistrations(prev => prev.filter(reg => reg.id !== r.id));
+                            }
+                          }
+                        }}
+                        className="bg-red-50 text-red-600 hover:bg-red-100 px-3 py-1.5 rounded-lg font-bold transition"
+                      >
+                        הסרה מהאימון
+                      </button>
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+
           </div>
         </div>
       )}
@@ -2291,24 +2394,25 @@ export default function App() {
     }
   }, [settings.logoUrl]);
 
+  const loadGlobalState = async () => {
+    try {
+      const { data, error } = await supabase.from('global_app_state').select('state_data').eq('id', 1).single();
+      if (data && data.state_data && Object.keys(data.state_data).length > 0) {
+        setSettings(data.state_data.settings || DEFAULT_SETTINGS);
+        setWorkouts(data.state_data.workouts || INITIAL_WORKOUTS);
+        setTrainees(data.state_data.trainees || INITIAL_TRAINEES);
+        setRegistrations(data.state_data.registrations || INITIAL_REGISTRATIONS);
+        setWaitlist(data.state_data.waitlist || INITIAL_WAITLIST);
+      }
+    } catch (err) {
+      console.error("Error loading from Supabase:", err);
+    } finally {
+      setIsDataLoaded(true);
+    }
+  };
+
   // טעינת הנתונים מ-Supabase בפתיחת האתר (סנכרון גלובלי)
   useEffect(() => {
-    const loadGlobalState = async () => {
-      try {
-        const { data, error } = await supabase.from('global_app_state').select('state_data').eq('id', 1).single();
-        if (data && data.state_data && Object.keys(data.state_data).length > 0) {
-          setSettings(data.state_data.settings || DEFAULT_SETTINGS);
-          setWorkouts(data.state_data.workouts || INITIAL_WORKOUTS);
-          setTrainees(data.state_data.trainees || INITIAL_TRAINEES);
-          setRegistrations(data.state_data.registrations || INITIAL_REGISTRATIONS);
-          setWaitlist(data.state_data.waitlist || INITIAL_WAITLIST);
-        }
-      } catch (err) {
-        console.error("Error loading from Supabase:", err);
-      } finally {
-        setIsDataLoaded(true);
-      }
-    };
     loadGlobalState();
   }, []);
 
@@ -2371,6 +2475,7 @@ export default function App() {
             currentUser={currentUser}
             setCurrentUser={setCurrentUser}
             setTrainees={setTrainees}
+            onRefresh={loadGlobalState}
           />
 
           <main className="px-4">
@@ -2384,7 +2489,9 @@ export default function App() {
                 setRegistrations={setRegistrations}
                 settings={settings}
                 setSettings={setSettings}
+                onRefresh={loadGlobalState}
               />
+              
             ) : (
               <UserView 
                 trainees={trainees}
