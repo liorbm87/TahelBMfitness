@@ -220,7 +220,7 @@ const MainHeader = ({ settings, isAdmin, onOpenAdminLogin, onLogout, currentUser
         title="דאבל קליק: כניסת מנהלת"
       >
         {settings.logoUrl ? (
-          <img src={settings.logoUrl} alt="תהל כושר" className="h-32 sm:h-40 object-contain drop-shadow-xl" />
+          <img src={settings.logoUrl} alt="תהל כושר" className="h-48 sm:h-64 object-contain drop-shadow-2xl hover:drop-shadow-[0_0_15px_rgba(255,255,255,0.5)] transition-all duration-300" />
         ) : (
           <div className="flex flex-col items-center gap-2">
             <div className="w-20 h-20 bg-gradient-to-tr from-amber-500 to-amber-300 rounded-full flex items-center justify-center text-white font-black text-4xl shadow-xl">
@@ -383,8 +383,16 @@ const UserView = ({
   const [activeTab, setActiveTab] = useState('schedule');
   const sigCanvasRef = useRef({});
 
+  const [showAuthModal, setShowAuthModal] = useState(false);
+  const [authMode, setAuthMode] = useState('login');
+  const [loginPhone, setLoginPhone] = useState('');
   const isRegistered = !!currentUser;
   const isApproved = currentUser?.is_approved;
+
+  // ביטול חסימת לוח האימונים
+  if (!isRegistered && !showAuthModal) {
+    // נותנים למשתמש לראות את האתר, נציג את מודאל ההרשמה רק כשנדרש.
+  }
 
   const handleRegisterSubmit = (e) => {
     e.preventDefault();
@@ -542,32 +550,47 @@ const UserView = ({
             </div>
           </div>
 
-          <div className="bg-amber-50/60 p-4 rounded-2xl border border-amber-200 space-y-3">
-            <h4 className="font-bold text-xs text-amber-900 flex items-center gap-1.5">
-              <FileText size={16} /> הצהרת בריאות דיגיטלית
+          <div className="bg-amber-50/60 p-4 rounded-2xl border border-amber-200 space-y-3 max-h-80 overflow-y-auto">
+            <h4 className="font-bold text-sm text-amber-900 flex items-center gap-1.5 border-b pb-2">
+              <FileText size={18} /> שאלון רפואי (חובה לסמן)
             </h4>
             
-            <div className="flex items-center gap-2">
-              <input 
-                type="checkbox"
-                id="medical_cond"
-                checked={formData.has_medical_condition}
-                onChange={(e) => setFormData({...formData, has_medical_condition: e.target.checked})}
-                className="w-4 h-4 text-amber-600 rounded"
-              />
-              <label htmlFor="medical_cond" className="text-xs text-gray-800 font-medium">
-                האם קיימת מגבלה רפואית / מחלה / רגישות הידועה לך?
-              </label>
-            </div>
+            {[
+              { id: 'q1', text: '1. סובל/ת ממחלת לב?' },
+              { id: 'q2', text: '2. האם אתה חש כאבים בחזה (במנוחה/מאמץ)?' },
+              { id: 'q3', text: '3. איבדת שיווי משקל או הכרה עקב סחרחורת?' },
+              { id: 'q4', text: '4. אסטמה או קוצר נשימה שטופלו תרופתית?' },
+              { id: 'q5', text: '5. קרוב משפחה שנפטר ממחלת לב/מוות פתאומי?' },
+              { id: 'q6', text: '6. האם נאמר לך להתאמן רק תחת השגחה?' },
+              { id: 'q7', text: '7. בעיה כרונית נוספת המגבילה פעילות?' },
+              { id: 'q8', text: '8. לנשים: האם היריון זה/קודם הוגדר בסיכון?' }
+            ].map(q => (
+              <div key={q.id} className="text-xs mb-2 border-b border-amber-100 pb-2">
+                <p className="font-bold mb-1">{q.text}</p>
+                <div className="flex gap-4">
+                  <label className="flex items-center gap-1 cursor-pointer">
+                    <input type="radio" name={q.id} onChange={() => setFormData({...formData, has_medical_condition: true})} /> כן
+                  </label>
+                  <label className="flex items-center gap-1 cursor-pointer">
+                    <input type="radio" name={q.id} defaultChecked /> לא
+                  </label>
+                </div>
+              </div>
+            ))}
 
             {formData.has_medical_condition && (
-              <textarea 
-                value={formData.medical_notes}
-                onChange={(e) => setFormData({...formData, medical_notes: e.target.value})}
-                placeholder="פרטי בקצרה את המגבלה הרפואית..."
-                className="w-full p-2.5 bg-white border border-amber-300 rounded-xl text-xs outline-none"
-                rows={2}
-              />
+              <div className="bg-red-50 p-3 rounded-xl border border-red-200 mt-2">
+                <h5 className="font-bold text-red-700 text-xs mb-1">⚠️ חובה להעלות אישור רפואי</h5>
+                <p className="text-[10px] text-red-600 mb-2">סימנת "כן" באחת השאלות. תוכלי להעלות צילום כעת, או לשמור ותהל תאשר ידנית.</p>
+                <input type="file" accept="image/*" onChange={async (e) => {
+                  const file = e.target.files[0];
+                  if(file) {
+                    const url = await uploadToCloudinary(file, settings.cloudinaryCloudName, settings.cloudinaryPreset);
+                    setFormData({...formData, medical_cert_url: url, medical_notes: 'הועלה אישור'});
+                    alert('אישור רפואי הועלה בהצלחה!');
+                  }
+                }} className="text-[10px] w-full" />
+              </div>
             )}
 
             <div>
@@ -758,7 +781,13 @@ const UserView = ({
                         </button>
                       ) : (
                         <button 
-                          onClick={() => handleWorkoutRegister(workout.id)}
+                          onClick={() => {
+                            if (!currentUser) {
+                              setShowAuthModal(true); // הצגת כניסה/הרשמה
+                            } else {
+                              handleWorkoutRegister(workout.id);
+                            }
+                          }}
                           className="w-full sm:w-auto bg-gray-900 hover:bg-amber-600 text-white text-xs font-bold px-5 py-2.5 rounded-2xl shadow-md transition"
                         >
                           הרשמי לאימון
@@ -974,14 +1003,15 @@ const AdminDashboard = ({
   };
 
   const handleDeleteTrainee = (traineeId, traineeName) => {
-    if (window.confirm(`האם את בטוחה שברצונך למחוק את ${traineeName} מהמערכת? מחיקה זו תבטל גם את כל ההרשמות שלה לאימונים.`)) {
-      if (window.confirm('⚠️ אזהרה אחרונה! פעולה זו לא ניתנת לביטול. למחוק לצמיתות?')) {
-        setTrainees(prev => prev.filter(t => t.id !== traineeId));
-        setRegistrations(prev => prev.filter(r => r.user_id !== traineeId));
-        setWaitlist(prev => prev.filter(w => w.user_id !== traineeId));
-        alert('המתאמנת נמחקה מהמערכת בהצלחה.');
-      }
+    if (window.confirm(`האם להעביר את ${traineeName} לארכיון? המידע שלה יישמר בדוחות הכספיים אך היא תוסר מרשימת הפעילים.`)) {
+      setTrainees(prev => prev.map(t => t.id === traineeId ? { ...t, is_archived: true, is_approved: false } : t));
+      alert('המתאמנת הועברה לארכיון בהצלחה.');
     }
+  };
+
+  const handleRestoreTrainee = (traineeId) => {
+    setTrainees(prev => prev.map(t => t.id === traineeId ? { ...t, is_archived: false, is_approved: true } : t));
+    alert('המתאמנת שוחזרה מהארכיון.');
   };
 
   // תהל שולחת הצעת מקום מהמתנה בוואטסאפ (אפשרות לכל מתאמנת בהמתנה!)
@@ -1434,6 +1464,16 @@ const AdminDashboard = ({
                       <MessageCircle size={14} /> הודעה
                     </button>
                     <button 
+                      onClick={() => {
+                        if(window.confirm('לדרוש הצהרת בריאות חדשה? המתאמנת תעבור לסטטוס ממתין ותצטרך למלא הצהרה מחדש.')) {
+                          setTrainees(prev => prev.map(tr => tr.id === t.id ? {...tr, is_approved: false} : tr));
+                        }
+                      }}
+                      className="bg-amber-100 text-amber-800 hover:bg-amber-200 text-xs font-bold px-2 py-2 rounded-xl flex items-center gap-1"
+                    >
+                      <RefreshCw size={14} /> חידוש הצהרה
+                    </button>
+                    <button 
                       onClick={() => exportToPdf(`hd_doc_${t.id}`, `הצהרת_בריאות_${t.full_name}.pdf`)}
                       className="bg-gray-100 text-gray-700 hover:bg-gray-200 text-xs font-bold px-3 py-2 rounded-xl flex items-center gap-1"
                       title="הורד הצהרת בריאות כ-PDF"
@@ -1593,7 +1633,7 @@ const AdminDashboard = ({
 
       {broadcastModalWorkout && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-3xl p-6 max-w-lg w-full shadow-2xl space-y-4">
+          <div className="bg-white rounded-3xl p-6 max-w-lg w-full shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto m-auto">
             <div className="flex justify-between items-center border-b pb-3">
               <h3 className="font-bold text-base text-gray-900">
                 שליחת הודעת תפוצה לאימון {broadcastModalWorkout.type}
@@ -1738,13 +1778,34 @@ export default function App() {
     saveGlobalState();
   }, [settings, workouts, trainees, registrations, waitlist, isDataLoaded]);
 
+  const [appReady, setAppReady] = useState(false);
+  useEffect(() => {
+    if (isDataLoaded) {
+      const img1 = new Image(); img1.src = settings.backgroundUrl;
+      const img2 = new Image(); img2.src = settings.logoUrl;
+      Promise.all([
+        new Promise(r => { img1.onload = r; img1.onerror = r; }),
+        new Promise(r => { img2.onload = r; img2.onerror = r; })
+      ]).then(() => setAppReady(true));
+    }
+  }, [isDataLoaded, settings.backgroundUrl, settings.logoUrl]);
+
+  if (!appReady) {
+    return (
+      <div className="h-screen w-screen flex flex-col items-center justify-center bg-gray-900 text-white space-y-4">
+        <div className="w-16 h-16 border-4 border-amber-500 border-t-transparent rounded-full animate-spin"></div>
+        <h2 className="text-xl font-bold animate-pulse">טוען את המערכת...</h2>
+      </div>
+    );
+  }
+
   return (
     <Router>
       <div dir="rtl" className="font-sans text-gray-900 antialiased selection:bg-amber-200 relative min-h-screen">
         
         {/* רקע מקובע שתופס את כל המסך גם במובייל וגם בגלילה */}
         <div 
-          className="fixed inset-0 z-[-1] bg-cover bg-center" 
+          className="fixed inset-0 z-[-1] bg-cover bg-top h-screen w-screen bg-no-repeat" 
           style={{ backgroundImage: `url(${settings.backgroundUrl})` }}
         ></div>
         
