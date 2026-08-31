@@ -149,6 +149,13 @@ const MainHeader = ({ settings, isAdmin, onOpenAdminLogin, onLogout, currentUser
         )}
       </div>
 
+      {/* ברכת שלום למתאמנת מחוברת */}
+      {currentUser && !isAdmin && (
+        <h2 className="text-xl sm:text-2xl font-black text-gray-800 bg-white/70 px-6 py-2 rounded-full shadow-sm border border-amber-100/50 backdrop-blur-md text-center mt-[-10px]">
+          שלום, {currentUser.full_name.split(' ')[0]} 👋
+        </h2>
+      )}
+
       {/* תפריט פעולות מרכזי (למנהלת או למתאמן) */}
       {isAdmin ? (
         <div className="flex items-center gap-4 bg-white/80 p-3 rounded-2xl shadow-sm border border-amber-100">
@@ -1259,7 +1266,7 @@ const AdminDashboard = ({
 
   // תבנית PDF פורמלית ונסתרת המשמשת ליצוא עבור כל מתאמן
   const renderFormalPdfTemplate = (t) => (
-    <div id={`formal_pdf_${t.id}`} className="absolute w-[210mm] min-h-[297mm] bg-white p-10 text-right text-black font-sans leading-relaxed" dir="rtl" style={{ top: '-9999px', left: '-9999px', zIndex: -50, direction: 'rtl' }}>
+    <div id={`formal_pdf_${t.id}`} className="absolute w-[210mm] min-h-[297mm] bg-white p-10 text-right text-black font-sans leading-relaxed" dir="rtl" style={{ top: 0, right: 0, zIndex: -50, direction: 'rtl' }}>
       <div className="flex justify-between items-end border-b-4 border-black pb-4 mb-6">
         <div>
           <h1 className="text-3xl font-black text-black">טופס הצהרת בריאות</h1>
@@ -1658,7 +1665,7 @@ const AdminDashboard = ({
                   {renderFormalPdfTemplate(t)}
                   <div>
                     <h4 className="font-bold text-sm text-gray-900">{t.full_name} <span className="font-normal text-xs text-gray-500">(ת.ז: {t.id_number || '-'})</span></h4>
-                    <p className="text-xs text-gray-500">{t.phone} | {t.email}</p>
+                    <p className="text-xs text-gray-500">{t.phone} | {t.email} | ילידת: {t.dob ? t.dob.split('-').reverse().join('/') : '-'}</p>
                     {checkAdminNeedsRenewal(t) && <p className="text-xs font-black text-red-600 mt-1 bg-red-50 inline-block px-2 py-0.5 rounded">ממתין להצהרת בריאות מחדש מהמתאמנת</p>}
                     {t.health_declaration?.has_medical_condition && (
                       <p className="text-xs text-red-600 font-semibold mt-1">⚠️ סומנו תשובות "כן" בשאלון.</p>
@@ -1786,8 +1793,8 @@ const AdminDashboard = ({
               trainees.filter(t => t.is_archived).map(t => (
                 <div key={t.id} className="bg-white p-4 rounded-2xl shadow-sm border border-gray-200 flex justify-between items-center">
                   <div>
-                    <h4 className="font-bold text-sm text-gray-500 line-through">{t.full_name}</h4>
-                    <p className="text-xs text-gray-400">{t.phone} | {t.email}</p>
+                    <h4 className="font-bold text-sm text-gray-500 line-through">{t.full_name} <span className="font-normal text-xs text-gray-400">(ת.ז: {t.id_number || '-'})</span></h4>
+                    <p className="text-xs text-gray-400">{t.phone} | {t.email} | ילידת: {t.dob ? t.dob.split('-').reverse().join('/') : '-'}</p>
                   </div>
                   <div className="flex gap-2">
                     <button 
