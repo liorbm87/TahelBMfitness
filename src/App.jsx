@@ -737,7 +737,7 @@ const UserView = ({
     );
   }
 
-  if (!isApproved) {
+  if (isRegistered && !isApproved) {
     return (
       <div className="max-w-md mx-auto bg-white/95 backdrop-blur-md p-8 rounded-3xl shadow-xl text-center border border-amber-100">
         <div className="w-16 h-16 bg-amber-100 text-amber-700 rounded-full flex items-center justify-center mx-auto mb-4 animate-pulse">
@@ -803,8 +803,8 @@ const UserView = ({
           </h3>
 
           {upcomingWorkouts.length === 0 ? (
-            <div className="bg-white/90 p-8 rounded-3xl text-center text-gray-500">
-              אין אימונים עתידיים במערכת כרגע. בדקי שוב מאוחר יותר!
+            <div className="bg-white/90 p-8 rounded-3xl text-center text-gray-500 font-bold">
+              אין אימונים פעילים כרגע
             </div>
           ) : (
             upcomingWorkouts.map(workout => {
@@ -1895,6 +1895,17 @@ export default function App() {
       localStorage.removeItem('tahel_current_user');
     }
   }, [currentUser]);
+
+  // סנכרון המשתמש המקומי (לוקאל) עם הנתונים העדכניים שנמשכו מ-Supabase
+  useEffect(() => {
+    if (currentUser && trainees.length > 0) {
+      const updatedUser = trainees.find(t => t.id === currentUser.id);
+      // מעדכן את המשתמש הנוכחי רק אם יש שינוי בנתונים (כמו קבלת אישור מנהלת)
+      if (updatedUser && JSON.stringify(updatedUser) !== JSON.stringify(currentUser)) {
+        setCurrentUser(updatedUser);
+      }
+    }
+  }, [trainees]);
 
   const [isDataLoaded, setIsDataLoaded] = useState(false);
 
