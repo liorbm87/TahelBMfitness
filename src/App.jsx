@@ -187,7 +187,7 @@ const MainHeader = ({ settings, isAdmin, onOpenAdminLogin, onLogout, currentUser
             שלום, {currentUser.full_name}
           </button>
           <button
-            onClick={() => openWhatsApp('0501234567', 'היי תהל, אשמח להתייעץ איתך!')}
+            onClick={() => openWhatsApp('972545222008', 'היי תהל, אשמח להתייעץ איתך!')}
             className="w-full sm:w-auto bg-emerald-500 hover:bg-emerald-600 text-white px-6 py-3 rounded-2xl text-sm font-bold flex items-center justify-center gap-2 shadow-md transition active:scale-95"
           >
             <MessageCircle size={18} />
