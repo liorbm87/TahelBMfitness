@@ -368,34 +368,45 @@ const UserView = ({
     const signatureData = sigCanvasRef.current.toDataURL();
     const parentSignatureData = isMinor ? parentSigCanvasRef.current.toDataURL() : null;
 
-    const newTrainee = {
-      id: 'u_' + Date.now(),
-      full_name: `${formData.first_name} ${formData.last_name}`,
-      id_number: formData.id_number,
-      dob: formData.dob,
-      phone: formData.phone,
-      email: formData.email,
-      is_approved: false,
-      is_admin: false,
-      created_at: new Date().toISOString(),
-      health_declaration: {
-        answers: formData.answers,
-        has_medical_condition: formData.has_medical_condition,
-        medical_cert_url: formData.medical_cert_url,
-        signature_url: signatureData,
-        parent_name: isMinor ? formData.parent_name : null,
-        parent_id: isMinor ? formData.parent_id : null,
-        parent_signature_url: parentSignatureData,
-        signed_at: new Date().toLocaleDateString('he-IL')
-      }
+    const healthDecl = {
+      answers: formData.answers,
+      has_medical_condition: formData.has_medical_condition,
+      medical_cert_url: formData.medical_cert_url,
+      signature_url: signatureData,
+      parent_name: isMinor ? formData.parent_name : null,
+      parent_id: isMinor ? formData.parent_id : null,
+      parent_signature_url: parentSignatureData,
+      signed_at: new Date().toLocaleDateString('he-IL')
     };
 
-    setTrainees(prev => [...prev, newTrainee]);
-    setCurrentUser(newTrainee);
-    triggerMakeWebhook(settings.makeWebhookUrl, 'new_trainee_registered', newTrainee);
-    
-    // שליחת התראה לתהל בוואטסאפ על נרשמת חדשה
-    openWhatsApp('0545222008', `היי תהל! נרשמתי לאתר שמי ${formData.first_name} ${formData.last_name} אני אשמח לאישור שלך!`);
+    if (currentUser) {
+      // מצב חידוש מתאמנת קיימת - מעדכן את האובייקט הקיים ולא משכפל!
+      const updatedUser = { ...currentUser, health_declaration: healthDecl, needs_renewal: false, is_approved: false };
+      setTrainees(prev => prev.map(t => t.id === currentUser.id ? updatedUser : t));
+      setCurrentUser(updatedUser);
+      alert('הצהרת הבריאות עודכנה בהצלחה!');
+      openWhatsApp('0545222008', `היי תהל! מילאתי מחדש את הצהרת הבריאות. שמי ${currentUser.full_name}, אשמח לאישור!`);
+      setAuthMode('landing');
+    } else {
+      // מצב מתאמנת חדשה לגמרי
+      const newTrainee = {
+        id: 'u_' + Date.now(),
+        full_name: `${formData.first_name} ${formData.last_name}`,
+        id_number: formData.id_number,
+        dob: formData.dob,
+        phone: formData.phone,
+        email: formData.email,
+        is_approved: false,
+        is_admin: false,
+        created_at: new Date().toISOString(),
+        health_declaration: healthDecl
+      };
+
+      setTrainees(prev => [...prev, newTrainee]);
+      setCurrentUser(newTrainee);
+      triggerMakeWebhook(settings.makeWebhookUrl, 'new_trainee_registered', newTrainee);
+      openWhatsApp('0545222008', `היי תהל! נרשמתי לאתר שמי ${formData.first_name} ${formData.last_name} אני אשמח לאישור שלך!`);
+    }
   };
 
   const handleWorkoutRegister = (workoutId) => {
@@ -527,38 +538,42 @@ const UserView = ({
         </div>
 
         <form onSubmit={handleRegisterSubmit} className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-xs font-bold text-gray-700 mb-1">שם פרטי *</label>
-              <input required type="text" value={formData.first_name} onChange={(e) => setFormData({...formData, first_name: e.target.value})} className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm outline-none" />
-            </div>
-            <div>
-              <label className="block text-xs font-bold text-gray-700 mb-1">שם משפחה *</label>
-              <input required type="text" value={formData.last_name} onChange={(e) => setFormData({...formData, last_name: e.target.value})} className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm outline-none" />
-            </div>
-          </div>
+          {!currentUser && (
+            <>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-bold text-gray-700 mb-1">שם פרטי *</label>
+                  <input required type="text" value={formData.first_name} onChange={(e) => setFormData({...formData, first_name: e.target.value})} className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm outline-none" />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-gray-700 mb-1">שם משפחה *</label>
+                  <input required type="text" value={formData.last_name} onChange={(e) => setFormData({...formData, last_name: e.target.value})} className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm outline-none" />
+                </div>
+              </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-xs font-bold text-gray-700 mb-1">מספר ת.ז *</label>
-              <input required type="text" value={formData.id_number} onChange={(e) => setFormData({...formData, id_number: e.target.value})} className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm outline-none" />
-            </div>
-            <div>
-              <label className="block text-xs font-bold text-gray-700 mb-1">תאריך לידה *</label>
-              <input required type="date" value={formData.dob} onChange={(e) => setFormData({...formData, dob: e.target.value})} className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm outline-none" />
-            </div>
-          </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-bold text-gray-700 mb-1">מספר ת.ז *</label>
+                  <input required type="text" value={formData.id_number} onChange={(e) => setFormData({...formData, id_number: e.target.value})} className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm outline-none" />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-gray-700 mb-1">תאריך לידה *</label>
+                  <input required type="date" value={formData.dob} onChange={(e) => setFormData({...formData, dob: e.target.value})} className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm outline-none" />
+                </div>
+              </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-xs font-bold text-gray-700 mb-1">טלפון *</label>
-              <input required type="tel" value={formData.phone} onChange={(e) => setFormData({...formData, phone: e.target.value})} className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm outline-none" />
-            </div>
-            <div>
-              <label className="block text-xs font-bold text-gray-700 mb-1">אימייל *</label>
-              <input required type="email" value={formData.email} onChange={(e) => setFormData({...formData, email: e.target.value})} className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm outline-none" />
-            </div>
-          </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-bold text-gray-700 mb-1">טלפון *</label>
+                  <input required type="tel" value={formData.phone} onChange={(e) => setFormData({...formData, phone: e.target.value})} className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm outline-none" />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-gray-700 mb-1">אימייל *</label>
+                  <input required type="email" value={formData.email} onChange={(e) => setFormData({...formData, email: e.target.value})} className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm outline-none" />
+                </div>
+              </div>
+            </>
+          )}
 
           <div className="bg-amber-50/60 p-4 rounded-2xl border border-amber-200 space-y-4 max-h-96 overflow-y-auto">
             <h4 className="font-bold text-sm text-amber-900 flex items-center gap-1.5 border-b pb-2">
@@ -686,17 +701,23 @@ const UserView = ({
     );
   }
 
-  if (isRegistered && isRenewalNeeded) {
+  if (isRegistered && isRenewalNeeded && authMode !== 'register') {
     return (
-      <div className="max-w-xl mx-auto bg-white/95 backdrop-blur-md p-6 sm:p-8 rounded-3xl shadow-xl border border-red-100 text-center">
+      <div className="max-w-xl mx-auto bg-white/95 backdrop-blur-md p-6 sm:p-8 rounded-3xl shadow-xl border border-red-100 text-center mt-6">
         <h2 className="text-2xl font-black text-red-600 mb-2">חידוש הצהרת בריאות</h2>
         <p className="text-xs text-gray-600 mb-6">תוקף הצהרת הבריאות שלך פג (עברו שנתיים) או שהמנהלת דרשה עדכון. אנא אשרי מחדש את הצהרת הבריאות כדי להמשיך להירשם לאימונים.</p>
         <button onClick={() => {
+          setFormData(prev => ({
+            ...prev, 
+            first_name: currentUser.full_name.split(' ')[0], 
+            last_name: currentUser.full_name.split(' ').slice(1).join(' ') || '', 
+            id_number: currentUser.id_number || '', 
+            dob: currentUser.dob || '', 
+            phone: currentUser.phone || '', 
+            email: currentUser.email || '',
+            answers: {}, has_medical_condition: false, medical_cert_url: '', parent_name: '', parent_id: '', terms_accepted: false
+          }));
           setAuthMode('register'); 
-          setFormData(prev => ({...prev, first_name: currentUser.full_name.split(' ')[0], last_name: currentUser.full_name.split(' ')[1] || '', id_number: currentUser.id_number || '', dob: currentUser.dob || '', phone: currentUser.phone, email: currentUser.email}));
-          const updatedUser = { ...currentUser, needs_renewal: false, health_declaration: null, is_approved: false };
-          setCurrentUser(updatedUser);
-          setTrainees(prev => prev.map(t => t.id === currentUser.id ? updatedUser : t));
         }} className="bg-red-500 hover:bg-red-600 text-white font-bold py-3 px-8 rounded-2xl transition shadow-md">למעבר למילוי ההצהרה</button>
       </div>
     );
@@ -714,6 +735,19 @@ const UserView = ({
 
   return (
     <div className="max-w-3xl mx-auto space-y-6">
+      {!isRegistered && (
+        <div className="bg-gray-900 text-white p-4 rounded-3xl flex flex-col sm:flex-row items-center justify-between gap-4 shadow-md animate-fadeIn">
+          <div className="text-center sm:text-right">
+            <h3 className="font-black text-amber-400 text-sm">מצב צפייה כאורחת</h3>
+            <p className="text-xs text-gray-300 mt-0.5">כדי להירשם לאימונים ולצפות באזור האישי, אנא התחברי או הרשמי למערכת.</p>
+          </div>
+          <button onClick={() => setAuthMode('landing')} className="bg-amber-500 hover:bg-amber-600 text-white px-5 py-2.5 rounded-xl text-xs font-bold transition flex items-center justify-center gap-2 shrink-0 shadow-sm">
+            <LogIn size={16} />
+            התחברות / הרשמה
+          </button>
+        </div>
+      )}
+
       {isRegistered && !isApproved && (
         <div className="bg-amber-50 border border-amber-200 p-4 rounded-3xl flex flex-col sm:flex-row items-center justify-between gap-4 shadow-sm animate-fadeIn">
           <div className="flex items-center gap-3">
@@ -974,8 +1008,8 @@ const AdminDashboard = ({
   useEffect(() => { setTempSettings(settings); }, [settings]);
 
   const stats = useMemo(() => {
-    const totalTraineesCount = trainees.length;
-    const pendingTraineesCount = trainees.filter(t => !t.is_approved).length;
+    const totalTraineesCount = trainees.filter(t => !t.is_archived).length;
+    const pendingTraineesCount = trainees.filter(t => !t.is_approved && !t.is_archived).length;
     
     let totalRevenue = 0;
     let unpaidAmount = 0;
@@ -1054,8 +1088,8 @@ const AdminDashboard = ({
   };
 
   const handleRejectTrainee = (traineeId) => {
-    if (window.confirm('האם לדחות את המתאמן/ת?')) {
-      setTrainees(prev => prev.filter(t => t.id !== traineeId));
+    if (window.confirm('האם לדחות את המתאמן/ת ולהעביר לארכיון?')) {
+      setTrainees(prev => prev.map(t => t.id === traineeId ? { ...t, is_archived: true, is_approved: false } : t));
     }
   };
 
@@ -1223,7 +1257,8 @@ const AdminDashboard = ({
           { id: 'trainees', label: `מתאמנים (${stats.pendingTraineesCount ? `! ${stats.pendingTraineesCount}` : trainees.length})`, icon: Users },
           { id: 'finance', label: `כספים ורו"ח ${stats.unpaidDebtsList.length ? '⚠️' : ''}`, icon: CreditCard },
           { id: 'settings', label: 'הגדרות ומיתוג', icon: Settings },
-         { id: 'archive', label: 'ארכיון מתאמנים', icon: Archive }
+          { id: 'archive', label: 'ארכיון מתאמנים', icon: Archive },
+          { id: 'archive_workouts', label: 'ארכיון אימונים', icon: Archive }
        ].map(tab => {
           const Icon = tab.icon;
           const isActive = activeTab === tab.id;
@@ -1406,11 +1441,11 @@ const AdminDashboard = ({
           </div>
 
           <div className="space-y-4">
-            <h4 className="font-bold text-gray-900 text-sm">אימונים במערכת ({workouts.length})</h4>
+            <h4 className="font-bold text-gray-900 text-sm">אימונים עתידיים במערכת ({workouts.filter(w => new Date(`${w.date}T${w.time}`) >= new Date()).length})</h4>
             
-            {workouts.map(workout => {
+            {workouts.filter(w => new Date(`${w.date}T${w.time}`) >= new Date()).map(workout => {
               const regList = registrations.filter(r => r.workout_id === workout.id);
-              const isPast = new Date(`${workout.date}T${workout.time}`) < new Date();
+              const isPast = false; // האימונים שכאן הם תמיד בעתיד כעת
               
               // הוספת משתנה רשימת ההמתנה שפותר את הקריסה!
               const workoutWaitlist = waitlist
@@ -1533,13 +1568,13 @@ const AdminDashboard = ({
         <div className="space-y-6">
           <div className="bg-amber-50/80 border border-amber-200 p-5 rounded-3xl space-y-3">
             <h3 className="font-extrabold text-gray-900 text-sm flex items-center gap-2">
-              <Clock size={18} className="text-amber-600" /> מתאמנים חדשים שממתינים לאישור ({trainees.filter(t => !t.is_approved).length})
+              <Clock size={18} className="text-amber-600" /> מתאמנים חדשים שממתינים לאישור ({trainees.filter(t => !t.is_approved && !t.is_archived).length})
             </h3>
 
-            {trainees.filter(t => !t.is_approved).length === 0 ? (
+            {trainees.filter(t => !t.is_approved && !t.is_archived).length === 0 ? (
               <p className="text-xs text-gray-500">אין מתאמנים שממתינים לאישור כרגע.</p>
             ) : (
-              trainees.filter(t => !t.is_approved).map(t => (
+              trainees.filter(t => !t.is_approved && !t.is_archived).map(t => (
                 <div key={t.id} className="bg-white p-4 rounded-2xl shadow-sm border border-amber-100 flex flex-col sm:flex-row justify-between sm:items-center gap-3">
                   {renderFormalPdfTemplate(t)}
                   <div>
@@ -1582,10 +1617,10 @@ const AdminDashboard = ({
           </div>
 
           <div className="space-y-3">
-            <h3 className="font-bold text-gray-900 text-sm">מתאמנים פעילים ({trainees.filter(t => t.is_approved).length})</h3>
+            <h3 className="font-bold text-gray-900 text-sm">מתאמנים פעילים ({trainees.filter(t => t.is_approved && !t.is_archived).length})</h3>
 
             <div className="grid grid-cols-1 gap-6">
-              {trainees.filter(t => t.is_approved).map(t => (
+              {trainees.filter(t => t.is_approved && !t.is_archived).map(t => (
                 <div key={t.id} className="bg-white/95 p-5 rounded-2xl shadow-sm border border-gray-100 space-y-3 relative overflow-hidden">
                   {renderFormalPdfTemplate(t)}
                   {checkAdminNeedsRenewal(t) && <div className="absolute top-0 right-0 bg-red-600 text-white text-[10px] font-bold px-3 py-1 rounded-bl-xl">ממתין להצהרה חדשה</div>}
@@ -1700,14 +1735,73 @@ const AdminDashboard = ({
                     <h4 className="font-bold text-sm text-gray-500 line-through">{t.full_name}</h4>
                     <p className="text-xs text-gray-400">{t.phone} | {t.email}</p>
                   </div>
-                  <button 
-                    onClick={() => handleRestoreTrainee(t.id)}
-                    className="bg-gray-900 hover:bg-gray-800 text-white text-xs font-bold px-4 py-2 rounded-xl"
-                  >
-                    שחזור מתאמנת
-                  </button>
+                  <div className="flex gap-2">
+                    <button 
+                      onClick={() => {
+                        if(window.confirm('האם את בטוחה שברצונך למחוק את המתאמנת לצמיתות?')) {
+                          if(window.confirm('אזהרה כפולה: מחיקה זו תעלים את המתאמנת לחלוטין מכל הרישומים כולל כספים. להמשיך?')) {
+                            setTrainees(prev => prev.filter(tr => tr.id !== t.id));
+                          }
+                        }
+                      }}
+                      className="bg-red-50 text-red-600 hover:bg-red-100 text-xs font-bold px-4 py-2 rounded-xl"
+                    >
+                      מחיקה לצמיתות
+                    </button>
+                    <button 
+                      onClick={() => handleRestoreTrainee(t.id)}
+                      className="bg-gray-900 hover:bg-gray-800 text-white text-xs font-bold px-4 py-2 rounded-xl"
+                    >
+                      שחזור מתאמנת
+                    </button>
+                  </div>
                 </div>
               ))
+            )}
+          </div>
+        </div>
+      )}
+
+      {activeTab === 'archive_workouts' && (
+        <div className="space-y-6">
+          <div className="bg-gray-100 border border-gray-300 p-5 rounded-3xl space-y-4">
+            <h3 className="font-extrabold text-gray-900 text-sm flex items-center gap-2">
+              <Archive size={18} className="text-gray-600" /> היסטוריית אימונים שעברו ({workouts.filter(w => new Date(`${w.date}T${w.time}`) < new Date()).length})
+            </h3>
+            
+            {workouts.filter(w => new Date(`${w.date}T${w.time}`) < new Date()).length === 0 ? (
+              <p className="text-xs text-gray-500">אין אימוני עבר בארכיון.</p>
+            ) : (
+              workouts.filter(w => new Date(`${w.date}T${w.time}`) < new Date())
+                .sort((a, b) => new Date(`${b.date}T${b.time}`) - new Date(`${a.date}T${a.time}`)) // מיון מהחדש לישן
+                .map(workout => {
+                  const regList = registrations.filter(r => r.workout_id === workout.id);
+                  return (
+                    <div key={workout.id} className="bg-white/70 p-5 rounded-3xl shadow-sm border border-gray-200 opacity-80">
+                      <div className="flex flex-col md:flex-row justify-between md:items-center gap-4">
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <span className="font-extrabold text-base text-gray-900">{workout.type}</span>
+                            <span className="bg-gray-200 text-gray-700 text-[10px] px-2 py-0.5 rounded-md font-bold">הושלם</span>
+                          </div>
+                          <p className="text-xs text-gray-600 mt-0.5">
+                            {workout.date.split('-').reverse().join('/')} בשעה {workout.time} | {workout.location}
+                          </p>
+                          <p className="text-xs text-gray-500 mt-1 font-semibold">
+                            משתתפים בפועל: {regList.length} / {workout.max_participants}
+                          </p>
+                        </div>
+                        <button 
+                          onClick={() => handleDeleteWorkout(workout.id)}
+                          className="p-2 text-red-500 hover:bg-red-50 rounded-xl transition"
+                          title="מחק אימון עבר לצמיתות"
+                        >
+                          <Trash2 size={18} />
+                        </button>
+                      </div>
+                    </div>
+                  );
+              })
             )}
           </div>
         </div>
