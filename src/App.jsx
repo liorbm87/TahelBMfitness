@@ -92,32 +92,16 @@ const uploadToCloudinary = async (file, cloudName, uploadPreset) => {
 const exportToPdf = (elementId, filename) => {
   const element = document.getElementById(elementId);
   if (!element) return;
-  
-  // ניצור העתק של האלמנט כדי שנוכל להציג אותו זמנית רק עבור הצילום
-  const clone = element.cloneNode(true);
-  clone.classList.remove('hidden');
-  clone.style.display = 'block';
-  clone.style.position = 'absolute';
-  clone.style.top = '0';
-  clone.style.left = '0';
-  clone.style.zIndex = '-9999';
-  document.body.appendChild(clone);
 
   const opt = {
     margin:       10,
     filename:     filename,
     image:        { type: 'jpeg', quality: 0.98 },
-    html2canvas:  { scale: 2, useCORS: true, scrollY: 0 }, // useCORS קריטי לתמונות מ-Cloudinary!
+    html2canvas:  { scale: 2, useCORS: true }, 
     jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
   };
   
-  // מתן זמן לדפדפן לרנדר את השכפול לפני ביצוע הצילום
-  setTimeout(() => {
-    html2pdf().set(opt).from(clone).save().then(() => {
-      // מחיקת העותק לאחר סיום ההורדה
-      document.body.removeChild(clone);
-    });
-  }, 300);
+  html2pdf().set(opt).from(element).save();
 };
 
 // ============================================================================
@@ -1285,8 +1269,9 @@ const AdminDashboard = ({
   // ============================================================================
   // תבנית PDF פורמלית ונסתרת המשמשת ליצוא עבור כל מתאמן
   const renderFormalPdfTemplate = (t) => (
-    <div id={`formal_pdf_${t.id}`} className="hidden w-[210mm] min-h-[297mm] bg-white p-10 text-right text-black font-sans leading-relaxed" dir="rtl" style={{ direction: 'rtl' }}>
-      <div className="flex justify-between items-end border-b-4 border-black pb-4 mb-6">
+    <div style={{ height: 0, overflow: 'hidden' }}>
+      <div id={`formal_pdf_${t.id}`} className="w-[210mm] min-h-[297mm] bg-white p-10 text-right text-black font-sans leading-relaxed" dir="rtl" style={{ direction: 'rtl' }}>
+        <div className="flex justify-between items-end border-b-4 border-black pb-4 mb-6">
         <div>
           <h1 className="text-3xl font-black text-black">טופס הצהרת בריאות</h1>
           <h2 className="text-xl font-bold mt-1 text-gray-800">למבקש להתאמן בחדר כושר</h2>
@@ -1330,15 +1315,16 @@ const AdminDashboard = ({
         </div>
         <p className="font-bold">תאריך: {t.health_declaration?.signed_at || '___________'}</p>
       </div>
-      {t.health_declaration?.parent_name && (
-        <div className="mt-8 border-t-2 border-dashed border-gray-400 pt-6">
-          <h4 className="font-bold text-lg mb-2">הסכמה בכתב של אחד מהורי הקטין</h4>
-          <p className="text-sm mb-4">אני {t.health_declaration.parent_name} (ת.ז: {t.health_declaration.parent_id}) מסכים/ה כי בני/בתי יתאמן בסטודיו.</p>
-          {t.health_declaration.parent_signature_url && <img src={t.health_declaration.parent_signature_url} className="h-16" />}
+    {t.health_declaration?.parent_name && (
+            <div className="mt-8 border-t-2 border-dashed border-gray-400 pt-6">
+              <h4 className="font-bold text-lg mb-2">הסכמה בכתב של אחד מהורי הקטין</h4>
+              <p className="text-sm mb-4">אני {t.health_declaration.parent_name} (ת.ז: {t.health_declaration.parent_id}) מסכים/ה כי בני/בתי יתאמן בסטודיו.</p>
+              {t.health_declaration.parent_signature_url && <img src={t.health_declaration.parent_signature_url} className="h-16" />}
+            </div>
+          )}
         </div>
-      )}
-    </div>
-  );
+      </div>
+    );
 
   const handleImageUpload = async (e, targetKey) => {
     const file = e.target.files[0];
