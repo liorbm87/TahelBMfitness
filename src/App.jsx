@@ -1995,6 +1995,84 @@ const AdminDashboard = ({
 };
 
 // ============================================================================
+// 7.5 פוטר ותקנונים (FOOTER & LEGAL MODALS)
+// ============================================================================
+const Footer = () => {
+  const [activeModal, setActiveModal] = useState(null);
+
+  const renderModal = () => {
+    if (!activeModal) return null;
+    let title = '';
+    let content = '';
+
+    if (activeModal === 'terms') {
+      title = 'תנאי שימוש';
+      content = (
+        <div className="space-y-3 text-sm text-gray-700 leading-relaxed">
+          <p>ברוכות הבאות לאתר של תהל בן משה. השימוש באתר ובשירותים כפוף לתנאים הבאים:</p>
+          <ul className="list-disc pr-5 space-y-1">
+            <li><strong>הצהרת בריאות:</strong> כל מתאמנת חייבת למלא הצהרת בריאות כדין לפני אימון ראשון. באחריות המתאמנת לעדכן את מאמנת הכושר על כל שינוי במצבה הרפואי.</li>
+            <li><strong>מדיניות ביטולים:</strong> ביטול השתתפות באימון יתאפשר עד 12 שעות לפני תחילת האימון. ביטול לאחר פרק זמן זה יחויב בתשלום מלא על האימון.</li>
+            <li><strong>רשימת המתנה:</strong> הרישום לאימונים מבוסס על מקום פנוי. שיבוץ מרשימת ההמתנה תלוי בביטולים של מתאמנות אחרות ואינו מובטח.</li>
+            <li><strong>הגבלת אחריות:</strong> האימונים מבוצעים באחריות המתאמנת. הסטודיו והמאמנת לא יישאו באחריות לכל נזק גופני שייגרם כתוצאה מאי דיווח רפואי מדויק או הסתרת מידע על ידי המתאמנת.</li>
+          </ul>
+        </div>
+      );
+    } else if (activeModal === 'privacy') {
+      title = 'מדיניות פרטיות';
+      content = (
+        <div className="space-y-3 text-sm text-gray-700 leading-relaxed">
+          <p>פרטיותך חשובה לנו. להלן הפירוט לגבי אופן איסוף ושמירת המידע שלך באתר:</p>
+          <ul className="list-disc pr-5 space-y-1">
+            <li><strong>איסוף נתונים:</strong> אנו אוספים פרטים אישיים בסיסיים (שם, טלפון, ת.ז) והצהרות רפואיות הנדרשות על פי חוק מכוני הכושר לשם השתתפות באימונים.</li>
+            <li><strong>שמירת המידע:</strong> המידע נשמר בצורה מאובטחת במערכות האתר ואינו מועבר לשום צד שלישי מסחרי. מידע רפואי עשוי להיות מועבר לצוות רפואי אך ורק במקרי חירום.</li>
+            <li><strong>זכויותייך:</strong> תוכלי לדרוש בכל עת לעיין במידע שנאסף עלייך או לבקש להסיר את פרטייך האישיים מהמערכת על ידי פנייה ישירה לתהל. במקרה של מחיקה, היסטוריית התשלומים תישמר באופן אנונימי לצורכי מס כחוק.</li>
+          </ul>
+        </div>
+      );
+    } else if (activeModal === 'accessibility') {
+      title = 'הצהרת נגישות';
+      content = (
+        <div className="space-y-3 text-sm text-gray-700 leading-relaxed">
+          <p>אנו רואים חשיבות רבה במתן שירות שוויוני, מכבד ונגיש לכלל האוכלוסייה, לרבות אנשים עם מוגבלויות.</p>
+          <ul className="list-disc pr-5 space-y-1">
+            <li><strong>נגישות דיגיטלית:</strong> אתר זה פותח במטרה לאפשר גלישה נוחה ונגישה. האתר מותאם למסכים בגדלים שונים, מכיל ניגודיות סבירה לטקסטים, ומשתמש ברכיבי ניווט ברורים.</li>
+            <li><strong>סיוע פרטני:</strong> במידה ונתקלת בקושי כלשהו בגלישה באתר, במילוי טופס הצהרת הבריאות, או בהרשמה לאימונים, נשמח לסייע לך באופן אישי.</li>
+            <li><strong>יצירת קשר לנושאי נגישות:</strong> ניתן לפנות אלינו ישירות בוואטסאפ או בטלפון למספר 054-5222008 ונדאג לטפל בבקשתך בהקדם האפשרי.</li>
+          </ul>
+        </div>
+      );
+    }
+
+    return (
+      <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-[60] animate-fadeIn">
+        <div className="bg-white rounded-3xl p-6 max-w-lg w-full shadow-2xl border border-amber-100 max-h-[85vh] overflow-y-auto flex flex-col">
+          <div className="flex justify-between items-center mb-4 border-b pb-3">
+            <h3 className="font-black text-xl text-gray-900">{title}</h3>
+            <button onClick={() => setActiveModal(null)} className="text-gray-400 hover:text-gray-600 bg-gray-100 p-2 rounded-full transition"><X size={20}/></button>
+          </div>
+          <div className="flex-1 overflow-y-auto pr-2">
+            {content}
+          </div>
+          <button onClick={() => setActiveModal(null)} className="mt-6 w-full bg-gray-900 text-white font-bold py-3 rounded-2xl shadow-lg hover:opacity-95 transition">קראתי והבנתי, סגירה</button>
+        </div>
+      </div>
+    );
+  };
+
+  return (
+    <div className="mt-16 mb-4 flex justify-center items-center gap-3 text-xs sm:text-sm text-gray-500 font-medium">
+      <button onClick={() => setActiveModal('terms')} className="hover:text-amber-700 transition hover:underline">תנאי שימוש</button>
+      <span className="text-gray-300 text-[10px]">●</span>
+      <button onClick={() => setActiveModal('privacy')} className="hover:text-amber-700 transition hover:underline">מדיניות פרטיות</button>
+      <span className="text-gray-300 text-[10px]">●</span>
+      <button onClick={() => setActiveModal('accessibility')} className="hover:text-amber-700 transition hover:underline">הצהרת נגישות</button>
+      {renderModal()}
+    </div>
+  );
+};
+
+// ============================================================================
 // 8. רכיב האפליקציה הראשי (APP COMPONENT - SUPABASE GLOBAL SYNC)
 // ============================================================================
 export default function App() {
@@ -2160,6 +2238,7 @@ export default function App() {
             currentPassword={settings.adminPassword}
           />
 
+          <Footer />
         </div>
       </div>
     </Router>
