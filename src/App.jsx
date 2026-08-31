@@ -7,7 +7,7 @@ import {
   Calendar, Users, Settings, LogOut, Check, X, CreditCard, MessageCircle, 
   Download, Upload, Plus, Trash2, AlertCircle, CheckCircle2, Clock, 
   DollarSign, Edit, Search, Send, FileText, ChevronRight, Filter, Eye, 
-  Lock, RefreshCw, Award, ChevronDown, CheckSquare, Square, Phone, ShieldAlert
+  Lock, RefreshCw, Award, ChevronDown, CheckSquare, Square, Phone, ShieldAlert, Archive, UserPlus, LogIn, ListOrdered
 } from 'lucide-react';
 
 // ============================================================================
@@ -373,26 +373,40 @@ const UserView = ({
   settings 
 }) => {
   const [formData, setFormData] = useState({
-    full_name: '',
+    first_name: '',
+    last_name: '',
+    id_number: '',
+    dob: '',
     phone: '',
     email: '',
+    answers: {}, // שומר את כל התשובות לשאלון (q1, q2a וכו')
     has_medical_condition: false,
-    medical_notes: '',
+    medical_cert_url: '',
+    parent_name: '',
+    parent_id: '',
     terms_accepted: false
   });
   const [activeTab, setActiveTab] = useState('schedule');
   const sigCanvasRef = useRef({});
+  const parentSigCanvasRef = useRef({}); // חתימת הורה לקטין
 
-  const [showAuthModal, setShowAuthModal] = useState(false);
-  const [authMode, setAuthMode] = useState('login');
-  const [loginPhone, setLoginPhone] = useState('');
+  const [authMode, setAuthMode] = useState('landing'); 
+  const [loginEmail, setLoginEmail] = useState('');
+  const [loginPassword, setLoginPassword] = useState(''); 
   const isRegistered = !!currentUser;
   const isApproved = currentUser?.is_approved;
 
-  // ביטול חסימת לוח האימונים
-  if (!isRegistered && !showAuthModal) {
-    // נותנים למשתמש לראות את האתר, נציג את מודאל ההרשמה רק כשנדרש.
-  }
+  const handleLoginSubmit = (e) => {
+    e.preventDefault();
+    // סימולציה: התחברות לפי אימייל, כשהטלפון משמש בתור סיסמה זמנית
+    const user = trainees.find(t => t.email === loginEmail && t.phone === loginPassword);
+    if (user) {
+      setCurrentUser(user);
+      alert('התחברת בהצלחה!');
+    } else {
+      alert('אימייל או סיסמה שגויים. (סיסמה = מספר הטלפון שלך)');
+    }
+  };
 
   const handleRegisterSubmit = (e) => {
     e.preventDefault();
@@ -400,25 +414,39 @@ const UserView = ({
       alert('יש לאשר את תקנון האתר ומדיניות הביטולים.');
       return;
     }
-    if (sigCanvasRef.current.isEmpty && sigCanvasRef.current.isEmpty()) {
+    if (sigCanvasRef.current?.isEmpty()) {
       alert('חובה לחתום בתיבת החתימה הדיגיטלית.');
       return;
     }
 
+    // בדיקת קטין (מתחת ל-18)
+    const isMinor = formData.dob && (new Date().getFullYear() - new Date(formData.dob).getFullYear() < 18);
+    if (isMinor && parentSigCanvasRef.current?.isEmpty()) {
+      alert('היותך מתחת לגיל 18, חובה להחתים הורה/אפוטרופוס.');
+      return;
+    }
+
     const signatureData = sigCanvasRef.current.toDataURL();
+    const parentSignatureData = isMinor ? parentSigCanvasRef.current.toDataURL() : null;
 
     const newTrainee = {
       id: 'u_' + Date.now(),
-      full_name: formData.full_name,
+      full_name: `${formData.first_name} ${formData.last_name}`,
+      id_number: formData.id_number,
+      dob: formData.dob,
       phone: formData.phone,
       email: formData.email,
       is_approved: false,
       is_admin: false,
       created_at: new Date().toISOString(),
       health_declaration: {
+        answers: formData.answers,
         has_medical_condition: formData.has_medical_condition,
-        medical_notes: formData.medical_notes,
+        medical_cert_url: formData.medical_cert_url,
         signature_url: signatureData,
+        parent_name: isMinor ? formData.parent_name : null,
+        parent_id: isMinor ? formData.parent_id : null,
+        parent_signature_url: parentSignatureData,
         signed_at: new Date().toLocaleDateString('he-IL')
       }
     };
@@ -426,6 +454,9 @@ const UserView = ({
     setTrainees(prev => [...prev, newTrainee]);
     setCurrentUser(newTrainee);
     triggerMakeWebhook(settings.makeWebhookUrl, 'new_trainee_registered', newTrainee);
+    
+    // שליחת התראה לתהל בוואטסאפ על נרשמת חדשה
+    openWhatsApp('0545222008', `היי תהל! מתאמנת חדשה בשם ${formData.full_name} (${formData.phone}) נרשמה למערכת. היא ממתינה לאישור שלך בפאנל ניהול!`);
   };
 
   const handleWorkoutRegister = (workoutId) => {
@@ -502,128 +533,197 @@ const UserView = ({
     }
   };
 
-  if (!isRegistered) {
+  if (!isRegistered && authMode !== 'guest' && authMode !== 'register') {
+    return (
+      <div className="max-w-md mx-auto bg-white/95 backdrop-blur-md p-8 rounded-3xl shadow-xl border border-amber-100 mt-6">
+        {authMode === 'landing' ? (
+          <div className="text-center space-y-6">
+            <h2 className="text-3xl font-black text-gray-900">ברוכות הבאות לתהל פיטנס!</h2>
+            <p className="text-gray-600 text-sm">אנא היכנסי לחשבונך או הרשמי כדי לצפות באזור האישי שלך ולהירשם לאימונים.</p>
+            <div className="space-y-3">
+              <button onClick={() => setAuthMode('login')} className="w-full bg-gray-900 hover:bg-gray-800 text-white font-bold py-3.5 rounded-2xl shadow-lg transition flex items-center justify-center gap-2">
+                <LogIn size={18} /> כניסה למשתמשת קיימת
+              </button>
+              <button onClick={() => setAuthMode('register')} className="w-full bg-amber-500 hover:bg-amber-600 text-white font-bold py-3.5 rounded-2xl shadow-lg transition flex items-center justify-center gap-2">
+                <UserPlus size={18} /> הרשמה והצהרת בריאות
+              </button>
+            </div>
+            <button onClick={() => setAuthMode('guest')} className="text-xs text-gray-400 hover:text-gray-600 pt-2 underline">
+              המשך כאורחת (צפייה בלוח אימונים בלבד)
+            </button>
+          </div>
+        ) : (
+          <div>
+            <h2 className="text-2xl font-black text-gray-900 text-center mb-6">כניסה למערכת</h2>
+            <form onSubmit={handleLoginSubmit} className="space-y-4">
+              <div>
+                <label className="block text-xs font-bold text-gray-700 mb-1">אימייל</label>
+                <input required type="email" value={loginEmail} onChange={(e) => setLoginEmail(e.target.value)} className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl text-sm outline-none" />
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-gray-700 mb-1">סיסמה (בינתיים: מספר הטלפון שלך)</label>
+                <input required type="password" value={loginPassword} onChange={(e) => setLoginPassword(e.target.value)} className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl text-sm outline-none" />
+              </div>
+              <button type="submit" className="w-full bg-gray-900 text-white font-bold py-3.5 rounded-2xl shadow-lg mt-2">היכנסי</button>
+              <button type="button" onClick={() => setAuthMode('landing')} className="w-full text-xs text-gray-500 mt-4 underline text-center block">חזרה לתפריט</button>
+            </form>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  if (!isRegistered && authMode === 'register') {
     return (
       <div className="max-w-xl mx-auto bg-white/95 backdrop-blur-md p-6 sm:p-8 rounded-3xl shadow-xl border border-amber-100">
-        <div className="text-center mb-6">
-          <h2 className="text-2xl font-black text-gray-900">הרשמה והצהרת בריאות</h2>
-          <p className="text-xs text-gray-500 mt-1">
-            ברוכים הבאים לתהל פיטנס! מילוי הצהרת הבריאות הינו חובה לפני הרשמה לאימונים.
-          </p>
+        <div className="flex justify-between items-center text-center mb-6">
+          <div>
+            <h2 className="text-2xl font-black text-gray-900">הרשמה והצהרת בריאות</h2>
+            <p className="text-xs text-gray-500 mt-1">מילוי הצהרת הבריאות הינו חובה לפני הרשמה לאימונים.</p>
+          </div>
+          <button onClick={() => setAuthMode('landing')} className="text-gray-400 hover:text-gray-600 bg-gray-100 p-2 rounded-full"><X size={20}/></button>
         </div>
 
         <form onSubmit={handleRegisterSubmit} className="space-y-4">
-          <div>
-            <label className="block text-xs font-bold text-gray-700 mb-1">שם מלא *</label>
-            <input 
-              required
-              type="text"
-              value={formData.full_name}
-              onChange={(e) => setFormData({...formData, full_name: e.target.value})}
-              placeholder="ישראל ישראלי"
-              className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-amber-500 outline-none"
-            />
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs font-bold text-gray-700 mb-1">שם פרטי *</label>
+              <input required type="text" value={formData.first_name} onChange={(e) => setFormData({...formData, first_name: e.target.value})} className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm outline-none" />
+            </div>
+            <div>
+              <label className="block text-xs font-bold text-gray-700 mb-1">שם משפחה *</label>
+              <input required type="text" value={formData.last_name} onChange={(e) => setFormData({...formData, last_name: e.target.value})} className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm outline-none" />
+            </div>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-xs font-bold text-gray-700 mb-1">מספר טלפון *</label>
-              <input 
-                required
-                type="tel"
-                value={formData.phone}
-                onChange={(e) => setFormData({...formData, phone: e.target.value})}
-                placeholder="0501234567"
-                className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-amber-500 outline-none"
-              />
+              <label className="block text-xs font-bold text-gray-700 mb-1">מספר ת.ז *</label>
+              <input required type="text" value={formData.id_number} onChange={(e) => setFormData({...formData, id_number: e.target.value})} className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm outline-none" />
+            </div>
+            <div>
+              <label className="block text-xs font-bold text-gray-700 mb-1">תאריך לידה *</label>
+              <input required type="date" value={formData.dob} onChange={(e) => setFormData({...formData, dob: e.target.value})} className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm outline-none" />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs font-bold text-gray-700 mb-1">טלפון *</label>
+              <input required type="tel" value={formData.phone} onChange={(e) => setFormData({...formData, phone: e.target.value})} className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm outline-none" />
             </div>
             <div>
               <label className="block text-xs font-bold text-gray-700 mb-1">אימייל *</label>
-              <input 
-                required
-                type="email"
-                value={formData.email}
-                onChange={(e) => setFormData({...formData, email: e.target.value})}
-                placeholder="name@example.com"
-                className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-amber-500 outline-none"
-              />
+              <input required type="email" value={formData.email} onChange={(e) => setFormData({...formData, email: e.target.value})} className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm outline-none" />
             </div>
           </div>
 
-          <div className="bg-amber-50/60 p-4 rounded-2xl border border-amber-200 space-y-3 max-h-80 overflow-y-auto">
+          <div className="bg-amber-50/60 p-4 rounded-2xl border border-amber-200 space-y-4 max-h-96 overflow-y-auto">
             <h4 className="font-bold text-sm text-amber-900 flex items-center gap-1.5 border-b pb-2">
-              <FileText size={18} /> שאלון רפואי (חובה לסמן)
+              <FileText size={18} /> שאלון רפואי לאימון גופני
             </h4>
-            
-            {[
-              { id: 'q1', text: '1. סובל/ת ממחלת לב?' },
-              { id: 'q2', text: '2. האם אתה חש כאבים בחזה (במנוחה/מאמץ)?' },
-              { id: 'q3', text: '3. איבדת שיווי משקל או הכרה עקב סחרחורת?' },
-              { id: 'q4', text: '4. אסטמה או קוצר נשימה שטופלו תרופתית?' },
-              { id: 'q5', text: '5. קרוב משפחה שנפטר ממחלת לב/מוות פתאומי?' },
-              { id: 'q6', text: '6. האם נאמר לך להתאמן רק תחת השגחה?' },
-              { id: 'q7', text: '7. בעיה כרונית נוספת המגבילה פעילות?' },
-              { id: 'q8', text: '8. לנשים: האם היריון זה/קודם הוגדר בסיכון?' }
-            ].map(q => (
-              <div key={q.id} className="text-xs mb-2 border-b border-amber-100 pb-2">
-                <p className="font-bold mb-1">{q.text}</p>
-                <div className="flex gap-4">
-                  <label className="flex items-center gap-1 cursor-pointer">
-                    <input type="radio" name={q.id} onChange={() => setFormData({...formData, has_medical_condition: true})} /> כן
-                  </label>
-                  <label className="flex items-center gap-1 cursor-pointer">
-                    <input type="radio" name={q.id} defaultChecked /> לא
-                  </label>
+            <p className="text-[11px] text-gray-700 leading-tight">
+              השאלון הבא נועד לבדוק את כשירותך הגופנית במטרה להתאים עבורך באופן אישי את התכנית הטובה ביותר. כל הפרטים בשאלון זה הינם חסויים. יש לסמן במקום המתאים.
+            </p>
+
+            <div className="space-y-3 mt-3">
+              {[
+                { id: 'q1', text: '1. האם הרופא שלך אמר לך שאתה סובל ממחלת לב?' },
+                { id: 'q2a', text: '2(א). האם אתה חש כאבים בחזה בזמן מנוחה?' },
+                { id: 'q2b', text: '2(ב). האם אתה חש כאבים בחזה במהלך פעילויות שיגרה ביום-יום?' },
+                { id: 'q2c', text: '2(ג). האם אתה חש כאבים בחזה בזמן פעילות גופנית?' },
+                { id: 'q3a', text: '3(א). איבדת שיווי משקל עקב סחרחורת (שלא מנשימת יתר)?' },
+                { id: 'q3b', text: '3(ב). איבדת את הכרתך?' },
+                { id: 'q4a', text: '4(א). רופא אבחן אסטמה, וב-3 החודשים האחרונים נזקקת לטיפול תרופתי?' },
+                { id: 'q4b', text: '4(ב). רופא אבחן אסטמה, וב-3 החודשים האחרונים סבלת מקוצר נשימה/צפצופים?' },
+                { id: 'q5a', text: '5(א). האם בן משפחה דרגה ראשונה נפטר ממחלת לב?' },
+                { id: 'q5b', text: '5(ב). האם בן משפחה דרגה ראשונה נפטר ממוות פתאומי בגיל מוקדם?' },
+                { id: 'q6', text: '6. האם נאמר לך ב-5 השנים האחרונות להתאמן רק תחת השגחה רפואית?' },
+                { id: 'q7', text: '7. האם הינך סובל ממחלה קבועה שעשויה להגביל פעילות גופנית?' },
+                { id: 'q8', text: '8. לנשים בהריון: האם ההריון הזה או הריון קודם הוגדר בסיכון?' }
+              ].map(q => (
+                <div key={q.id} className="text-[11px] font-semibold mb-2 border-b border-amber-100 pb-2 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-1">
+                  <span>{q.text}</span>
+                  <div className="flex gap-3">
+                    <label className="flex items-center gap-1 cursor-pointer">
+                      <input required type="radio" name={q.id} onChange={() => {
+                        setFormData(prev => ({...prev, answers: {...prev.answers, [q.id]: true}, has_medical_condition: true}))
+                      }} /> כן
+                    </label>
+                    <label className="flex items-center gap-1 cursor-pointer">
+                      <input required type="radio" name={q.id} onChange={() => {
+                        setFormData(prev => ({...prev, answers: {...prev.answers, [q.id]: false}}))
+                      }} /> לא
+                    </label>
+                  </div>
                 </div>
-              </div>
-            ))}
+              ))}
+            </div>
 
             {formData.has_medical_condition && (
-              <div className="bg-red-50 p-3 rounded-xl border border-red-200 mt-2">
-                <h5 className="font-bold text-red-700 text-xs mb-1">⚠️ חובה להעלות אישור רפואי</h5>
-                <p className="text-[10px] text-red-600 mb-2">סימנת "כן" באחת השאלות. תוכלי להעלות צילום כעת, או לשמור ותהל תאשר ידנית.</p>
-                <input type="file" accept="image/*" onChange={async (e) => {
-                  const file = e.target.files[0];
-                  if(file) {
-                    const url = await uploadToCloudinary(file, settings.cloudinaryCloudName, settings.cloudinaryPreset);
-                    setFormData({...formData, medical_cert_url: url, medical_notes: 'הועלה אישור'});
-                    alert('אישור רפואי הועלה בהצלחה!');
-                  }
-                }} className="text-[10px] w-full" />
+              <div className="bg-red-50 p-4 rounded-xl border border-red-200 mt-2 space-y-2">
+                <h5 className="font-bold text-red-700 text-sm">נדרש אישור רפואי</h5>
+                <p className="text-[11px] text-red-600 leading-relaxed">
+                  לצורך קבלתך לאימונים עלייך להמציא גם תעודה רפואית מרופא לפיה הרופא מאשר כי אין סיכון לבריאותך באימון גופני. תעודה רפואית זו תתקבל רק אם לא עברו 3 חודשים ממועד הנפקתה, לפני תחילת האימונים.
+                </p>
+                <div className="mt-3 bg-white p-3 rounded-lg border border-red-100">
+                  <label className="block text-[11px] font-bold text-gray-800 mb-1">העלאת תעודה רפואית (PDF / תמונה)</label>
+                  <input type="file" accept="image/*,application/pdf" onChange={async (e) => {
+                    const file = e.target.files[0];
+                    if(file) {
+                      const url = await uploadToCloudinary(file, settings.cloudinaryCloudName, settings.cloudinaryPreset);
+                      setFormData({...formData, medical_cert_url: url});
+                      alert('אישור רפואי הועלה בהצלחה!');
+                    }
+                  }} className="text-[11px] w-full file:bg-red-100 file:text-red-700 file:border-0 file:rounded-md file:px-2 file:py-1 file:mr-2 file:font-bold cursor-pointer" />
+                </div>
               </div>
             )}
 
+            <div className="text-[10px] text-gray-600 leading-relaxed space-y-1.5 pt-3">
+              <p>1) במהלך תקופת האימונים ייעשה כל מאמץ לשמור על בריאותך ובטיחותך באימונים. אף על פי כן, כמו בכל תכנית אימונים, ישנם סיכונים. בהיענותך לקיים פעילות גופנית במסגרת זו הנך מצהיר/ה כי ככל הידוע לך אין כל מניעה להשתתפותך בפעילות זו.</p>
+              <p>2) אנו ממליצים לעבור בדיקת רופא לפני כל תחילת תכנית אימונים בייחוד אם הנך סובל/ת מבעיות לב/ לחץ דם גבוה/ כאבים בחזה/ עברת ניתוחים בעבר/ סוכרת/ אסטמה/ אפילפסיה או כל פציעה משמעותית גופנית.</p>
+              <p>3) בחתימה על מסמך זה הנך מקבל על עצמך אחריות מלאה למצבך הבריאותי ומסיר כל אחריות מתהל בן משה, כעת ובעתיד לכל שינוי במצבך הבריאותי כתוצאה מפעילות גופנית זו לרבות: התקף לב, כאבי שרירים, קרעים בשריר, שברים, פגיעות חום, כאבי ברכיים, גב או כל כאב אחר ומוות.</p>
+            </div>
+
+            <div className="flex items-start gap-2 pt-2 border-t border-amber-200">
+              <input required type="checkbox" id="terms" checked={formData.terms_accepted} onChange={(e) => setFormData({...formData, terms_accepted: e.target.checked})} className="w-4 h-4 text-amber-600 rounded mt-0.5" />
+              <label htmlFor="terms" className="text-[11px] font-bold text-gray-800 leading-tight">
+                קראתי והבנתי את כל הכתוב לעיל ואני מסכים/ה לכל האמור. אני מצהיר/ה כי הפרטים שמסרתי נכונים.
+              </label>
+            </div>
+
             <div>
-              <label className="block text-xs font-bold text-gray-700 mb-1">חתימה דיגיטלית (חובה) *</label>
+              <label className="block text-xs font-bold text-gray-700 mb-1">חתימת המתאמן *</label>
               <div className="bg-white border-2 border-dashed border-gray-300 rounded-2xl overflow-hidden touch-none">
-                <SignatureCanvas 
-                  ref={sigCanvasRef}
-                  penColor="#1f2937"
-                  canvasProps={{ className: 'w-full h-28 cursor-crosshair' }}
-                />
+                <SignatureCanvas ref={sigCanvasRef} penColor="#1f2937" canvasProps={{ className: 'w-full h-24 cursor-crosshair' }} />
               </div>
-              <button 
-                type="button" 
-                onClick={() => sigCanvasRef.current?.clear()}
-                className="text-[11px] text-gray-500 hover:text-red-500 mt-1 font-semibold flex items-center gap-1"
-              >
-                <RefreshCw size={12} /> נקי חתימה
+              <button type="button" onClick={() => sigCanvasRef.current?.clear()} className="text-[10px] text-gray-500 hover:text-red-500 mt-1 font-semibold flex items-center gap-1">
+                <RefreshCw size={10} /> נקי חתימה
               </button>
             </div>
-          </div>
 
-          <div className="flex items-start gap-2 pt-2">
-            <input 
-              required
-              type="checkbox"
-              id="terms"
-              checked={formData.terms_accepted}
-              onChange={(e) => setFormData({...formData, terms_accepted: e.target.checked})}
-              className="w-4 h-4 text-amber-600 rounded mt-0.5"
-            />
-            <label htmlFor="terms" className="text-xs text-gray-600 leading-tight">
-              אני מצהירה כי הפרטים שנמסרו נכונים, ואני מסכימה לתקנון הסטודיו ומדיניות הביטולים (ביטול עצמאי עד 12 שעות לפני האימון).
-            </label>
+            {formData.dob && (new Date().getFullYear() - new Date(formData.dob).getFullYear() < 18) && (
+              <div className="bg-blue-50 p-4 rounded-xl border border-blue-200 mt-4 space-y-3">
+                <h5 className="font-bold text-blue-800 text-xs">אישור הורה/אפוטרופוס למתאמן קטין</h5>
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="block text-[10px] font-bold text-gray-700 mb-1">שם ההורה *</label>
+                    <input type="text" onChange={e => setFormData({...formData, parent_name: e.target.value})} className="w-full p-2 rounded border outline-none text-xs" />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-bold text-gray-700 mb-1">מספר ת.ז הורה *</label>
+                    <input type="text" onChange={e => setFormData({...formData, parent_id: e.target.value})} className="w-full p-2 rounded border outline-none text-xs" />
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-[10px] font-bold text-gray-700 mb-1">חתימת הורה/אפוטרופוס *</label>
+                  <div className="bg-white border border-gray-300 rounded overflow-hidden touch-none">
+                    <SignatureCanvas ref={parentSigCanvasRef} penColor="#1f2937" canvasProps={{ className: 'w-full h-20 cursor-crosshair' }} />
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
 
           <button 
@@ -1047,6 +1147,23 @@ const AdminDashboard = ({
     setRegistrations(prev => prev.map(r => r.id === regId ? { ...r, payment_status: newStatus } : r));
   };
 
+  const handleAdminUploadCert = async (traineeId, e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    try {
+      const url = await uploadToCloudinary(file, settings.cloudinaryCloudName, settings.cloudinaryPreset);
+      setTrainees(prev => prev.map(t => {
+        if (t.id === traineeId) {
+          return { ...t, health_declaration: { ...t.health_declaration, medical_cert_url: url } };
+        }
+        return t;
+      }));
+      alert('האישור הרפואי הועלה ושויך למתאמנת בהצלחה!');
+    } catch (err) {
+      alert('שגיאה בהעלאת האישור קלאונדרי.');
+    }
+  };
+
   const handleImageUpload = async (e, targetKey) => {
     const file = e.target.files[0];
     if (!file) return;
@@ -1068,8 +1185,9 @@ const AdminDashboard = ({
           { id: 'workouts', label: 'ניהול אימונים', icon: Calendar },
           { id: 'trainees', label: `מתאמנים (${stats.pendingTraineesCount ? `! ${stats.pendingTraineesCount}` : trainees.length})`, icon: Users },
           { id: 'finance', label: `כספים ורו"ח ${stats.unpaidDebtsList.length ? '⚠️' : ''}`, icon: CreditCard },
-          { id: 'settings', label: 'הגדרות ומיתוג', icon: Settings }
-        ].map(tab => {
+          { id: 'settings', label: 'הגדרות ומיתוג', icon: Settings },
+         { id: 'archive', label: 'ארכיון מתאמנים', icon: Archive }
+       ].map(tab => {
           const Icon = tab.icon;
           const isActive = activeTab === tab.id;
           return (
@@ -1387,24 +1505,29 @@ const AdminDashboard = ({
               trainees.filter(t => !t.is_approved).map(t => (
                 <div key={t.id} className="bg-white p-4 rounded-2xl shadow-sm border border-amber-100 flex flex-col sm:flex-row justify-between sm:items-center gap-3">
                   <div>
-                    <h4 className="font-bold text-sm text-gray-900">{t.full_name}</h4>
+                    <h4 className="font-bold text-sm text-gray-900">{t.full_name} <span className="font-normal text-xs text-gray-500">(ת.ז: {t.id_number || '-'})</span></h4>
                     <p className="text-xs text-gray-500">{t.phone} | {t.email}</p>
                     {t.health_declaration?.has_medical_condition && (
-                      <p className="text-xs text-red-600 font-semibold mt-1">⚠️ מגבלה: {t.health_declaration.medical_notes}</p>
+                      <p className="text-xs text-red-600 font-semibold mt-1">⚠️ סומנו תשובות "כן" בשאלון.</p>
                     )}
+                    {t.health_declaration?.medical_cert_url ? (
+                      <a href={t.health_declaration.medical_cert_url} target="_blank" rel="noreferrer" className="text-xs text-blue-600 underline mt-1 inline-block">
+                        📄 צפייה באישור הרפואי שהועלה
+                      </a>
+                    ) : t.health_declaration?.has_medical_condition ? (
+                      <p className="text-[10px] font-bold text-red-500 mt-1">לא הועלה אישור רפואי ע"י המתאמנת!</p>
+                    ) : null}
                   </div>
 
-                  <div className="flex items-center gap-2">
-                    <button 
-                      onClick={() => handleApproveTrainee(t)}
-                      className="bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-bold px-4 py-2 rounded-xl flex items-center gap-1 shadow-md"
-                    >
-                      <Check size={16} /> אישור + הודעת וואטסאפ
+                  <div className="flex flex-wrap items-center gap-2">
+                    <label className="bg-blue-50 text-blue-600 hover:bg-blue-100 text-xs font-bold px-3 py-2 rounded-xl flex items-center gap-1 cursor-pointer">
+                      <Upload size={14} /> העלי אישור (תהל)
+                      <input type="file" accept="image/*,application/pdf" className="hidden" onChange={(e) => handleAdminUploadCert(t.id, e)} />
+                    </label>
+                    <button onClick={() => handleApproveTrainee(t)} className="bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-bold px-4 py-2 rounded-xl flex items-center gap-1 shadow-md">
+                      <Check size={16} /> אישור
                     </button>
-                    <button 
-                      onClick={() => handleRejectTrainee(t.id)}
-                      className="bg-red-100 text-red-600 hover:bg-red-200 text-xs font-bold px-3 py-2 rounded-xl"
-                    >
+                    <button onClick={() => handleRejectTrainee(t.id)} className="bg-red-100 text-red-600 hover:bg-red-200 text-xs font-bold px-3 py-2 rounded-xl">
                       דחיות
                     </button>
                   </div>
@@ -1431,24 +1554,36 @@ const AdminDashboard = ({
                     </div>
                     
                     <div className="grid grid-cols-2 gap-2 text-sm text-gray-700">
+                      <p><strong>ת.ז:</strong> {t.id_number || 'לא הוזן'}</p>
+                      <p><strong>ת. לידה:</strong> {t.dob ? new Date(t.dob).toLocaleDateString('he-IL') : 'לא הוזן'}</p>
                       <p><strong>טלפון:</strong> {t.phone}</p>
                       <p><strong>אימייל:</strong> {t.email}</p>
-                      <p><strong>תאריך הצטרפות:</strong> {new Date(t.created_at).toLocaleDateString('he-IL')}</p>
+                      <p className="col-span-2"><strong>תאריך חתימה:</strong> {t.health_declaration?.signed_at || new Date(t.created_at).toLocaleDateString('he-IL')}</p>
                     </div>
 
                     {t.health_declaration && (
                       <div className="bg-gray-50 p-4 rounded-xl border border-gray-200 text-sm space-y-2 mt-2">
-                        <h3 className="font-bold text-amber-900 border-b pb-1">שאלון רפואי</h3>
-                        <p><strong>האם קיימת מגבלה רפואית / מחלה / רגישות?</strong> {t.health_declaration.has_medical_condition ? 'כן' : 'לא'}</p>
-                        {t.health_declaration.has_medical_condition && (
-                          <p className="text-red-600"><strong>פירוט המגבלה:</strong> {t.health_declaration.medical_notes}</p>
+                        <h3 className="font-bold text-amber-900 border-b pb-1">שאלון רפואי וחתימות</h3>
+                        <p><strong>סומנו סעיפים רפואיים קיימים?</strong> {t.health_declaration.has_medical_condition ? 'כן' : 'לא'}</p>
+                        
+                        {t.health_declaration.medical_cert_url && (
+                          <p><a href={t.health_declaration.medical_cert_url} target="_blank" rel="noreferrer" className="text-blue-600 underline">צפייה באישור הרפואי המצורף</a></p>
                         )}
-                        <p className="text-xs text-gray-500 mt-2">אני מצהירה כי הפרטים שנמסרו נכונים, ואני מסכימה לתקנון הסטודיו ומדיניות הביטולים.</p>
                         
                         {t.health_declaration.signature_url && (
-                          <div className="pt-4 mt-2 border-t border-gray-200">
-                            <p className="font-bold mb-1">חתימת המתאמנת (נחתם ב-{t.health_declaration.signed_at}):</p>
+                          <div className="pt-2">
+                            <p className="font-bold mb-1">חתימת המתאמנת:</p>
                             <img src={t.health_declaration.signature_url} alt="חתימה" className="h-12 object-contain border bg-white p-1 rounded" />
+                          </div>
+                        )}
+
+                        {t.health_declaration.parent_name && (
+                          <div className="pt-3 border-t border-gray-200 mt-3">
+                            <p className="font-bold mb-1 text-blue-800">אישור הורה (קטין):</p>
+                            <p><strong>שם הורה:</strong> {t.health_declaration.parent_name} | <strong>ת.ז:</strong> {t.health_declaration.parent_id}</p>
+                            {t.health_declaration.parent_signature_url && (
+                              <img src={t.health_declaration.parent_signature_url} alt="חתימת הורה" className="h-12 object-contain border bg-white p-1 rounded mt-1" />
+                            )}
                           </div>
                         )}
                       </div>
@@ -1456,10 +1591,14 @@ const AdminDashboard = ({
                   </div>
 
                   {/* כפתורי פעולה (לא יופיעו ב-PDF כי הם מחוץ ל-div של ה-PDF) */}
-                  <div className="flex gap-2 pt-2 border-t border-gray-100">
+                  <div className="flex flex-wrap gap-2 pt-2 border-t border-gray-100">
+                    <label className="flex-1 bg-blue-50 text-blue-700 hover:bg-blue-100 text-xs font-bold py-2 rounded-xl flex justify-center items-center gap-1 cursor-pointer min-w-[100px]">
+                      <Upload size={14} /> העלי אישור
+                      <input type="file" accept="image/*,application/pdf" className="hidden" onChange={(e) => handleAdminUploadCert(t.id, e)} />
+                    </label>
                     <button 
                       onClick={() => openWhatsApp(t.phone, `היי ${t.full_name}, תהל כאן!`)}
-                      className="flex-1 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 text-xs font-bold py-2 rounded-xl flex justify-center items-center gap-1"
+                      className="flex-1 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 text-xs font-bold py-2 rounded-xl flex justify-center items-center gap-1 min-w-[80px]"
                     >
                       <MessageCircle size={14} /> הודעה
                     </button>
@@ -1469,9 +1608,9 @@ const AdminDashboard = ({
                           setTrainees(prev => prev.map(tr => tr.id === t.id ? {...tr, is_approved: false} : tr));
                         }
                       }}
-                      className="bg-amber-100 text-amber-800 hover:bg-amber-200 text-xs font-bold px-2 py-2 rounded-xl flex items-center gap-1"
+                      className="bg-amber-100 text-amber-800 hover:bg-amber-200 text-xs font-bold px-2 py-2 rounded-xl flex items-center gap-1 min-w-[90px]"
                     >
-                      <RefreshCw size={14} /> חידוש הצהרה
+                      <RefreshCw size={14} /> חידוש
                     </button>
                     <button 
                       onClick={() => exportToPdf(`hd_doc_${t.id}`, `הצהרת_בריאות_${t.full_name}.pdf`)}
@@ -1493,6 +1632,34 @@ const AdminDashboard = ({
             </div>
           </div>
 
+        </div>
+      )}
+
+      {activeTab === 'archive' && (
+        <div className="space-y-6">
+          <div className="bg-gray-100 border border-gray-300 p-5 rounded-3xl space-y-3">
+            <h3 className="font-extrabold text-gray-900 text-sm flex items-center gap-2">
+              <Archive size={18} className="text-gray-600" /> מתאמנים בארכיון ({trainees.filter(t => t.is_archived).length})
+            </h3>
+            {trainees.filter(t => t.is_archived).length === 0 ? (
+              <p className="text-xs text-gray-500">אין מתאמנים בארכיון כרגע.</p>
+            ) : (
+              trainees.filter(t => t.is_archived).map(t => (
+                <div key={t.id} className="bg-white p-4 rounded-2xl shadow-sm border border-gray-200 flex justify-between items-center">
+                  <div>
+                    <h4 className="font-bold text-sm text-gray-500 line-through">{t.full_name}</h4>
+                    <p className="text-xs text-gray-400">{t.phone} | {t.email}</p>
+                  </div>
+                  <button 
+                    onClick={() => handleRestoreTrainee(t.id)}
+                    className="bg-gray-900 hover:bg-gray-800 text-white text-xs font-bold px-4 py-2 rounded-xl"
+                  >
+                    שחזור מתאמנת
+                  </button>
+                </div>
+              ))
+            )}
+          </div>
         </div>
       )}
 
