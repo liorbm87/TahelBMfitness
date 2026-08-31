@@ -111,10 +111,13 @@ const exportToPdf = (elementId, filename) => {
     jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
   };
   
-  html2pdf().set(opt).from(clone).save().then(() => {
-    // מחיקת העותק לאחר סיום ההורדה
-    document.body.removeChild(clone);
-  });
+  // מתן זמן לדפדפן לרנדר את השכפול לפני ביצוע הצילום
+  setTimeout(() => {
+    html2pdf().set(opt).from(clone).save().then(() => {
+      // מחיקת העותק לאחר סיום ההורדה
+      document.body.removeChild(clone);
+    });
+  }, 300);
 };
 
 // ============================================================================
