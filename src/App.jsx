@@ -2213,7 +2213,7 @@ export default function App() {
 
     // הגדרת הכותרת והתיאור שיופיעו בוואטסאפ
     setOgMetaTag('og:title', 'תהל בן משה - מאמנת כושר');
-    setOgMetaTag('og:description', 'תהל פיטנס - סטודיו לאימוני כוח וחיטוב. הכל אישי!');
+    setOgMetaTag('og:description', 'תהל פיטנס - אימוני כוח וחיטוב.!');
     setOgMetaTag('og:type', 'website');
 
     if (settings.logoUrl) {
