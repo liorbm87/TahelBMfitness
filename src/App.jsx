@@ -250,6 +250,9 @@ const MainHeader = ({ settings, isAdmin, onOpenAdminLogin, onLogout, currentUser
         </div>
       ) : currentUser?.is_approved ? (
         <div className="flex flex-col sm:flex-row items-center justify-center gap-3 w-full px-4">
+          <button onClick={() => { setCurrentUser(null); alert('התנתקת בהצלחה!'); window.location.reload(); }} className="bg-red-50 text-red-600 hover:bg-red-100 p-3 rounded-2xl transition" title="התנתקות">
+            <LogOut size={16} />
+          </button>
           <button
             onClick={openEditModal}
             className="w-full sm:w-auto text-sm font-bold text-gray-800 bg-white hover:bg-gray-50 px-6 py-3 rounded-2xl transition flex items-center justify-center gap-2 shadow-sm border border-gray-200"
@@ -288,6 +291,12 @@ const MainHeader = ({ settings, isAdmin, onOpenAdminLogin, onLogout, currentUser
               <div>
                 <label className="block text-xs font-bold text-gray-700 mb-1">אימייל</label>
                 <input required type="email" value={editForm.email} onChange={e => setEditForm({...editForm, email: e.target.value})} className="w-full p-3 bg-gray-50 border rounded-xl text-sm" />
+              </div>
+              <div className="bg-amber-50 p-3 rounded-xl border border-amber-100 text-[11px] text-gray-700 space-y-1">
+                <p><strong>תעודת זהות:</strong> {currentUser.id_number || 'לא הוזן'}</p>
+                <p><strong>תאריך לידה:</strong> {currentUser.dob ? currentUser.dob.split('-').reverse().join('/') : 'לא הוזן'}</p>
+                <p><strong>תאריך הצהרת בריאות:</strong> {currentUser.health_declaration?.signed_at || 'לא קיים'}</p>
+                <p><strong>בעיה רפואית דווחה:</strong> {currentUser.health_declaration?.has_medical_condition ? 'כן ⚠️' : 'לא'}</p>
               </div>
               <button type="submit" className="w-full bg-amber-500 hover:bg-amber-600 text-white font-bold py-3 rounded-xl transition shadow-md mt-2">
                 שמירת שינויים
@@ -372,6 +381,20 @@ const UserView = ({
   currentUser, setCurrentUser,
   settings 
 }) => {
+  // בדיקה אוטומטית האם נדרש חידוש (עברו שנתיים או המנהלת דרשה)
+  const isRenewalNeeded = useMemo(() => {
+    if (!currentUser || !currentUser.health_declaration) return false;
+    if (currentUser.needs_renewal) return true;
+    const parts = currentUser.health_declaration.signed_at.split(/[\/\-\.]/);
+    if (parts.length === 3) {
+      const signDate = new Date(parts[2], parts[1] - 1, parts[0]);
+      const twoYearsAgo = new Date();
+      twoYearsAgo.setFullYear(twoYearsAgo.getFullYear() - 2);
+      if (signDate < twoYearsAgo) return true;
+    }
+    return false;
+  }, [currentUser]);
+
   const [formData, setFormData] = useState({
     first_name: '',
     last_name: '',
@@ -391,15 +414,14 @@ const UserView = ({
   const parentSigCanvasRef = useRef({}); // חתימת הורה לקטין
 
   const [authMode, setAuthMode] = useState('landing'); 
-  const [loginEmail, setLoginEmail] = useState('');
+  const [loginIdNumber, setLoginIdNumber] = useState('');
   const [loginPassword, setLoginPassword] = useState(''); 
   const isRegistered = !!currentUser;
   const isApproved = currentUser?.is_approved;
 
   const handleLoginSubmit = (e) => {
     e.preventDefault();
-    // סימולציה: התחברות לפי אימייל, כשהטלפון משמש בתור סיסמה זמנית
-    const user = trainees.find(t => t.email === loginEmail && t.phone === loginPassword);
+    const user = trainees.find(t => t.id_number === loginIdNumber && t.phone === loginPassword);
     if (user) {
       setCurrentUser(user);
       alert('התחברת בהצלחה!');
@@ -497,7 +519,7 @@ const UserView = ({
     };
 
     setRegistrations(prev => [...prev, newReg]);
-    alert(`נרשמת בהצלחה לאימון ${workout.type}!`);
+    alert(`נרשמת בהצלחה לאימון ${workout.type}!\nנא לשלוח לתהל בביט או בפייבוקס ${workout.price} ₪ למספר 0545222008.`);
     triggerMakeWebhook(settings.makeWebhookUrl, 'workout_registered', { workout, user: currentUser });
   };
 
@@ -517,11 +539,10 @@ const UserView = ({
 
     if (window.confirm(`האם לבטל את הרשמתך לאימון ${workout.type}?`)) {
       setRegistrations(prev => prev.filter(r => !(r.workout_id === workoutId && r.user_id === currentUser.id)));
-      alert('ההרשמה בוטלה בהצלחה. כעת ייפתח חלון וואטסאפ לשליחת הודעת עדכון לתהל.');
-
-      // הודעת וואטסאפ חובה לתהל על הביטול
-      const msg = `היי תהל! 👋 ביטלתי את הרשמתי לאימון ${workout.type} בתאריך ${workout.date} בשעה ${workout.time}. (שם: ${currentUser.full_name})`;
-      openWhatsApp('0501234567', msg);
+      const workoutDateReversed = workout.date.split('-').reverse().join('/');
+      const msg = `היי תהל, ביטלתי את האימון!\nשם: ${currentUser.full_name}\nסוג אימון: ${workout.type}\nתאריך: ${workoutDateReversed} בשעה ${workout.time}`;
+      // שימוש ישיר ב-location מונע חסימת פופ-אפ בדפדפן
+      window.location.href = `https://wa.me/972545222008?text=${encodeURIComponent(msg)}`;
     }
   };
 
@@ -557,8 +578,8 @@ const UserView = ({
             <h2 className="text-2xl font-black text-gray-900 text-center mb-6">כניסה למערכת</h2>
             <form onSubmit={handleLoginSubmit} className="space-y-4">
               <div>
-                <label className="block text-xs font-bold text-gray-700 mb-1">אימייל</label>
-                <input required type="email" value={loginEmail} onChange={(e) => setLoginEmail(e.target.value)} className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl text-sm outline-none" />
+                <label className="block text-xs font-bold text-gray-700 mb-1">תעודת זהות</label>
+                <input required type="text" value={loginIdNumber} onChange={(e) => setLoginIdNumber(e.target.value)} className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl text-sm outline-none" />
               </div>
               <div>
                 <label className="block text-xs font-bold text-gray-700 mb-1">סיסמה (בינתיים: מספר הטלפון שלך)</label>
@@ -647,12 +668,18 @@ const UserView = ({
                   <div className="flex gap-3">
                     <label className="flex items-center gap-1 cursor-pointer">
                       <input required type="radio" name={q.id} onChange={() => {
-                        setFormData(prev => ({...prev, answers: {...prev.answers, [q.id]: true}, has_medical_condition: true}))
+                        setFormData(prev => {
+                          const newAns = {...prev.answers, [q.id]: true};
+                          return {...prev, answers: newAns, has_medical_condition: Object.values(newAns).some(v => v)};
+                        });
                       }} /> כן
                     </label>
                     <label className="flex items-center gap-1 cursor-pointer">
                       <input required type="radio" name={q.id} onChange={() => {
-                        setFormData(prev => ({...prev, answers: {...prev.answers, [q.id]: false}}))
+                        setFormData(prev => {
+                          const newAns = {...prev.answers, [q.id]: false};
+                          return {...prev, answers: newAns, has_medical_condition: Object.values(newAns).some(v => v)};
+                        });
                       }} /> לא
                     </label>
                   </div>
@@ -681,15 +708,16 @@ const UserView = ({
             )}
 
             <div className="text-[10px] text-gray-600 leading-relaxed space-y-1.5 pt-3">
-              <p>1) במהלך תקופת האימונים ייעשה כל מאמץ לשמור על בריאותך ובטיחותך באימונים. אף על פי כן, כמו בכל תכנית אימונים, ישנם סיכונים. בהיענותך לקיים פעילות גופנית במסגרת זו הנך מצהיר/ה כי ככל הידוע לך אין כל מניעה להשתתפותך בפעילות זו.</p>
-              <p>2) אנו ממליצים לעבור בדיקת רופא לפני כל תחילת תכנית אימונים בייחוד אם הנך סובל/ת מבעיות לב/ לחץ דם גבוה/ כאבים בחזה/ עברת ניתוחים בעבר/ סוכרת/ אסטמה/ אפילפסיה או כל פציעה משמעותית גופנית.</p>
-              <p>3) בחתימה על מסמך זה הנך מקבל על עצמך אחריות מלאה למצבך הבריאותי ומסיר כל אחריות מתהל בן משה, כעת ובעתיד לכל שינוי במצבך הבריאותי כתוצאה מפעילות גופנית זו לרבות: התקף לב, כאבי שרירים, קרעים בשריר, שברים, פגיעות חום, כאבי ברכיים, גב או כל כאב אחר ומוות.</p>
+              <p className="font-bold underline">הצהרת בריאות:</p>
+              <p>
+                אני הח"מ מצהיר/ה בזה כי מצב בריאותי תקין וכי איני סובל/ת מכל מחלה ומגבלה, שיש בהם כדי להשפיע או למנוע את השתתפותי בכל פעילות גופנית. במידה והנני סובל/ת מבעיות כאמור, הנני מתחייב לפרטן על גבי מסמך זה וכן בעל פה למאמן הכושר. במידה ולא אעשה כן, הרי שכל פגיעה בי בעת קיום הפעילות הנ"ל הינה על אחריותי בלבד. הנני מתחייב להודיע על כל שינוי שיחול במצבי הבריאותי ו/או בכושרי הפיזי. כמו כן הנני מצהיר/ה שכל הפרטים אשר מסרתי ומילאתי לעיל, הינם נכונים.
+              </p>
             </div>
 
             <div className="flex items-start gap-2 pt-2 border-t border-amber-200">
               <input required type="checkbox" id="terms" checked={formData.terms_accepted} onChange={(e) => setFormData({...formData, terms_accepted: e.target.checked})} className="w-4 h-4 text-amber-600 rounded mt-0.5" />
               <label htmlFor="terms" className="text-[11px] font-bold text-gray-800 leading-tight">
-                קראתי והבנתי את כל הכתוב לעיל ואני מסכים/ה לכל האמור. אני מצהיר/ה כי הפרטים שמסרתי נכונים.
+                *** אני הח"מ מצהיר/ה בזאת שקראתי והבנתי את כל הכתוב לעיל וכי הנני מסכים/ה לכל האמור:
               </label>
             </div>
 
@@ -737,6 +765,22 @@ const UserView = ({
     );
   }
 
+  if (isRegistered && isRenewalNeeded) {
+    return (
+      <div className="max-w-xl mx-auto bg-white/95 backdrop-blur-md p-6 sm:p-8 rounded-3xl shadow-xl border border-red-100 text-center">
+        <h2 className="text-2xl font-black text-red-600 mb-2">חידוש הצהרת בריאות</h2>
+        <p className="text-xs text-gray-600 mb-6">תוקף הצהרת הבריאות שלך פג (עברו שנתיים) או שהמנהלת דרשה עדכון. אנא אשרי מחדש את הצהרת הבריאות כדי להמשיך להירשם לאימונים.</p>
+        <button onClick={() => {
+          setAuthMode('register'); 
+          setFormData(prev => ({...prev, first_name: currentUser.full_name.split(' ')[0], last_name: currentUser.full_name.split(' ')[1] || '', id_number: currentUser.id_number || '', dob: currentUser.dob || '', phone: currentUser.phone, email: currentUser.email}));
+          const updatedUser = { ...currentUser, needs_renewal: false, health_declaration: null, is_approved: false };
+          setCurrentUser(updatedUser);
+          setTrainees(prev => prev.map(t => t.id === currentUser.id ? updatedUser : t));
+        }} className="bg-red-500 hover:bg-red-600 text-white font-bold py-3 px-8 rounded-2xl transition shadow-md">למעבר למילוי ההצהרה</button>
+      </div>
+    );
+  }
+
   if (isRegistered && !isApproved) {
     return (
       <div className="max-w-md mx-auto bg-white/95 backdrop-blur-md p-8 rounded-3xl shadow-xl text-center border border-amber-100">
@@ -750,7 +794,7 @@ const UserView = ({
         </p>
 
         <button 
-          onClick={() => openWhatsApp('0501234567', `היי תהל, נרשמתי באתר בשם ${currentUser.full_name}, אשמח שתאשרי אותי!`)}
+          onClick={() => openWhatsApp('0545222008', `היי תהל!\nשמי ${currentUser.full_name}\nנרשמתי לאתר, אשמח לאישור!`)}
           className="w-full bg-emerald-500 hover:bg-emerald-600 text-white font-bold py-3 rounded-2xl flex items-center justify-center gap-2 text-xs sm:text-sm transition shadow-md"
         >
           <MessageCircle size={18} />
@@ -833,7 +877,7 @@ const UserView = ({
 
                       <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-gray-600 font-medium">
                         <span className="flex items-center gap-1 text-amber-800 font-bold">
-                          <Calendar size={14} /> {workout.date} בשעה {workout.time}
+                          <Calendar size={14} /> {workout.date.split('-').reverse().join('/')} בשעה {workout.time}
                         </span>
                         <span>• {workout.location}</span>
                         <span className="font-bold text-gray-900">מחיר: {workout.price} ₪</span>
@@ -883,7 +927,7 @@ const UserView = ({
                         <button 
                           onClick={() => {
                             if (!currentUser) {
-                              setShowAuthModal(true); // הצגת כניסה/הרשמה
+                              setAuthMode('landing'); // החזרה למסך התחברות/הרשמה
                             } else {
                               handleWorkoutRegister(workout.id);
                             }
@@ -1163,6 +1207,68 @@ const AdminDashboard = ({
       alert('שגיאה בהעלאת האישור קלאונדרי.');
     }
   };
+
+  const checkAdminNeedsRenewal = (t) => {
+    if (t.needs_renewal) return true;
+    if (!t.health_declaration?.signed_at) return true;
+    const parts = t.health_declaration.signed_at.split(/[\/\-\.]/);
+    if (parts.length === 3) {
+      const signDate = new Date(parts[2], parts[1] - 1, parts[0]);
+      const twoYearsAgo = new Date();
+      twoYearsAgo.setFullYear(twoYearsAgo.getFullYear() - 2);
+      return signDate < twoYearsAgo;
+    }
+    return false;
+  };
+
+  // תבנית PDF פורמלית ונסתרת המשמשת ליצוא עבור כל מתאמן
+  const renderFormalPdfTemplate = (t) => (
+    <div id={`formal_pdf_${t.id}`} className="hidden print:block absolute top-0 left-0 w-[210mm] min-h-[297mm] bg-white p-10 text-right z-[-50] text-black font-sans leading-relaxed" dir="rtl" style={{ direction: 'rtl' }}>
+      <div className="flex justify-between items-end border-b-4 border-black pb-4 mb-6">
+        <div>
+          <h1 className="text-3xl font-black text-black">טופס הצהרת בריאות</h1>
+          <h2 className="text-xl font-bold mt-1 text-gray-800">למבקש להתאמן בחדר כושר</h2>
+        </div>
+        <div className="flex flex-col items-center">
+          {settings.logoUrl && <img src={settings.logoUrl} alt="לוגו" className="h-24 object-contain mb-2" />}
+          <span className="font-bold text-sm bg-gray-900 text-white px-3 py-1 rounded-full">תהל פיטנס - הכל אישי</span>
+        </div>
+      </div>
+      <div className="text-sm mb-6 space-y-1">
+        <p>הובא לידיעת המאמן כי הצהרת הבריאות אינה מועברת לסוכן הביטוח...</p>
+        <p>המערכת הדיגיטלית ניתנת כשירות. מלוא האחריות לנוסח ההצהרה חלה על המאמן בלבד.</p>
+      </div>
+      <div className="grid grid-cols-2 gap-4 bg-gray-100 p-4 rounded-xl mb-6 text-sm font-bold border border-gray-300">
+        <p>שם ושם משפחה: {t.full_name}</p>
+        <p>מספר תעודת זהות: {t.id_number || '___________'}</p>
+        <p>תאריך לידה: {t.dob ? t.dob.split('-').reverse().join('/') : '___________'}</p>
+        <p>טלפון: {t.phone}</p>
+      </div>
+      <h3 className="text-xl font-bold mb-4 bg-gray-200 p-2 rounded">חלק א': שאלון רפואי</h3>
+      <div className="text-sm space-y-2 mb-6">
+        <p>האם סומנו מגבלות רפואיות או תשובות 'כן' בשאלון הדיגיטלי? <span className="font-bold">{t.health_declaration?.has_medical_condition ? 'כן' : 'לא'}</span></p>
+        {t.health_declaration?.medical_cert_url && <p>צורף אישור רפואי חיצוני (נמצא במערכת הדיגיטלית).</p>}
+      </div>
+      <h3 className="text-xl font-bold mb-4 bg-gray-200 p-2 rounded">חלק ב': הצהרה</h3>
+      <p className="text-sm mb-8 leading-loose">
+        אני, החתום מטה, מצהיר כי קראתי והבנתי את כל השאלון הרפואי ומילאתי אותו בעצמי. אני מצהיר כי מסרתי ידיעות מלאות ונכונות אודות מצבי הרפואי בעבר ובהווה. ידוע לי כי לאחר שנתיים מיום חתימתי על הצהרת בריאות זו, אדרש להמציא הצהרת בריאות חדשה.
+      </p>
+      <div className="flex justify-between items-end border-t border-gray-400 pt-6 mt-10">
+        <div>
+          <p className="font-bold mb-2">חתימת המתאמן/ת:</p>
+          {t.health_declaration?.signature_url ? <img src={t.health_declaration.signature_url} className="h-16" /> : <p className="text-gray-400 italic">לא נחתם</p>}
+        </div>
+        <p className="font-bold">תאריך: {t.health_declaration?.signed_at || '___________'}</p>
+      </div>
+      {t.health_declaration?.parent_name && (
+        <div className="mt-8 border-t-2 border-dashed border-gray-400 pt-6">
+          <h4 className="font-bold text-lg mb-2">הסכמה בכתב של אחד מהורי הקטין</h4>
+          <p className="text-sm mb-4">אני {t.health_declaration.parent_name} (ת.ז: {t.health_declaration.parent_id}) מסכים/ה כי בני/בתי יתאמן בסטודיו.</p>
+          {t.health_declaration.parent_signature_url && <img src={t.health_declaration.parent_signature_url} className="h-16" />}
+        </div>
+      )}
+    </div>
+  );
 
   const handleImageUpload = async (e, targetKey) => {
     const file = e.target.files[0];
@@ -1504,9 +1610,11 @@ const AdminDashboard = ({
             ) : (
               trainees.filter(t => !t.is_approved).map(t => (
                 <div key={t.id} className="bg-white p-4 rounded-2xl shadow-sm border border-amber-100 flex flex-col sm:flex-row justify-between sm:items-center gap-3">
+                  {renderFormalPdfTemplate(t)}
                   <div>
                     <h4 className="font-bold text-sm text-gray-900">{t.full_name} <span className="font-normal text-xs text-gray-500">(ת.ז: {t.id_number || '-'})</span></h4>
                     <p className="text-xs text-gray-500">{t.phone} | {t.email}</p>
+                    {checkAdminNeedsRenewal(t) && <p className="text-xs font-black text-red-600 mt-1 bg-red-50 inline-block px-2 py-0.5 rounded">ממתין להצהרת בריאות מחדש מהמתאמנת</p>}
                     {t.health_declaration?.has_medical_condition && (
                       <p className="text-xs text-red-600 font-semibold mt-1">⚠️ סומנו תשובות "כן" בשאלון.</p>
                     )}
@@ -1527,8 +1635,14 @@ const AdminDashboard = ({
                     <button onClick={() => handleApproveTrainee(t)} className="bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-bold px-4 py-2 rounded-xl flex items-center gap-1 shadow-md">
                       <Check size={16} /> אישור
                     </button>
+                    <button onClick={() => exportToPdf(`formal_pdf_${t.id}`, `הצהרת_בריאות_${t.full_name}.pdf`)} className="bg-gray-100 text-gray-700 hover:bg-gray-200 text-xs font-bold px-3 py-2 rounded-xl flex items-center gap-1" title="הורד הצהרת בריאות כ-PDF">
+                      <Download size={14} /> PDF
+                    </button>
+                    <button onClick={() => { const emailBody = `שם: ${t.full_name}%0Aטלפון: ${t.phone}%0Aאימייל: ${t.email}%0Aת.ז: ${t.id_number || 'לא הוזן'}`; window.location.href = `mailto:?subject=פרטי מתאמנת - ${t.full_name}&body=${emailBody}`; }} className="bg-blue-50 text-blue-600 hover:bg-blue-100 text-xs font-bold px-3 py-2 rounded-xl flex items-center gap-1">
+                      <Send size={14} /> מייל
+                    </button>
                     <button onClick={() => handleRejectTrainee(t.id)} className="bg-red-100 text-red-600 hover:bg-red-200 text-xs font-bold px-3 py-2 rounded-xl">
-                      דחיות
+                      דחייה
                     </button>
                   </div>
                 </div>
@@ -1541,10 +1655,12 @@ const AdminDashboard = ({
 
             <div className="grid grid-cols-1 gap-6">
               {trainees.filter(t => t.is_approved).map(t => (
-                <div key={t.id} className="bg-white/95 p-5 rounded-2xl shadow-sm border border-gray-100 space-y-3">
+                <div key={t.id} className="bg-white/95 p-5 rounded-2xl shadow-sm border border-gray-100 space-y-3 relative overflow-hidden">
+                  {renderFormalPdfTemplate(t)}
+                  {checkAdminNeedsRenewal(t) && <div className="absolute top-0 right-0 bg-red-600 text-white text-[10px] font-bold px-3 py-1 rounded-bl-xl">ממתין להצהרה חדשה</div>}
                   
-                  {/* תוכן שמיועד גם ל-PDF - אנחנו עוטפים אותו ב-div נפרד */}
-                  <div id={`hd_doc_${t.id}`} className="p-4 bg-white space-y-3">
+                  {/* תוכן תצוגה בלבד - ה-PDF נמשך מהתבנית המוסתרת */}
+                  <div className="p-4 bg-white space-y-3">
                     <div className="flex justify-between items-center border-b pb-2">
                       <div>
                         <h2 className="font-black text-lg text-gray-900">הצהרת בריאות ופרטי מתאמנת</h2>
@@ -1604,20 +1720,29 @@ const AdminDashboard = ({
                     </button>
                     <button 
                       onClick={() => {
-                        if(window.confirm('לדרוש הצהרת בריאות חדשה? המתאמנת תעבור לסטטוס ממתין ותצטרך למלא הצהרה מחדש.')) {
-                          setTrainees(prev => prev.map(tr => tr.id === t.id ? {...tr, is_approved: false} : tr));
+                        if(window.confirm('לדרוש הצהרת בריאות חדשה? המתאמנת תקבל חלונית דרישה בכניסה הבאה לאתר.')) {
+                          setTrainees(prev => prev.map(tr => tr.id === t.id ? {...tr, is_approved: false, needs_renewal: true} : tr));
                         }
                       }}
                       className="bg-amber-100 text-amber-800 hover:bg-amber-200 text-xs font-bold px-2 py-2 rounded-xl flex items-center gap-1 min-w-[90px]"
                     >
-                      <RefreshCw size={14} /> חידוש
+                      <RefreshCw size={14} /> דרישת הצהרה
                     </button>
                     <button 
-                      onClick={() => exportToPdf(`hd_doc_${t.id}`, `הצהרת_בריאות_${t.full_name}.pdf`)}
+                      onClick={() => exportToPdf(`formal_pdf_${t.id}`, `הצהרת_בריאות_${t.full_name}.pdf`)}
                       className="bg-gray-100 text-gray-700 hover:bg-gray-200 text-xs font-bold px-3 py-2 rounded-xl flex items-center gap-1"
                       title="הורד הצהרת בריאות כ-PDF"
                     >
                       <Download size={14} /> PDF
+                    </button>
+                    <button 
+                      onClick={() => {
+                        const emailBody = `שם: ${t.full_name}%0Aטלפון: ${t.phone}%0Aאימייל: ${t.email}%0Aת.ז: ${t.id_number || 'לא הוזן'}%0Aת.לידה: ${t.dob || 'לא הוזן'}%0Aהצהרת בריאות - יש בעיה? ${t.health_declaration?.has_medical_condition ? 'כן' : 'לא'}`;
+                        window.location.href = `mailto:?subject=פרטי מתאמנת - ${t.full_name}&body=${emailBody}`;
+                      }}
+                      className="bg-blue-50 text-blue-600 hover:bg-blue-100 text-xs font-bold px-3 py-2 rounded-xl flex items-center gap-1"
+                    >
+                      <Send size={14} /> שלח במייל
                     </button>
                     <button 
                       onClick={() => handleDeleteTrainee(t.id, t.full_name)}
@@ -1979,7 +2104,8 @@ export default function App() {
 
   return (
     <Router>
-      <div dir="rtl" className="font-sans text-gray-900 antialiased selection:bg-amber-200 relative min-h-screen">
+      <style>{`@import url('https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;700;900&display=swap'); * { font-family: 'Heebo', sans-serif !important; }`}</style>
+      <div dir="rtl" className="text-gray-900 antialiased selection:bg-amber-200 relative min-h-screen">
         
         {/* רקע מקובע שתופס את כל המסך גם במובייל וגם בגלילה */}
         <div 
