@@ -189,70 +189,114 @@ const exportToPdf = (elementId, filename) => {
 };
 
 // ============================================================================
-// 4. רכיב ניווט ראשי (NAVBAR)
+// 4. כותרת, לוגו מרכזי ואזור אישי (MAIN HEADER)
 // ============================================================================
-const Navbar = ({ settings, isAdmin, onOpenAdminLogin, onLogout, currentUser }) => {
+const MainHeader = ({ settings, isAdmin, onOpenAdminLogin, onLogout, currentUser, setCurrentUser, setTrainees }) => {
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [editForm, setEditForm] = useState({ full_name: '', phone: '', email: '' });
+
+  const openEditModal = () => {
+    if (currentUser) {
+      setEditForm({ full_name: currentUser.full_name, phone: currentUser.phone, email: currentUser.email });
+      setIsEditModalOpen(true);
+    }
+  };
+
+  const handleSaveProfile = (e) => {
+    e.preventDefault();
+    const updatedUser = { ...currentUser, ...editForm };
+    setCurrentUser(updatedUser);
+    setTrainees(prev => prev.map(t => t.id === currentUser.id ? updatedUser : t));
+    setIsEditModalOpen(false);
+    alert('הפרטים עודכנו בהצלחה!');
+  };
+
   return (
-    <nav className="bg-white/90 backdrop-blur-md shadow-md rounded-b-2xl mb-6 sticky top-0 z-50 border-b border-amber-100">
-      <div className="max-w-6xl mx-auto px-4 py-3 flex justify-between items-center">
-        
-        {/* לוגו עם לחיצה כפולה לכניסה נסתרת */}
-        <div 
-          onDoubleClick={onOpenAdminLogin}
-          className="cursor-pointer select-none flex items-center gap-3 transition transform active:scale-95"
-          title="דאבל קליק לכניסת מנהלת"
-        >
-          {settings.logoUrl ? (
-            <img src={settings.logoUrl} alt="תהל כושר" className="h-12 object-contain" />
-          ) : (
-            <div className="flex items-center gap-2">
-              <div className="w-10 h-10 bg-gradient-to-tr from-amber-500 to-amber-300 rounded-full flex items-center justify-center text-white font-black text-xl shadow-md">
-                ת
+    <div className="flex flex-col items-center justify-center pt-8 pb-4 space-y-6">
+      {/* לוגו מרכזי גדול */}
+      <div
+        onDoubleClick={onOpenAdminLogin}
+        className="cursor-pointer select-none transition transform hover:scale-105 active:scale-95"
+        title="דאבל קליק לכניסת מנהלת"
+      >
+        {settings.logoUrl ? (
+          <img src={settings.logoUrl} alt="תהל כושר" className="h-32 sm:h-40 object-contain drop-shadow-xl" />
+        ) : (
+          <div className="flex flex-col items-center gap-2">
+            <div className="w-20 h-20 bg-gradient-to-tr from-amber-500 to-amber-300 rounded-full flex items-center justify-center text-white font-black text-4xl shadow-xl">
+              ת
+            </div>
+            <div className="text-center">
+              <h1 className="text-3xl font-extrabold bg-gradient-to-r from-gray-900 via-amber-800 to-amber-600 bg-clip-text text-transparent">
+                תהל פיטנס
+              </h1>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* תפריט פעולות מרכזי (למנהלת או למתאמן) */}
+      {isAdmin ? (
+        <div className="flex items-center gap-4 bg-white/80 p-3 rounded-2xl shadow-sm border border-amber-100">
+          <span className="bg-amber-100 text-amber-800 text-sm px-4 py-2 rounded-full font-bold flex items-center gap-1">
+            <ShieldAlert size={16} /> פאנל מנהלת פעיל
+          </span>
+          <button
+            onClick={onLogout}
+            className="bg-red-50 text-red-600 hover:bg-red-100 px-4 py-2 rounded-xl text-sm font-bold flex items-center gap-1 transition"
+          >
+            <LogOut size={16} /> יציאה מהניהול
+          </button>
+        </div>
+      ) : currentUser?.is_approved ? (
+        <div className="flex flex-col sm:flex-row items-center justify-center gap-3 w-full px-4">
+          <button
+            onClick={openEditModal}
+            className="w-full sm:w-auto text-sm font-bold text-gray-800 bg-white hover:bg-gray-50 px-6 py-3 rounded-2xl transition flex items-center justify-center gap-2 shadow-sm border border-gray-200"
+            title="לחצי לעריכת פרטים אישיים"
+          >
+            <Edit size={16} className="text-amber-600" />
+            שלום, {currentUser.full_name}
+          </button>
+          <button
+            onClick={() => openWhatsApp('0501234567', 'היי תהל, אשמח להתייעץ איתך!')}
+            className="w-full sm:w-auto bg-emerald-500 hover:bg-emerald-600 text-white px-6 py-3 rounded-2xl text-sm font-bold flex items-center justify-center gap-2 shadow-md transition active:scale-95"
+          >
+            <MessageCircle size={18} />
+            דברי איתי
+          </button>
+        </div>
+      ) : null}
+
+      {/* מודאל עריכת פרטים אישיים */}
+      {isEditModalOpen && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-fadeIn">
+          <div className="bg-white rounded-3xl p-6 max-w-sm w-full shadow-2xl border border-amber-100">
+            <div className="flex justify-between items-center mb-6">
+              <h3 className="font-bold text-lg text-gray-900">עריכת פרטים אישיים</h3>
+              <button onClick={() => setIsEditModalOpen(false)} className="text-gray-400 hover:text-gray-600"><X size={20} /></button>
+            </div>
+            <form onSubmit={handleSaveProfile} className="space-y-4">
+              <div>
+                <label className="block text-xs font-bold text-gray-700 mb-1">שם מלא</label>
+                <input required type="text" value={editForm.full_name} onChange={e => setEditForm({...editForm, full_name: e.target.value})} className="w-full p-3 bg-gray-50 border rounded-xl text-sm" />
               </div>
               <div>
-                <h1 className="text-xl font-extrabold bg-gradient-to-r from-gray-900 via-amber-800 to-amber-600 bg-clip-text text-transparent">
-                  תהל פיטנס
-                </h1>
-                <p className="text-[10px] text-gray-500 font-medium">אימוני כושר וחיטוב</p>
+                <label className="block text-xs font-bold text-gray-700 mb-1">טלפון</label>
+                <input required type="tel" value={editForm.phone} onChange={e => setEditForm({...editForm, phone: e.target.value})} className="w-full p-3 bg-gray-50 border rounded-xl text-sm" />
               </div>
-            </div>
-          )}
-        </div>
-
-        {/* פעולות ותפריט */}
-        <div className="flex items-center gap-3">
-          {isAdmin ? (
-            <div className="flex items-center gap-2">
-              <span className="bg-amber-100 text-amber-800 text-xs px-3 py-1 rounded-full font-bold flex items-center gap-1 border border-amber-200">
-                <ShieldAlert size={14} /> פאנל מנהלת
-              </span>
-              <button 
-                onClick={onLogout}
-                className="bg-red-50 text-red-600 hover:bg-red-100 p-2 rounded-xl text-xs font-bold flex items-center gap-1 transition"
-              >
-                <LogOut size={16} /> יציאה
+              <div>
+                <label className="block text-xs font-bold text-gray-700 mb-1">אימייל</label>
+                <input required type="email" value={editForm.email} onChange={e => setEditForm({...editForm, email: e.target.value})} className="w-full p-3 bg-gray-50 border rounded-xl text-sm" />
+              </div>
+              <button type="submit" className="w-full bg-amber-500 hover:bg-amber-600 text-white font-bold py-3 rounded-xl transition shadow-md mt-2">
+                שמירת שינויים
               </button>
-            </div>
-          ) : (
-            <div className="flex items-center gap-2">
-              {currentUser && (
-                <span className="text-xs font-semibold text-gray-700 bg-gray-100 px-3 py-1.5 rounded-full hidden sm:inline">
-                  שלום, {currentUser.full_name}
-                </span>
-              )}
-              <button 
-                onClick={() => openWhatsApp('0501234567', 'היי תהל, אשמח להתייעץ לגבי אימונים!')}
-                className="bg-emerald-500 hover:bg-emerald-600 text-white px-3.5 py-2 rounded-xl text-xs sm:text-sm font-bold flex items-center gap-1.5 shadow-md shadow-emerald-500/20 transition active:scale-95"
-              >
-                <MessageCircle size={18} />
-                <span>דברי עם תהל</span>
-              </button>
-            </div>
-          )}
+            </form>
+          </div>
         </div>
-
-      </div>
-    </nav>
+      )}
+    </div>
   );
 };
 
@@ -298,7 +342,7 @@ const AdminLoginModal = ({ isOpen, onClose, onLogin, currentPassword }) => {
               type="password"
               value={passwordInput}
               onChange={(e) => setPasswordInput(e.target.value)}
-              placeholder="סיסמה (ברירת מחדל: 2024)"
+              placeholder="הזני סיסמה..."
               className="w-full p-3 border border-gray-300 rounded-xl text-center text-lg font-bold tracking-widest focus:ring-2 focus:ring-amber-500 outline-none"
               autoFocus
             />
@@ -598,8 +642,10 @@ const UserView = ({
     .filter(w => new Date(`${w.date}T${w.time}`) >= now)
     .sort((a, b) => new Date(`${a.date}T${a.time}`) - new Date(`${b.date}T${b.time}`));
 
-  const myRegistrations = registrations.filter(r => r.user_id === currentUser.id);
+ const myRegistrations = (registrations || []).filter(r => r?.user_id === currentUser?.id);
   const myRegisteredWorkoutIds = myRegistrations.map(r => r.workout_id);
+
+  const myWaitlistEntries = (waitlist || []).filter(w => w?.user_id === currentUser?.id);
 
   return (
     <div className="max-w-3xl mx-auto space-y-6">
@@ -814,9 +860,10 @@ const UserView = ({
 // 7. פאנל ניהול מנהלת (ADMIN DASHBOARD - TAHAL)
 // ============================================================================
 const AdminDashboard = ({ 
-  workouts, setWorkouts, 
-  trainees, setTrainees, 
-  registrations, setRegistrations, 
+  workouts = [], setWorkouts, 
+  trainees = [], setTrainees, 
+  registrations = [], setRegistrations, 
+  waitlist = [], setWaitlist,
   settings, setSettings 
 }) => {
   const [activeTab, setActiveTab] = useState('overview');
@@ -835,6 +882,10 @@ const AdminDashboard = ({
   const [broadcastText, setBroadcastText] = useState('היי בנות! תזכורת לאימון שלנו היום בסטודיו. נא להגיע 5 דקות לפני עם מגבת ומים!');
   const [sentBroadcastUserIds, setSentBroadcastUserIds] = useState([]);
   const [financeMonth, setFinanceMonth] = useState('2026-08');
+  
+  // משתנה זמני לשמירת הגדרות האתר לפני שמירה סופית
+  const [tempSettings, setTempSettings] = useState(settings);
+  useEffect(() => { setTempSettings(settings); }, [settings]);
 
   const stats = useMemo(() => {
     const totalTraineesCount = trainees.length;
@@ -922,6 +973,17 @@ const AdminDashboard = ({
     }
   };
 
+  const handleDeleteTrainee = (traineeId, traineeName) => {
+    if (window.confirm(`האם את בטוחה שברצונך למחוק את ${traineeName} מהמערכת? מחיקה זו תבטל גם את כל ההרשמות שלה לאימונים.`)) {
+      if (window.confirm('⚠️ אזהרה אחרונה! פעולה זו לא ניתנת לביטול. למחוק לצמיתות?')) {
+        setTrainees(prev => prev.filter(t => t.id !== traineeId));
+        setRegistrations(prev => prev.filter(r => r.user_id !== traineeId));
+        setWaitlist(prev => prev.filter(w => w.user_id !== traineeId));
+        alert('המתאמנת נמחקה מהמערכת בהצלחה.');
+      }
+    }
+  };
+
   // תהל שולחת הצעת מקום מהמתנה בוואטסאפ (אפשרות לכל מתאמנת בהמתנה!)
   const handleSendWaitlistOfferWhatsApp = (trainee, workout) => {
     const siteUrl = window.location.origin;
@@ -961,8 +1023,8 @@ const AdminDashboard = ({
 
     try {
       const url = await uploadToCloudinary(file, settings.cloudinaryCloudName, settings.cloudinaryPreset);
-      setSettings(prev => ({ ...prev, [targetKey]: url }));
-      alert('התמונה הועלתה ועודכנה בהצלחה!');
+      setTempSettings(prev => ({ ...prev, [targetKey]: url }));
+      alert('התמונה עלתה בהצלחה! לחצי על "שמירת הגדרות" בתחתית העמוד כדי להחיל אותה.');
     } catch (err) {
       alert('שגיאה בהעלאת התמונה');
     }
@@ -1357,6 +1419,13 @@ const AdminDashboard = ({
                     >
                       <Download size={14} /> PDF
                     </button>
+                    <button 
+                      onClick={() => handleDeleteTrainee(t.id, t.full_name)}
+                      className="bg-red-50 text-red-600 hover:bg-red-100 text-xs font-bold px-3 py-2 rounded-xl flex items-center gap-1"
+                      title="מחק מתאמנת לצמיתות"
+                    >
+                      <Trash2 size={14} /> מחיקה
+                    </button>
                   </div>
                 </div>
               ))}
@@ -1443,55 +1512,60 @@ const AdminDashboard = ({
         </div>
       )}
 
-      {activeTab === 'settings' && (
+     {activeTab === 'settings' && (
         <div className="bg-white/95 p-6 rounded-3xl shadow-md border border-gray-100 space-y-6">
-          <h3 className="font-extrabold text-gray-900 text-base border-b pb-3">הגדרות מערכת ומיתוג דינמי (Cloudinary)</h3>
+          <h3 className="font-extrabold text-gray-900 text-base border-b pb-3">הגדרות מערכת, מיתוג וסיסמאות</h3>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
             <div className="space-y-3 p-4 bg-gray-50 rounded-2xl border border-gray-200">
-              <h4 className="font-bold text-xs text-gray-800">לוגו העסק (מנוהל דינמית)</h4>
-              {settings.logoUrl && (
-                <img src={settings.logoUrl} alt="לוגו נוכחי" className="h-12 object-contain bg-white p-2 rounded-xl border" />
+              <h4 className="font-bold text-xs text-gray-800">לוגו העסק (תצוגה מקדימה)</h4>
+              {tempSettings.logoUrl && (
+                <div className="bg-white p-2 rounded-xl border inline-block">
+                  <img src={tempSettings.logoUrl} alt="לוגו נוכחי" className="h-16 object-contain" />
+                </div>
               )}
               <input 
                 type="file" 
                 accept="image/*"
                 onChange={(e) => handleImageUpload(e, 'logoUrl')}
-                className="text-xs text-gray-500 block w-full"
+                className="text-xs text-gray-500 block w-full bg-white p-2 border rounded-lg"
               />
             </div>
 
             <div className="space-y-3 p-4 bg-gray-50 rounded-2xl border border-gray-200">
-              <h4 className="font-bold text-xs text-gray-800">תמונת רקע לאתר</h4>
+              <h4 className="font-bold text-xs text-gray-800">תמונת רקע לאתר (תצוגה מקדימה)</h4>
+              {tempSettings.backgroundUrl && (
+                <div className="h-20 w-full rounded-xl border bg-cover bg-center" style={{ backgroundImage: `url(${tempSettings.backgroundUrl})` }}></div>
+              )}
               <input 
                 type="file" 
                 accept="image/*"
                 onChange={(e) => handleImageUpload(e, 'backgroundUrl')}
-                className="text-xs text-gray-500 block w-full"
+                className="text-xs text-gray-500 block w-full bg-white p-2 border rounded-lg"
               />
             </div>
 
-            <div className="space-y-2">
-              <label className="block text-xs font-bold text-gray-700">סיסמת מנהלת (לתפריט הנסתר)</label>
+            <div className="space-y-2 sm:col-span-2 p-4 bg-gray-50 rounded-2xl border border-gray-200">
+              <label className="block text-sm font-bold text-gray-700">סיסמת כניסה למנהלת (לתפריט הנסתר)</label>
               <input 
                 type="text"
-                value={settings.adminPassword}
-                onChange={(e) => setSettings({...settings, adminPassword: e.target.value})}
-                className="w-full p-2.5 bg-gray-50 border rounded-xl text-xs font-bold"
+                value={tempSettings.adminPassword}
+                onChange={(e) => setTempSettings({...tempSettings, adminPassword: e.target.value})}
+                className="w-full sm:w-1/2 p-3 bg-white border border-gray-300 rounded-xl text-sm font-bold shadow-sm outline-none focus:ring-2 focus:ring-amber-500"
               />
             </div>
-
-            <div className="space-y-2">
-              <label className="block text-xs font-bold text-gray-700">Make.com Webhook URL</label>
-              <input 
-                type="text"
-                value={settings.makeWebhookUrl}
-                onChange={(e) => setSettings({...settings, makeWebhookUrl: e.target.value})}
-                placeholder="https://hook.make.com/..."
-                className="w-full p-2.5 bg-gray-50 border rounded-xl text-xs"
-              />
+            
+            <div className="sm:col-span-2 pt-2">
+              <button 
+                onClick={() => {
+                  setSettings(tempSettings);
+                  alert('כל ההגדרות נשמרו בהצלחה!');
+                }}
+                className="w-full bg-gradient-to-r from-gray-900 to-amber-900 text-white font-bold py-4 rounded-xl shadow-lg hover:opacity-95 transition flex items-center justify-center gap-2"
+              >
+                <Check size={20} /> שמירת כל ההגדרות
+              </button>
             </div>
-
           </div>
         </div>
       )}
@@ -1611,12 +1685,14 @@ export default function App() {
       >
         <div className="min-h-screen bg-gradient-to-b from-white/80 via-white/70 to-white/85 backdrop-blur-[3px] pb-12">
           
-          <Navbar 
+          <MainHeader 
             settings={settings}
             isAdmin={isAdminLoggedIn}
             onOpenAdminLogin={() => setIsAdminLoginModalOpen(true)}
             onLogout={() => setIsAdminLoggedIn(false)}
             currentUser={currentUser}
+            setCurrentUser={setCurrentUser}
+            setTrainees={setTrainees}
           />
 
           <main className="px-4">
