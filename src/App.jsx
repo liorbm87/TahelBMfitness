@@ -215,7 +215,34 @@ const MainHeader = ({ settings, isAdmin, onOpenAdminLogin, onLogout, currentUser
                 <p><strong>תאריך הצהרת בריאות:</strong> {currentUser.health_declaration?.signed_at || 'לא קיים'}</p>
                 <p><strong>בעיה רפואית דווחה:</strong> {currentUser.health_declaration?.has_medical_condition ? 'כן ⚠️' : 'לא'}</p>
               </div>
-              <button type="submit" className="w-full bg-amber-500 hover:bg-amber-600 text-white font-bold py-3 rounded-xl transition shadow-md mt-2">
+
+              {currentUser.health_declaration && (
+                <details className="mt-2 group bg-gray-50 border border-gray-200 rounded-xl overflow-hidden">
+                  <summary className="text-xs font-bold text-gray-800 p-3 cursor-pointer select-none flex justify-between items-center bg-gray-100 hover:bg-gray-200 transition">
+                    📄 הצגת ההצהרה המלאה שלי
+                    <span className="group-open:rotate-180 transition-transform">▼</span>
+                  </summary>
+                  <div className="p-3 max-h-48 overflow-y-auto text-[10px] space-y-1 bg-white">
+                    {Object.entries(currentUser.health_declaration.answers || {}).map(([k, v], idx) => {
+                      const qs = ['מחלת לב', 'כאבים בחזה במנוחה', 'כאבים בחזה בשגרה', 'כאבים בפעילות', 'סחרחורת/שיווי משקל', 'אובדן הכרה', 'אסטמה (תרופות)', 'אסטמה (קוצר נשימה)', 'משפחה - מחלת לב', 'משפחה - מוות פתאומי', 'אימון בהשגחה בלבד', 'מחלה קבועה ומגבילה', 'הריון בסיכון'];
+                      return (
+                        <div key={k} className="flex justify-between border-b pb-1 border-gray-100">
+                          <span className="truncate pr-2">{qs[idx] || k}</span>
+                          <span className="font-bold shrink-0">{v ? 'כן ⚠️' : 'לא'}</span>
+                        </div>
+                      );
+                    })}
+                    {currentUser.health_declaration.signature_url && (
+                      <div className="mt-3">
+                        <span className="font-bold text-gray-800">חתימה אישית:</span>
+                        <img src={currentUser.health_declaration.signature_url} alt="חתימה" className="h-12 border bg-gray-50 rounded p-1 mt-1 block" />
+                      </div>
+                    )}
+                  </div>
+                </details>
+              )}
+
+              <button type="submit" className="w-full bg-amber-500 hover:bg-amber-600 text-white font-bold py-3 rounded-xl transition shadow-md mt-4">
                 שמירת שינויים
               </button>
             </form>
@@ -411,6 +438,10 @@ const UserView = ({
 
   const handleWorkoutRegister = (workoutId) => {
     if (!currentUser) return;
+    if (isRenewalNeeded) {
+      alert('עליך לחדש את הצהרת הבריאות שלך לפני שתוכלי להירשם לאימונים.');
+      return;
+    }
     if (!currentUser.is_approved) {
       alert('החשבון שלך ממתין לאישור תהל. עליך להמתין לאישור לפני הרשמה לאימונים!');
       return;
@@ -701,27 +732,7 @@ const UserView = ({
     );
   }
 
-  if (isRegistered && isRenewalNeeded && authMode !== 'register') {
-    return (
-      <div className="max-w-xl mx-auto bg-white/95 backdrop-blur-md p-6 sm:p-8 rounded-3xl shadow-xl border border-red-100 text-center mt-6">
-        <h2 className="text-2xl font-black text-red-600 mb-2">חידוש הצהרת בריאות</h2>
-        <p className="text-xs text-gray-600 mb-6">תוקף הצהרת הבריאות שלך פג (עברו שנתיים) או שהמנהלת דרשה עדכון. אנא אשרי מחדש את הצהרת הבריאות כדי להמשיך להירשם לאימונים.</p>
-        <button onClick={() => {
-          setFormData(prev => ({
-            ...prev, 
-            first_name: currentUser.full_name.split(' ')[0], 
-            last_name: currentUser.full_name.split(' ').slice(1).join(' ') || '', 
-            id_number: currentUser.id_number || '', 
-            dob: currentUser.dob || '', 
-            phone: currentUser.phone || '', 
-            email: currentUser.email || '',
-            answers: {}, has_medical_condition: false, medical_cert_url: '', parent_name: '', parent_id: '', terms_accepted: false
-          }));
-          setAuthMode('register'); 
-        }} className="bg-red-500 hover:bg-red-600 text-white font-bold py-3 px-8 rounded-2xl transition shadow-md">למעבר למילוי ההצהרה</button>
-      </div>
-    );
-  }
+  
 
   const now = new Date();
   const upcomingWorkouts = workouts
@@ -735,6 +746,31 @@ const UserView = ({
 
   return (
     <div className="max-w-3xl mx-auto space-y-6">
+      {isRegistered && isRenewalNeeded && authMode !== 'register' && (
+        <div className="bg-red-50 border border-red-200 p-4 rounded-3xl flex flex-col sm:flex-row items-center justify-between gap-4 shadow-sm animate-fadeIn">
+          <div className="flex items-center gap-3">
+            <ShieldAlert className="text-red-600" size={24} />
+            <div>
+              <h3 className="font-black text-red-900 text-sm">נדרש חידוש הצהרת בריאות</h3>
+              <p className="text-xs text-red-800">על מנת להמשיך להירשם לאימונים, חובה עליך למלא את ההצהרה מחדש.</p>
+            </div>
+          </div>
+          <button onClick={() => {
+            setFormData(prev => ({
+              ...prev, 
+              first_name: currentUser.full_name.split(' ')[0], 
+              last_name: currentUser.full_name.split(' ').slice(1).join(' ') || '', 
+              id_number: currentUser.id_number || '', 
+              dob: currentUser.dob || '', phone: currentUser.phone || '', email: currentUser.email || '',
+              answers: {}, has_medical_condition: false, medical_cert_url: '', parent_name: '', parent_id: '', terms_accepted: false
+            }));
+            setAuthMode('register'); 
+          }} className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-1 shrink-0">
+            למילוי ההצהרה
+          </button>
+        </div>
+      )}
+
       {!isRegistered && (
         <div className="bg-gray-900 text-white p-4 rounded-3xl flex flex-col sm:flex-row items-center justify-between gap-4 shadow-md animate-fadeIn">
           <div className="text-center sm:text-right">
@@ -1156,13 +1192,17 @@ const AdminDashboard = ({
   };
 
   const sendEmailWithDetails = (t) => {
-    const healthQs = { q1: 'מחלת לב', q2a: 'כאבים בחזה מנוחה', q2b: 'כאבים בחזה שגרה', q2c: 'כאבים בפעילות', q3a: 'סחרחורת', q3b: 'אובדן הכרה', q4a: 'אסטמה תרופות', q4b: 'אסטמה קוצר נשימה', q5a: 'משפחה לב', q5b: 'משפחה מוות פתאומי', q6: 'השגחה רפואית', q7: 'מחלה קבועה', q8: 'הריון בסיכון' };
+    const healthQs = { q1: '1. מחלת לב?', q2a: '2א. כאבים בחזה מנוחה?', q2b: '2ב. כאבים בחזה שגרה?', q2c: '2ג. כאבים בפעילות?', q3a: '3א. סחרחורת?', q3b: '3ב. אובדן הכרה?', q4a: '4א. אסטמה תרופות?', q4b: '4ב. אסטמה קוצר נשימה?', q5a: '5א. משפחה לב?', q5b: '5ב. משפחה מוות פתאומי?', q6: '6. אימון רק בהשגחה?', q7: '7. מחלה קבועה?', q8: '8. הריון בסיכון?' };
     let ansTxt = '';
     if (t.health_declaration?.answers) {
       ansTxt = Object.entries(t.health_declaration.answers).map(([k, v]) => `${healthQs[k] || k}: ${v ? 'כן' : 'לא'}`).join('%0A');
     }
-    const emailBody = `שם: ${t.full_name}%0Aטלפון: ${t.phone}%0Aאימייל: ${t.email}%0Aת.ז: ${t.id_number || 'לא הוזן'}%0Aת.לידה: ${t.dob || 'לא הוזן'}%0Aיש בעיה רפואית? ${t.health_declaration?.has_medical_condition ? 'כן' : 'לא'}%0A%0Aתשובות ההצהרה:%0A${ansTxt}`;
-    window.location.href = `mailto:?subject=פרטי מתאמנת - ${t.full_name}&body=${emailBody}`;
+    const emailBody = `שם מלא: ${t.full_name}%0Aתעודת זהות: ${t.id_number || 'לא הוזן'}%0Aתאריך לידה: ${t.dob ? t.dob.split('-').reverse().join('/') : 'לא הוזן'}%0Aטלפון: ${t.phone}%0Aאימייל: ${t.email}%0Aתאריך חתימת הצהרה: ${t.health_declaration?.signed_at || 'לא הוזן'}%0Aיש בעיה רפואית? ${t.health_declaration?.has_medical_condition ? 'כן ⚠️' : 'לא'}%0A%0A--- תשובות שאלון רפואי ---%0A${ansTxt}%0A%0A* שימי לב: קובץ ה-PDF ירד הרגע באופן אוטומטי למחשב/טלפון שלך. תוכלי לגרור או לצרף אותו למייל זה.`;
+    
+    exportToPdf(`formal_pdf_${t.id}`, `הצהרת_בריאות_${t.full_name}.pdf`);
+    setTimeout(() => {
+      window.location.href = `mailto:?subject=פרטי מתאמנת והצהרת בריאות - ${t.full_name}&body=${emailBody}`;
+    }, 800);
   };
 
   const checkAdminNeedsRenewal = (t) => {
@@ -1178,9 +1218,48 @@ const AdminDashboard = ({
     return false;
   };
 
+  // תצוגת אקורדיון קומפקטית למנהלת לקריאת ההצהרה המלאה (13 שאלות + חתימות)
+  const renderHealthDeclarationAccordion = (t) => {
+    if (!t.health_declaration) return null;
+    return (
+      <details className="mt-3 group bg-gray-50 border border-gray-200 rounded-xl overflow-hidden w-full">
+        <summary className="text-xs font-bold text-gray-800 p-3 cursor-pointer select-none flex justify-between items-center bg-gray-100 hover:bg-gray-200 transition">
+          📄 הצגת שאלון רפואי וחתימות מלא
+          <span className="group-open:rotate-180 transition-transform">▼</span>
+        </summary>
+        <div className="p-3 max-h-64 overflow-y-auto text-[11px] space-y-2 bg-white">
+          {t.health_declaration.answers && Object.entries(t.health_declaration.answers).map(([k, v], idx) => {
+            const qs = ['מחלת לב', 'כאבים בחזה במנוחה', 'כאבים בחזה בשגרה', 'כאבים בפעילות', 'סחרחורת/שיווי משקל', 'אובדן הכרה', 'אסטמה (תרופות)', 'אסטמה (קוצר נשימה)', 'משפחה - מחלת לב', 'משפחה - מוות פתאומי', 'אימון בהשגחה בלבד', 'מחלה קבועה ומגבילה', 'הריון בסיכון'];
+            return (
+              <div key={k} className="flex justify-between border-b pb-1 border-gray-100">
+                <span className="truncate pr-2">{qs[idx] || k}</span>
+                <span className="font-bold shrink-0">{v ? 'כן ⚠️' : 'לא'}</span>
+              </div>
+            );
+          })}
+          {t.health_declaration.signature_url && (
+            <div className="mt-3">
+              <span className="font-bold text-gray-800">חתימת המתאמנת:</span>
+              <img src={t.health_declaration.signature_url} alt="חתימה" className="h-12 border bg-gray-50 rounded p-1 mt-1 block" />
+            </div>
+          )}
+          {t.health_declaration.parent_name && (
+            <div className="mt-3 pt-3 border-t border-gray-200">
+              <p className="font-bold text-blue-800 mb-1">אישור הורה (קטין):</p>
+              <p><strong>שם הורה:</strong> {t.health_declaration.parent_name} | <strong>ת.ז:</strong> {t.health_declaration.parent_id}</p>
+              {t.health_declaration.parent_signature_url && (
+                <img src={t.health_declaration.parent_signature_url} alt="חתימת הורה" className="h-12 border bg-gray-50 rounded p-1 mt-1 block" />
+              )}
+            </div>
+          )}
+        </div>
+      </details>
+    );
+  };
+
   // תבנית PDF פורמלית ונסתרת המשמשת ליצוא עבור כל מתאמן
   const renderFormalPdfTemplate = (t) => (
-    <div id={`formal_pdf_${t.id}`} className="hidden print:block absolute top-0 left-0 w-[210mm] min-h-[297mm] bg-white p-10 text-right z-[-50] text-black font-sans leading-relaxed" dir="rtl" style={{ direction: 'rtl' }}>
+    <div id={`formal_pdf_${t.id}`} className="absolute w-[210mm] min-h-[297mm] bg-white p-10 text-right text-black font-sans leading-relaxed" dir="rtl" style={{ top: '-9999px', left: '-9999px', zIndex: -50, direction: 'rtl' }}>
       <div className="flex justify-between items-end border-b-4 border-black pb-4 mb-6">
         <div>
           <h1 className="text-3xl font-black text-black">טופס הצהרת בריאות</h1>
@@ -1591,6 +1670,7 @@ const AdminDashboard = ({
                     ) : t.health_declaration?.has_medical_condition ? (
                       <p className="text-[10px] font-bold text-red-500 mt-1">לא הועלה אישור רפואי ע"י המתאמנת!</p>
                     ) : null}
+                    {renderHealthDeclarationAccordion(t)}
                   </div>
 
                   <div className="flex flex-wrap items-center gap-2">
@@ -1643,33 +1723,7 @@ const AdminDashboard = ({
                       <p className="col-span-2"><strong>תאריך חתימה:</strong> {t.health_declaration?.signed_at || new Date(t.created_at).toLocaleDateString('he-IL')}</p>
                     </div>
 
-                    {t.health_declaration && (
-                      <div className="bg-gray-50 p-4 rounded-xl border border-gray-200 text-sm space-y-2 mt-2">
-                        <h3 className="font-bold text-amber-900 border-b pb-1">שאלון רפואי וחתימות</h3>
-                        <p><strong>סומנו סעיפים רפואיים קיימים?</strong> {t.health_declaration.has_medical_condition ? 'כן' : 'לא'}</p>
-                        
-                        {t.health_declaration.medical_cert_url && (
-                          <p><a href={t.health_declaration.medical_cert_url} target="_blank" rel="noreferrer" className="text-blue-600 underline">צפייה באישור הרפואי המצורף</a></p>
-                        )}
-                        
-                        {t.health_declaration.signature_url && (
-                          <div className="pt-2">
-                            <p className="font-bold mb-1">חתימת המתאמנת:</p>
-                            <img src={t.health_declaration.signature_url} alt="חתימה" className="h-12 object-contain border bg-white p-1 rounded" />
-                          </div>
-                        )}
-
-                        {t.health_declaration.parent_name && (
-                          <div className="pt-3 border-t border-gray-200 mt-3">
-                            <p className="font-bold mb-1 text-blue-800">אישור הורה (קטין):</p>
-                            <p><strong>שם הורה:</strong> {t.health_declaration.parent_name} | <strong>ת.ז:</strong> {t.health_declaration.parent_id}</p>
-                            {t.health_declaration.parent_signature_url && (
-                              <img src={t.health_declaration.parent_signature_url} alt="חתימת הורה" className="h-12 object-contain border bg-white p-1 rounded mt-1" />
-                            )}
-                          </div>
-                        )}
-                      </div>
-                    )}
+                    {renderHealthDeclarationAccordion(t)}
                   </div>
 
                   {/* כפתורי פעולה (לא יופיעו ב-PDF כי הם מחוץ ל-div של ה-PDF) */}
