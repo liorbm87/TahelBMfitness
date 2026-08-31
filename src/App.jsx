@@ -1292,10 +1292,6 @@ const AdminDashboard = ({
             {settings.logoUrl && <img src={settings.logoUrl} alt="לוגו" className="h-24 object-contain" />}
           </div>
         </div>
-        <div className="text-xs mb-3 space-y-0.5">
-          <p>הובא לידיעת המאמן כי הצהרת הבריאות אינה מועברת לסוכן הביטוח...</p>
-          <p>המערכת הדיגיטלית ניתנת כשירות. מלוא האחריות לנוסח ההצהרה חלה על המאמן בלבד.</p>
-        </div>
         <div className="grid grid-cols-2 gap-2 bg-gray-100 p-3 rounded-lg mb-4 text-xs font-bold border border-gray-300">
           <p>שם ושם משפחה: {t.full_name}</p>
           <p>מספר תעודת זהות: {t.id_number || '___________'}</p>
