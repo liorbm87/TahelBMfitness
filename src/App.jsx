@@ -1266,7 +1266,7 @@ const AdminDashboard = ({
 
   // תבנית PDF פורמלית ונסתרת המשמשת ליצוא עבור כל מתאמן
   const renderFormalPdfTemplate = (t) => (
-    <div id={`formal_pdf_${t.id}`} className="absolute w-[210mm] min-h-[297mm] bg-white p-10 text-right text-black font-sans leading-relaxed" dir="rtl" style={{ top: 0, right: 0, zIndex: -50, direction: 'rtl' }}>
+    <div id={`formal_pdf_${t.id}`} className="absolute w-[210mm] min-h-[297mm] bg-white p-10 text-right text-black font-sans leading-relaxed" dir="rtl" style={{ top: '-9999px', left: '-9999px', zIndex: -50, direction: 'rtl' }}>
       <div className="flex justify-between items-end border-b-4 border-black pb-4 mb-6">
         <div>
           <h1 className="text-3xl font-black text-black">טופס הצהרת בריאות</h1>
