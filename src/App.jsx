@@ -1047,6 +1047,7 @@ const AdminDashboard = ({
   const [broadcastText, setBroadcastText] = useState('היי בנות! תזכורת לאימון שלנו היום בסטודיו. נא להגיע 5 דקות לפני עם מגבת ומים!');
   const [sentBroadcastUserIds, setSentBroadcastUserIds] = useState([]);
   const [financeMonth, setFinanceMonth] = useState('2026-08');
+  const [editWorkoutData, setEditWorkoutData] = useState(null); // סטייט לעריכת אימון
   
   // משתנה זמני לשמירת הגדרות האתר לפני שמירה סופית
   const [tempSettings, setTempSettings] = useState(settings);
@@ -1123,6 +1124,17 @@ const AdminDashboard = ({
       setWorkouts(prev => prev.filter(w => w.id !== id));
       setRegistrations(prev => prev.filter(r => r.workout_id !== id));
     }
+  };
+
+  const handleUpdateWorkoutSubmit = (e) => {
+    e.preventDefault();
+    setWorkouts(prev => prev.map(w => 
+      w.id === editWorkoutData.id 
+        ? { ...editWorkoutData, price: Number(editWorkoutData.price), max_participants: Number(editWorkoutData.max_participants) } 
+        : w
+    ));
+    setEditWorkoutData(null);
+    alert('האימון עודכן בהצלחה!');
   };
 
   const handleApproveTrainee = (trainee) => {
@@ -1569,6 +1581,13 @@ const AdminDashboard = ({
                         <MessageCircle size={15} /> תפוצה למשתתפים (Broadcast)
                       </button>
 
+                      <button 
+                        onClick={() => setEditWorkoutData(workout)}
+                        className="p-2 text-blue-500 hover:bg-blue-50 rounded-xl transition"
+                        title="ערוך פרטי אימון"
+                      >
+                        <Edit size={18} />
+                      </button>
                       <button 
                         onClick={() => handleDeleteWorkout(workout.id)}
                         className="p-2 text-red-500 hover:bg-red-50 rounded-xl transition"
@@ -2070,6 +2089,51 @@ const AdminDashboard = ({
             >
               סגרי חלון
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* מודאל עריכת אימון */}
+      {editWorkoutData && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-3xl p-6 max-w-lg w-full shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto m-auto">
+            <div className="flex justify-between items-center border-b pb-3">
+              <h3 className="font-bold text-base text-gray-900">עריכת אימון: {editWorkoutData.type}</h3>
+              <button onClick={() => setEditWorkoutData(null)} className="text-gray-400 hover:text-gray-600"><X size={20} /></button>
+            </div>
+            <form onSubmit={handleUpdateWorkoutSubmit} className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
+              <div>
+                <label className="block font-bold text-gray-700 mb-1">סוג האימון</label>
+                <input required type="text" value={editWorkoutData.type} onChange={(e) => setEditWorkoutData({...editWorkoutData, type: e.target.value})} className="w-full p-2.5 bg-gray-50 border rounded-xl outline-none" />
+              </div>
+              <div>
+                <label className="block font-bold text-gray-700 mb-1">תאריך</label>
+                <input required type="date" value={editWorkoutData.date} onChange={(e) => setEditWorkoutData({...editWorkoutData, date: e.target.value})} className="w-full p-2.5 bg-gray-50 border rounded-xl outline-none" />
+              </div>
+              <div>
+                <label className="block font-bold text-gray-700 mb-1">שעה</label>
+                <input required type="time" value={editWorkoutData.time} onChange={(e) => setEditWorkoutData({...editWorkoutData, time: e.target.value})} className="w-full p-2.5 bg-gray-50 border rounded-xl outline-none" />
+              </div>
+              <div>
+                <label className="block font-bold text-gray-700 mb-1">מיקום</label>
+                <input required type="text" value={editWorkoutData.location} onChange={(e) => setEditWorkoutData({...editWorkoutData, location: e.target.value})} className="w-full p-2.5 bg-gray-50 border rounded-xl outline-none" />
+              </div>
+              <div>
+                <label className="block font-bold text-gray-700 mb-1">מחיר (₪)</label>
+                <input required type="number" min="1" value={editWorkoutData.price} onChange={(e) => setEditWorkoutData({...editWorkoutData, price: e.target.value})} className="w-full p-2.5 bg-gray-50 border rounded-xl outline-none" />
+              </div>
+              <div>
+                <label className="block font-bold text-gray-700 mb-1">מקסימום משתתפים</label>
+                <input required type="number" min="1" value={editWorkoutData.max_participants} onChange={(e) => setEditWorkoutData({...editWorkoutData, max_participants: e.target.value})} className="w-full p-2.5 bg-gray-50 border rounded-xl outline-none" />
+              </div>
+              <div className="sm:col-span-2">
+                <label className="block font-bold text-gray-700 mb-1">הערות</label>
+                <input type="text" value={editWorkoutData.notes || ''} onChange={(e) => setEditWorkoutData({...editWorkoutData, notes: e.target.value})} className="w-full p-2.5 bg-gray-50 border rounded-xl outline-none" />
+              </div>
+              <div className="sm:col-span-2 pt-2">
+                <button type="submit" className="w-full bg-amber-500 text-white font-bold py-3 rounded-xl hover:bg-amber-600 shadow-md transition">שמירת שינויים</button>
+              </div>
+            </form>
           </div>
         </div>
       )}
