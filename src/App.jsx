@@ -94,11 +94,10 @@ const exportToPdf = (elementId, filename) => {
   if (!element) return;
 
   const opt = {
-    margin:       5, // הקטנת השוליים החיצוניים כדי לעזור להתאמה לדף בודד
+    margin:       0, 
     filename:     filename,
     image:        { type: 'jpeg', quality: 0.98 },
-    // הוספת windowWidth מכריחה את הספרייה להתנהג כאילו המסך רחב, ומונעת חיתוך בצדדים
-    html2canvas:  { scale: 2, useCORS: true, windowWidth: 800 }, 
+    html2canvas:  { scale: 2, useCORS: true, windowWidth: 1024 }, 
     jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
   };
   
@@ -1270,16 +1269,15 @@ const AdminDashboard = ({
   // ============================================================================
   // תבנית PDF פורמלית ונסתרת המשמשת ליצוא עבור כל מתאמן
   const renderFormalPdfTemplate = (t) => (
-    <div style={{ height: 0, overflow: 'hidden' }}>
-      <div id={`formal_pdf_${t.id}`} className="w-[800px] bg-white p-6 text-right text-black font-sans leading-tight" dir="rtl" style={{ direction: 'rtl' }}>
-        <div className="flex justify-between items-end border-b-2 border-black pb-2 mb-3">
+    <div style={{ position: 'absolute', left: '-9999px', top: '-9999px' }}>
+      <div id={`formal_pdf_${t.id}`} className="w-[210mm] min-h-[297mm] bg-white p-10 text-right text-black font-sans leading-tight" dir="rtl" style={{ direction: 'rtl' }}>
+        <div className="flex justify-between items-end border-b-2 border-black pb-4 mb-4">
           <div>
-            <h1 className="text-2xl font-black text-black">טופס הצהרת בריאות</h1>
-            <h2 className="text-base font-bold mt-1 text-gray-800">למבקש להתאמן בחדר כושר</h2>
+            <h1 className="text-3xl font-black text-black">טופס הצהרת בריאות</h1>
+            <h2 className="text-lg font-bold mt-1 text-gray-800">למבקש להתאמן בחדר כושר</h2>
           </div>
           <div className="flex flex-col items-center">
-            {settings.logoUrl && <img src={settings.logoUrl} alt="לוגו" className="h-12 object-contain mb-1" />}
-            <span className="font-bold text-xs bg-gray-900 text-white px-2 py-0.5 rounded-full">תהל פיטנס - הכל אישי</span>
+            {settings.logoUrl && <img src={settings.logoUrl} alt="לוגו" className="h-24 object-contain" />}
           </div>
         </div>
         <div className="text-xs mb-3 space-y-0.5">
