@@ -94,10 +94,11 @@ const exportToPdf = (elementId, filename) => {
   if (!element) return;
 
   const opt = {
-    margin:       10,
+    margin:       5, // הקטנת השוליים החיצוניים כדי לעזור להתאמה לדף בודד
     filename:     filename,
     image:        { type: 'jpeg', quality: 0.98 },
-    html2canvas:  { scale: 2, useCORS: true }, 
+    // הוספת windowWidth מכריחה את הספרייה להתנהג כאילו המסך רחב, ומונעת חיתוך בצדדים
+    html2canvas:  { scale: 2, useCORS: true, windowWidth: 800 }, 
     jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
   };
   
@@ -1270,61 +1271,61 @@ const AdminDashboard = ({
   // תבנית PDF פורמלית ונסתרת המשמשת ליצוא עבור כל מתאמן
   const renderFormalPdfTemplate = (t) => (
     <div style={{ height: 0, overflow: 'hidden' }}>
-      <div id={`formal_pdf_${t.id}`} className="w-[210mm] min-h-[297mm] bg-white p-10 text-right text-black font-sans leading-relaxed" dir="rtl" style={{ direction: 'rtl' }}>
-        <div className="flex justify-between items-end border-b-4 border-black pb-4 mb-6">
-        <div>
-          <h1 className="text-3xl font-black text-black">טופס הצהרת בריאות</h1>
-          <h2 className="text-xl font-bold mt-1 text-gray-800">למבקש להתאמן בחדר כושר</h2>
-        </div>
-        <div className="flex flex-col items-center">
-          {settings.logoUrl && <img src={settings.logoUrl} alt="לוגו" className="h-24 object-contain mb-2" />}
-          <span className="font-bold text-sm bg-gray-900 text-white px-3 py-1 rounded-full">תהל פיטנס - הכל אישי</span>
-        </div>
-      </div>
-      <div className="text-sm mb-6 space-y-1">
-        <p>הובא לידיעת המאמן כי הצהרת הבריאות אינה מועברת לסוכן הביטוח...</p>
-        <p>המערכת הדיגיטלית ניתנת כשירות. מלוא האחריות לנוסח ההצהרה חלה על המאמן בלבד.</p>
-      </div>
-      <div className="grid grid-cols-2 gap-4 bg-gray-100 p-4 rounded-xl mb-6 text-sm font-bold border border-gray-300">
-        <p>שם ושם משפחה: {t.full_name}</p>
-        <p>מספר תעודת זהות: {t.id_number || '___________'}</p>
-        <p>תאריך לידה: {t.dob ? t.dob.split('-').reverse().join('/') : '___________'}</p>
-        <p>טלפון: {t.phone}</p>
-      </div>
-      <h3 className="text-xl font-bold mb-4 bg-gray-200 p-2 rounded">חלק א': שאלון רפואי</h3>
-      <div className="text-sm space-y-2 mb-6">
-        <p className="mb-2">האם סומנו מגבלות רפואיות או תשובות 'כן' בשאלון הדיגיטלי? <span className="font-bold">{t.health_declaration?.has_medical_condition ? 'כן' : 'לא'}</span></p>
-        {t.health_declaration?.answers && [
-          { id: 'q1', text: '1. מחלת לב?' }, { id: 'q2a', text: '2א. כאבים בחזה במנוחה?' }, { id: 'q2b', text: '2ב. כאבים בחזה בשגרה?' }, { id: 'q2c', text: '2ג. כאבים בחזה בפעילות?' }, { id: 'q3a', text: '3א. אובדן שיווי משקל/סחרחורת?' }, { id: 'q3b', text: '3ב. אובדן הכרה?' }, { id: 'q4a', text: '4א. אסטמה/טיפול תרופתי?' }, { id: 'q4b', text: '4ב. אסטמה/קוצר נשימה?' }, { id: 'q5a', text: '5א. משפחה - מחלת לב?' }, { id: 'q5b', text: '5ב. משפחה - מוות פתאומי?' }, { id: 'q6', text: '6. אימון רק בהשגחה?' }, { id: 'q7', text: '7. מחלה קבועה מגבילה?' }, { id: 'q8', text: '8. הריון בסיכון?' }
-        ].map(q => (
-          <div key={q.id} className="border-b border-gray-200 pb-1 flex justify-between gap-4">
-            <span className="text-[11px] text-gray-700 leading-tight">{q.text}</span>
-            <span className="font-bold text-[11px]">{t.health_declaration.answers[q.id] ? 'כן' : 'לא'}</span>
+      <div id={`formal_pdf_${t.id}`} className="w-[800px] bg-white p-6 text-right text-black font-sans leading-tight" dir="rtl" style={{ direction: 'rtl' }}>
+        <div className="flex justify-between items-end border-b-2 border-black pb-2 mb-3">
+          <div>
+            <h1 className="text-2xl font-black text-black">טופס הצהרת בריאות</h1>
+            <h2 className="text-base font-bold mt-1 text-gray-800">למבקש להתאמן בחדר כושר</h2>
           </div>
-        ))}
-        {t.health_declaration?.medical_cert_url && <p className="mt-2 text-red-600 font-bold">צורף אישור רפואי חיצוני.</p>}
-      </div>
-      <h3 className="text-xl font-bold mb-4 bg-gray-200 p-2 rounded">חלק ב': הצהרה</h3>
-      <p className="text-sm mb-8 leading-loose">
-        אני, החתום מטה, מצהיר כי קראתי והבנתי את כל השאלון הרפואי ומילאתי אותו בעצמי. אני מצהיר כי מסרתי ידיעות מלאות ונכונות אודות מצבי הרפואי בעבר ובהווה. ידוע לי כי לאחר שנתיים מיום חתימתי על הצהרת בריאות זו, אדרש להמציא הצהרת בריאות חדשה.
-      </p>
-      <div className="flex justify-between items-end border-t border-gray-400 pt-6 mt-10">
-        <div>
-          <p className="font-bold mb-2">חתימת המתאמן/ת:</p>
-          {t.health_declaration?.signature_url ? <img src={t.health_declaration.signature_url} className="h-16" /> : <p className="text-gray-400 italic">לא נחתם</p>}
+          <div className="flex flex-col items-center">
+            {settings.logoUrl && <img src={settings.logoUrl} alt="לוגו" className="h-12 object-contain mb-1" />}
+            <span className="font-bold text-xs bg-gray-900 text-white px-2 py-0.5 rounded-full">תהל פיטנס - הכל אישי</span>
+          </div>
         </div>
-        <p className="font-bold">תאריך: {t.health_declaration?.signed_at || '___________'}</p>
-      </div>
-    {t.health_declaration?.parent_name && (
-            <div className="mt-8 border-t-2 border-dashed border-gray-400 pt-6">
-              <h4 className="font-bold text-lg mb-2">הסכמה בכתב של אחד מהורי הקטין</h4>
-              <p className="text-sm mb-4">אני {t.health_declaration.parent_name} (ת.ז: {t.health_declaration.parent_id}) מסכים/ה כי בני/בתי יתאמן בסטודיו.</p>
-              {t.health_declaration.parent_signature_url && <img src={t.health_declaration.parent_signature_url} className="h-16" />}
+        <div className="text-xs mb-3 space-y-0.5">
+          <p>הובא לידיעת המאמן כי הצהרת הבריאות אינה מועברת לסוכן הביטוח...</p>
+          <p>המערכת הדיגיטלית ניתנת כשירות. מלוא האחריות לנוסח ההצהרה חלה על המאמן בלבד.</p>
+        </div>
+        <div className="grid grid-cols-2 gap-2 bg-gray-100 p-3 rounded-lg mb-4 text-xs font-bold border border-gray-300">
+          <p>שם ושם משפחה: {t.full_name}</p>
+          <p>מספר תעודת זהות: {t.id_number || '___________'}</p>
+          <p>תאריך לידה: {t.dob ? t.dob.split('-').reverse().join('/') : '___________'}</p>
+          <p>טלפון: {t.phone}</p>
+        </div>
+        <h3 className="text-lg font-bold mb-2 bg-gray-200 p-1.5 rounded">חלק א': שאלון רפואי</h3>
+        <div className="text-xs space-y-1 mb-4">
+          <p className="mb-1">האם סומנו מגבלות רפואיות או תשובות 'כן' בשאלון הדיגיטלי? <span className="font-bold">{t.health_declaration?.has_medical_condition ? 'כן' : 'לא'}</span></p>
+          {t.health_declaration?.answers && [
+            { id: 'q1', text: '1. מחלת לב?' }, { id: 'q2a', text: '2א. כאבים בחזה במנוחה?' }, { id: 'q2b', text: '2ב. כאבים בחזה בשגרה?' }, { id: 'q2c', text: '2ג. כאבים בחזה בפעילות?' }, { id: 'q3a', text: '3א. אובדן שיווי משקל/סחרחורת?' }, { id: 'q3b', text: '3ב. אובדן הכרה?' }, { id: 'q4a', text: '4א. אסטמה/טיפול תרופתי?' }, { id: 'q4b', text: '4ב. אסטמה/קוצר נשימה?' }, { id: 'q5a', text: '5א. משפחה - מחלת לב?' }, { id: 'q5b', text: '5ב. משפחה - מוות פתאומי?' }, { id: 'q6', text: '6. אימון רק בהשגחה?' }, { id: 'q7', text: '7. מחלה קבועה מגבילה?' }, { id: 'q8', text: '8. הריון בסיכון?' }
+          ].map(q => (
+            <div key={q.id} className="border-b border-gray-200 pb-0.5 flex justify-between gap-4">
+              <span className="text-[11px] text-gray-700 leading-tight">{q.text}</span>
+              <span className="font-bold text-[11px]">{t.health_declaration.answers[q.id] ? 'כן' : 'לא'}</span>
             </div>
-          )}
+          ))}
+          {t.health_declaration?.medical_cert_url && <p className="mt-1 text-red-600 font-bold">צורף אישור רפואי חיצוני.</p>}
         </div>
+        <h3 className="text-lg font-bold mb-2 bg-gray-200 p-1.5 rounded">חלק ב': הצהרה</h3>
+        <p className="text-xs mb-3 leading-normal">
+          אני, החתום מטה, מצהיר כי קראתי והבנתי את כל השאלון הרפואי ומילאתי אותו בעצמי. אני מצהיר כי מסרתי ידיעות מלאות ונכונות אודות מצבי הרפואי בעבר ובהווה. ידוע לי כי לאחר שנתיים מיום חתימתי על הצהרת בריאות זו, אדרש להמציא הצהרת בריאות חדשה.
+        </p>
+        <div className="flex justify-between items-end border-t border-gray-400 pt-3 mt-4">
+          <div>
+            <p className="font-bold mb-1">חתימת המתאמן/ת:</p>
+            {t.health_declaration?.signature_url ? <img src={t.health_declaration.signature_url} className="h-10" /> : <p className="text-gray-400 italic">לא נחתם</p>}
+          </div>
+          <p className="font-bold">תאריך: {t.health_declaration?.signed_at || '___________'}</p>
+        </div>
+        {t.health_declaration?.parent_name && (
+          <div className="mt-4 border-t-2 border-dashed border-gray-400 pt-3">
+            <h4 className="font-bold text-sm mb-1">הסכמה בכתב של אחד מהורי הקטין</h4>
+            <p className="text-xs mb-2">אני {t.health_declaration.parent_name} (ת.ז: {t.health_declaration.parent_id}) מסכים/ה כי בני/בתי יתאמן בסטודיו.</p>
+            {t.health_declaration.parent_signature_url && <img src={t.health_declaration.parent_signature_url} className="h-10" />}
+          </div>
+        )}
       </div>
-    );
+    </div>
+  );
 
   const handleImageUpload = async (e, targetKey) => {
     const file = e.target.files[0];
