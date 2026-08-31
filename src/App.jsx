@@ -215,9 +215,10 @@ const MainHeader = ({ settings, isAdmin, onOpenAdminLogin, onLogout, currentUser
     <div className="flex flex-col items-center justify-center pt-8 pb-4 space-y-6">
       {/* לוגו מרכזי גדול */}
       <div
+        onClick={() => window.location.reload()}
         onDoubleClick={onOpenAdminLogin}
         className="cursor-pointer select-none transition transform hover:scale-105 active:scale-95"
-        title="דאבל קליק לכניסת מנהלת"
+        title="לחיצה רגילה: רענון וליציאה | דאבל קליק: כניסת מנהלת"
       >
         {settings.logoUrl ? (
           <img src={settings.logoUrl} alt="תהל כושר" className="h-32 sm:h-40 object-contain drop-shadow-xl" />
@@ -1226,6 +1227,11 @@ const AdminDashboard = ({
             {workouts.map(workout => {
               const regList = registrations.filter(r => r.workout_id === workout.id);
               const isPast = new Date(`${workout.date}T${workout.time}`) < new Date();
+              
+              // הוספת משתנה רשימת ההמתנה שפותר את הקריסה!
+              const workoutWaitlist = waitlist
+                .filter(w => w.workout_id === workout.id)
+                .sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
 
               return (
                 <div key={workout.id} className={`bg-white/95 p-5 rounded-3xl shadow-sm border ${isPast ? 'opacity-75 bg-gray-50' : 'border-gray-100'}`}>
@@ -1381,31 +1387,47 @@ const AdminDashboard = ({
           <div className="space-y-3">
             <h3 className="font-bold text-gray-900 text-sm">מתאמנים פעילים ({trainees.filter(t => t.is_approved).length})</h3>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 gap-6">
               {trainees.filter(t => t.is_approved).map(t => (
-                <div key={t.id} id={`hd_doc_${t.id}`} className="bg-white/95 p-4 rounded-2xl shadow-sm border border-gray-100 space-y-2">
-                  <div className="flex justify-between items-start">
-                    <div>
-                      <h4 className="font-bold text-sm text-gray-900">{t.full_name}</h4>
-                      <p className="text-xs text-gray-500">{t.phone}</p>
+                <div key={t.id} className="bg-white/95 p-5 rounded-2xl shadow-sm border border-gray-100 space-y-3">
+                  
+                  {/* תוכן שמיועד גם ל-PDF - אנחנו עוטפים אותו ב-div נפרד */}
+                  <div id={`hd_doc_${t.id}`} className="p-4 bg-white space-y-3">
+                    <div className="flex justify-between items-center border-b pb-2">
+                      <div>
+                        <h2 className="font-black text-lg text-gray-900">הצהרת בריאות ופרטי מתאמנת</h2>
+                        <h4 className="font-bold text-base text-gray-800 mt-1">{t.full_name}</h4>
+                      </div>
+                      <img src={settings.logoUrl || ''} alt="לוגו" className="h-10 object-contain hidden print:block" />
                     </div>
-                    <span className="bg-emerald-100 text-emerald-800 text-[10px] font-bold px-2 py-0.5 rounded-full">מאושר/ת</span>
+                    
+                    <div className="grid grid-cols-2 gap-2 text-sm text-gray-700">
+                      <p><strong>טלפון:</strong> {t.phone}</p>
+                      <p><strong>אימייל:</strong> {t.email}</p>
+                      <p><strong>תאריך הצטרפות:</strong> {new Date(t.created_at).toLocaleDateString('he-IL')}</p>
+                    </div>
+
+                    {t.health_declaration && (
+                      <div className="bg-gray-50 p-4 rounded-xl border border-gray-200 text-sm space-y-2 mt-2">
+                        <h3 className="font-bold text-amber-900 border-b pb-1">שאלון רפואי</h3>
+                        <p><strong>האם קיימת מגבלה רפואית / מחלה / רגישות?</strong> {t.health_declaration.has_medical_condition ? 'כן' : 'לא'}</p>
+                        {t.health_declaration.has_medical_condition && (
+                          <p className="text-red-600"><strong>פירוט המגבלה:</strong> {t.health_declaration.medical_notes}</p>
+                        )}
+                        <p className="text-xs text-gray-500 mt-2">אני מצהירה כי הפרטים שנמסרו נכונים, ואני מסכימה לתקנון הסטודיו ומדיניות הביטולים.</p>
+                        
+                        {t.health_declaration.signature_url && (
+                          <div className="pt-4 mt-2 border-t border-gray-200">
+                            <p className="font-bold mb-1">חתימת המתאמנת (נחתם ב-{t.health_declaration.signed_at}):</p>
+                            <img src={t.health_declaration.signature_url} alt="חתימה" className="h-12 object-contain border bg-white p-1 rounded" />
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </div>
 
-                  {t.health_declaration && (
-                    <div className="bg-gray-50 p-2.5 rounded-xl text-[11px] space-y-1">
-                      <p className="font-semibold text-gray-700">הצהרת בריאות:</p>
-                      <p className="text-gray-600">מגבלה רפואית: {t.health_declaration.has_medical_condition ? t.health_declaration.medical_notes : 'אין'}</p>
-                      {t.health_declaration.signature_url && (
-                        <div className="pt-1">
-                          <p className="text-[10px] text-gray-400">חתימה:</p>
-                          <img src={t.health_declaration.signature_url} alt="חתימה" className="h-8 object-contain" />
-                        </div>
-                      )}
-                    </div>
-                  )}
-
-                  <div className="flex gap-2 pt-1">
+                  {/* כפתורי פעולה (לא יופיעו ב-PDF כי הם מחוץ ל-div של ה-PDF) */}
+                  <div className="flex gap-2 pt-2 border-t border-gray-100">
                     <button 
                       onClick={() => openWhatsApp(t.phone, `היי ${t.full_name}, תהל כאן!`)}
                       className="flex-1 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 text-xs font-bold py-2 rounded-xl flex justify-center items-center gap-1"
@@ -1655,6 +1677,20 @@ export default function App() {
   const [isAdminLoginModalOpen, setIsAdminLoginModalOpen] = useState(false);
   const [currentUser, setCurrentUser] = useState(INITIAL_TRAINEES[0]);
 
+  // עדכון כותרת הדפדפן והלוגו הקטן בלשונית (Favicon)
+  useEffect(() => {
+    document.title = "תהל בן משה - מאמנת כושר";
+    if (settings.logoUrl) {
+      let link = document.querySelector("link[rel~='icon']");
+      if (!link) {
+        link = document.createElement('link');
+        link.rel = 'icon';
+        document.getElementsByTagName('head')[0].appendChild(link);
+      }
+      link.href = settings.logoUrl;
+    }
+  }, [settings.logoUrl]);
+
   useEffect(() => {
     const savedSettings = localStorage.getItem('tahel_settings');
     if (savedSettings) setSettings(JSON.parse(savedSettings));
@@ -1678,12 +1714,15 @@ export default function App() {
 
   return (
     <Router>
-      <div 
-        dir="rtl"
-        className="min-h-screen bg-fixed bg-cover bg-center font-sans text-gray-900 antialiased selection:bg-amber-200" 
-        style={{ backgroundImage: `url(${settings.backgroundUrl})` }}
-      >
-        <div className="min-h-screen bg-gradient-to-b from-white/80 via-white/70 to-white/85 backdrop-blur-[3px] pb-12">
+      <div dir="rtl" className="font-sans text-gray-900 antialiased selection:bg-amber-200 relative min-h-screen">
+        
+        {/* רקע מקובע שתופס את כל המסך גם במובייל וגם בגלילה */}
+        <div 
+          className="fixed inset-0 z-[-1] bg-cover bg-center" 
+          style={{ backgroundImage: `url(${settings.backgroundUrl})` }}
+        ></div>
+        
+        <div className="min-h-screen bg-gradient-to-b from-white/80 via-white/70 to-white/85 backdrop-blur-[3px] pb-12 relative z-10">
           
           <MainHeader 
             settings={settings}
