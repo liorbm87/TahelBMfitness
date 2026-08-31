@@ -50,12 +50,7 @@ const formatPhoneForWhatsApp = (phone) => {
 const openWhatsApp = (phone, message) => {
   const formatted = formatPhoneForWhatsApp(phone);
   const url = `https://wa.me/${formatted}?text=${encodeURIComponent(message)}`;
-  // זיהוי מכשיר נייד: מונע את קריסת האתר בעת אישור מתאמן על ידי שימוש בניווט ישיר במקום חלון חדש
-  if (/Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)) {
-    window.location.href = url;
-  } else {
-    window.open(url, '_blank');
-  }
+  window.open(url, '_blank');
 };
 
 const triggerMakeWebhook = async (webhookUrl, eventType, data) => {
@@ -1207,9 +1202,7 @@ const AdminDashboard = ({
     setTrainees(prev => prev.map(t => t.id === trainee.id ? { ...t, is_approved: true } : t));
     const currentSiteUrl = window.location.origin;
     const msg = `היי ${trainee.full_name}! 👋 אושרת בהצלחה באתר שלי! אפשר עכשיו להירשם לאימונים כאן: ${currentSiteUrl}`;
-    setTimeout(() => {
-      openWhatsApp(trainee.phone, msg);
-    }, 150);
+    openWhatsApp(trainee.phone, msg);
   };
 
   const handleRejectTrainee = (traineeId) => {
@@ -1670,7 +1663,7 @@ const AdminDashboard = ({
                       <button 
                         onClick={() => {
                           setMessageModal({ workout, type: 'broadcast' });
-                          setMessageText('היי [שם פרטי]! תזכורת לאימון [פרטי האימון] שלנו היום. מחכה לך!');
+                          setMessageText('היי [שם פרטי]! תזכורת לאימון [פרטי האימון] היום. מחכה לך!');
                           setSentMessageUserIds([]);
                         }}
                         className="bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 px-3 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5"
@@ -1792,7 +1785,7 @@ const AdminDashboard = ({
               <p className="text-xs text-gray-500">אין מתאמנים שממתינים לאישור כרגע.</p>
             ) : (
               trainees.filter(t => !t.is_approved && !t.is_archived).map(t => (
-                <div key={t.id} className="bg-white p-4 rounded-2xl shadow-sm border border-amber-100 flex flex-col sm:flex-row justify-between sm:items-center gap-3">
+                <div key={t.id} className="bg-white p-4 rounded-2xl shadow-sm border border-amber-100 flex flex-col sm:flex-row justify-between sm:items-center gap-3 relative overflow-hidden">
                   {renderFormalPdfTemplate(t)}
                   <div>
                     <h4 className="font-bold text-sm text-gray-900">{t.full_name} <span className="font-normal text-xs text-gray-500">(ת.ז: {t.id_number || '-'})</span></h4>
