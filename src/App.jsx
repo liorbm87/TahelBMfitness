@@ -29,95 +29,9 @@ const DEFAULT_SETTINGS = {
   cloudinaryPreset: 'tahel_images'
 };
 
-const INITIAL_WORKOUTS = [
-  {
-    id: 'w1',
-    type: 'אימון כוח וחיטוב',
-    date: '2026-09-02',
-    time: '18:00',
-    location: 'סטודיו מרכזי, הוד השרון',
-    price: 70,
-    max_participants: 10,
-    notes: 'להביא מגבת ומים. עבודה על פלג גוף עליון.',
-    created_at: new Date().toISOString()
-  },
-  {
-    id: 'w2',
-    type: 'פילאטיס דינמי',
-    date: '2026-09-03',
-    time: '09:00',
-    location: 'סטודיו מרכזי, הוד השרון',
-    price: 65,
-    max_participants: 8,
-    notes: 'אימון מזרן ורצועות. מותאם לכל הרמות.',
-    created_at: new Date().toISOString()
-  },
-  {
-    id: 'w3',
-    type: 'אימון תחנות HIIT',
-    date: '2026-08-25', // אימון עבר לדוגמה בשביל התראות חוב
-    time: '19:30',
-    location: 'פארק 4 עונות',
-    price: 60,
-    max_participants: 12,
-    notes: 'אימון עצים באוויר הפתוח',
-    created_at: new Date().toISOString()
-  }
-];
-
-const INITIAL_TRAINEES = [
-  {
-    id: 'u1',
-    full_name: 'עדי כהן',
-    phone: '0501234567',
-    email: 'adi@example.com',
-    is_approved: true,
-    is_admin: false,
-    created_at: '2026-08-20T10:00:00Z',
-    health_declaration: {
-      has_medical_condition: false,
-      medical_notes: 'אין',
-      signature_url: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==',
-      signed_at: '2026-08-20'
-    }
-  },
-  {
-    id: 'u2',
-    full_name: 'דנה לוי',
-    phone: '0529876543',
-    email: 'dana@example.com',
-    is_approved: true,
-    is_admin: false,
-    created_at: '2026-08-22T14:30:00Z',
-    health_declaration: {
-      has_medical_condition: true,
-      medical_notes: 'רגישות בברך שמאל',
-      signature_url: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==',
-      signed_at: '2026-08-22'
-    }
-  },
-  {
-    id: 'u3',
-    full_name: 'מיה שרון',
-    phone: '0541112233',
-    email: 'maya@example.com',
-    is_approved: false, // ממתינה לאישור
-    is_admin: false,
-    created_at: '2026-08-30T09:15:00Z',
-    health_declaration: {
-      has_medical_condition: false,
-      medical_notes: 'אין משהו מיוחד',
-      signature_url: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==',
-      signed_at: '2026-08-30'
-    }
-  }
-];
-
-const INITIAL_REGISTRATIONS = [
-  { id: 'r1', workout_id: 'w1', user_id: 'u1', payment_status: 'paid', created_at: '2026-08-28T10:00:00Z' },
-  { id: 'r2', workout_id: 'w1', user_id: 'u2', payment_status: 'unpaid', created_at: '2026-08-28T11:00:00Z' },
-  { id: 'r3', workout_id: 'w3', user_id: 'u2', payment_status: 'unpaid', created_at: '2026-08-24T12:00:00Z' }, // חוב על אימון שעבר
-];
+const INITIAL_WORKOUTS = [];
+const INITIAL_TRAINEES = [];
+const INITIAL_REGISTRATIONS = [];
 
 const INITIAL_WAITLIST = [];
 
@@ -248,13 +162,15 @@ const MainHeader = ({ settings, isAdmin, onOpenAdminLogin, onLogout, currentUser
             <LogOut size={16} /> יציאה מהניהול
           </button>
         </div>
-      ) : currentUser?.is_approved ? (
+      ) : currentUser ? (
         <div className="flex flex-col sm:flex-row items-center justify-center gap-3 w-full px-4">
-          <button onClick={() => { setCurrentUser(null); alert('התנתקת בהצלחה!'); window.location.reload(); }} className="bg-red-50 text-red-600 hover:bg-red-100 p-3 rounded-2xl transition" title="התנתקות">
-            <LogOut size={16} />
+          <button onClick={() => { setCurrentUser(null); alert('התנתקת בהצלחה!'); window.location.reload(); }} className="bg-red-50 text-red-600 hover:bg-red-100 px-4 py-2 rounded-2xl transition flex items-center justify-center gap-2 font-bold text-sm shadow-sm border border-red-100" title="התנתקות">
+            <LogOut size={16} /> יציאה
           </button>
-          <button
-            onClick={openEditModal}
+          {currentUser.is_approved && (
+            <>
+              <button
+                onClick={openEditModal}
             className="w-full sm:w-auto text-sm font-bold text-gray-800 bg-white hover:bg-gray-50 px-6 py-3 rounded-2xl transition flex items-center justify-center gap-2 shadow-sm border border-gray-200"
             title="לחצי לעריכת פרטים אישיים"
           >
@@ -268,6 +184,7 @@ const MainHeader = ({ settings, isAdmin, onOpenAdminLogin, onLogout, currentUser
             <MessageCircle size={18} />
             דברי איתי
           </button>
+          </>)}
         </div>
       ) : null}
 
@@ -478,11 +395,15 @@ const UserView = ({
     triggerMakeWebhook(settings.makeWebhookUrl, 'new_trainee_registered', newTrainee);
     
     // שליחת התראה לתהל בוואטסאפ על נרשמת חדשה
-    openWhatsApp('0545222008', `היי תהל! מתאמנת חדשה בשם ${formData.full_name} (${formData.phone}) נרשמה למערכת. היא ממתינה לאישור שלך בפאנל ניהול!`);
+    openWhatsApp('0545222008', `היי תהל! נרשמתי לאתר שמי ${formData.first_name} ${formData.last_name} אני אשמח לאישור שלך!`);
   };
 
   const handleWorkoutRegister = (workoutId) => {
     if (!currentUser) return;
+    if (!currentUser.is_approved) {
+      alert('החשבון שלך ממתין לאישור תהל. עליך להמתין לאישור לפני הרשמה לאימונים!');
+      return;
+    }
 
     const workout = workouts.find(w => w.id === workoutId);
     const existingReg = registrations.find(r => r.workout_id === workoutId && r.user_id === currentUser.id);
@@ -594,7 +515,7 @@ const UserView = ({
     );
   }
 
-  if (!isRegistered && authMode === 'register') {
+  if (authMode === 'register') {
     return (
       <div className="max-w-xl mx-auto bg-white/95 backdrop-blur-md p-6 sm:p-8 rounded-3xl shadow-xl border border-amber-100">
         <div className="flex justify-between items-center text-center mb-6">
@@ -781,29 +702,6 @@ const UserView = ({
     );
   }
 
-  if (isRegistered && !isApproved) {
-    return (
-      <div className="max-w-md mx-auto bg-white/95 backdrop-blur-md p-8 rounded-3xl shadow-xl text-center border border-amber-100">
-        <div className="w-16 h-16 bg-amber-100 text-amber-700 rounded-full flex items-center justify-center mx-auto mb-4 animate-pulse">
-          <Clock size={36} />
-        </div>
-        <h2 className="text-2xl font-black text-gray-900 mb-2">תודה שנרשמת!</h2>
-        <p className="text-xs sm:text-sm text-gray-600 leading-relaxed mb-6">
-          הפרטים והצהרת הבריאות שלך התקבלו בהצלחה. <br />
-          החשבון שלך נמצא כעת בסטטוס <span className="font-bold text-amber-700">"ממתין לאישור"</span>. תהל תאשר אותך בהקדם ותקבלי הודעת וואטסאפ כשתסיימי!
-        </p>
-
-        <button 
-          onClick={() => openWhatsApp('0545222008', `היי תהל!\nשמי ${currentUser.full_name}\nנרשמתי לאתר, אשמח לאישור!`)}
-          className="w-full bg-emerald-500 hover:bg-emerald-600 text-white font-bold py-3 rounded-2xl flex items-center justify-center gap-2 text-xs sm:text-sm transition shadow-md"
-        >
-          <MessageCircle size={18} />
-          <span>שלחי תזכורת לתהל בוואטסאפ</span>
-        </button>
-      </div>
-    );
-  }
-
   const now = new Date();
   const upcomingWorkouts = workouts
     .filter(w => new Date(`${w.date}T${w.time}`) >= now)
@@ -816,6 +714,21 @@ const UserView = ({
 
   return (
     <div className="max-w-3xl mx-auto space-y-6">
+      {isRegistered && !isApproved && (
+        <div className="bg-amber-50 border border-amber-200 p-4 rounded-3xl flex flex-col sm:flex-row items-center justify-between gap-4 shadow-sm animate-fadeIn">
+          <div className="flex items-center gap-3">
+            <Clock className="text-amber-600" size={24} />
+            <div>
+              <h3 className="font-black text-amber-900 text-sm">תודה שנרשמת! החשבון ממתין לאישור</h3>
+              <p className="text-xs text-amber-800">תוכלי לצפות בלוח האימונים, אך ההרשמה תיפתח רק לאחר אישור מתהל.</p>
+            </div>
+          </div>
+          <button onClick={() => openWhatsApp('0545222008', `היי תהל!\nשמי ${currentUser.full_name}\nנרשמתי לאתר, אשמח לאישור!`)} className="bg-emerald-500 hover:bg-emerald-600 text-white px-3 py-2 rounded-xl text-xs font-bold transition flex items-center gap-1 shrink-0">
+            <MessageCircle size={14} /> תזכורת בוואטסאפ
+          </button>
+        </div>
+      )}
+
       <div className="flex bg-white/80 p-1.5 rounded-2xl shadow-sm border border-gray-200/80">
         <button 
           onClick={() => setActiveTab('schedule')}
@@ -1208,6 +1121,16 @@ const AdminDashboard = ({
     }
   };
 
+  const sendEmailWithDetails = (t) => {
+    const healthQs = { q1: 'מחלת לב', q2a: 'כאבים בחזה מנוחה', q2b: 'כאבים בחזה שגרה', q2c: 'כאבים בפעילות', q3a: 'סחרחורת', q3b: 'אובדן הכרה', q4a: 'אסטמה תרופות', q4b: 'אסטמה קוצר נשימה', q5a: 'משפחה לב', q5b: 'משפחה מוות פתאומי', q6: 'השגחה רפואית', q7: 'מחלה קבועה', q8: 'הריון בסיכון' };
+    let ansTxt = '';
+    if (t.health_declaration?.answers) {
+      ansTxt = Object.entries(t.health_declaration.answers).map(([k, v]) => `${healthQs[k] || k}: ${v ? 'כן' : 'לא'}`).join('%0A');
+    }
+    const emailBody = `שם: ${t.full_name}%0Aטלפון: ${t.phone}%0Aאימייל: ${t.email}%0Aת.ז: ${t.id_number || 'לא הוזן'}%0Aת.לידה: ${t.dob || 'לא הוזן'}%0Aיש בעיה רפואית? ${t.health_declaration?.has_medical_condition ? 'כן' : 'לא'}%0A%0Aתשובות ההצהרה:%0A${ansTxt}`;
+    window.location.href = `mailto:?subject=פרטי מתאמנת - ${t.full_name}&body=${emailBody}`;
+  };
+
   const checkAdminNeedsRenewal = (t) => {
     if (t.needs_renewal) return true;
     if (!t.health_declaration?.signed_at) return true;
@@ -1246,8 +1169,16 @@ const AdminDashboard = ({
       </div>
       <h3 className="text-xl font-bold mb-4 bg-gray-200 p-2 rounded">חלק א': שאלון רפואי</h3>
       <div className="text-sm space-y-2 mb-6">
-        <p>האם סומנו מגבלות רפואיות או תשובות 'כן' בשאלון הדיגיטלי? <span className="font-bold">{t.health_declaration?.has_medical_condition ? 'כן' : 'לא'}</span></p>
-        {t.health_declaration?.medical_cert_url && <p>צורף אישור רפואי חיצוני (נמצא במערכת הדיגיטלית).</p>}
+        <p className="mb-2">האם סומנו מגבלות רפואיות או תשובות 'כן' בשאלון הדיגיטלי? <span className="font-bold">{t.health_declaration?.has_medical_condition ? 'כן' : 'לא'}</span></p>
+        {t.health_declaration?.answers && [
+          { id: 'q1', text: '1. מחלת לב?' }, { id: 'q2a', text: '2א. כאבים בחזה במנוחה?' }, { id: 'q2b', text: '2ב. כאבים בחזה בשגרה?' }, { id: 'q2c', text: '2ג. כאבים בחזה בפעילות?' }, { id: 'q3a', text: '3א. אובדן שיווי משקל/סחרחורת?' }, { id: 'q3b', text: '3ב. אובדן הכרה?' }, { id: 'q4a', text: '4א. אסטמה/טיפול תרופתי?' }, { id: 'q4b', text: '4ב. אסטמה/קוצר נשימה?' }, { id: 'q5a', text: '5א. משפחה - מחלת לב?' }, { id: 'q5b', text: '5ב. משפחה - מוות פתאומי?' }, { id: 'q6', text: '6. אימון רק בהשגחה?' }, { id: 'q7', text: '7. מחלה קבועה מגבילה?' }, { id: 'q8', text: '8. הריון בסיכון?' }
+        ].map(q => (
+          <div key={q.id} className="border-b border-gray-200 pb-1 flex justify-between gap-4">
+            <span className="text-[11px] text-gray-700 leading-tight">{q.text}</span>
+            <span className="font-bold text-[11px]">{t.health_declaration.answers[q.id] ? 'כן' : 'לא'}</span>
+          </div>
+        ))}
+        {t.health_declaration?.medical_cert_url && <p className="mt-2 text-red-600 font-bold">צורף אישור רפואי חיצוני.</p>}
       </div>
       <h3 className="text-xl font-bold mb-4 bg-gray-200 p-2 rounded">חלק ב': הצהרה</h3>
       <p className="text-sm mb-8 leading-loose">
@@ -1638,7 +1569,7 @@ const AdminDashboard = ({
                     <button onClick={() => exportToPdf(`formal_pdf_${t.id}`, `הצהרת_בריאות_${t.full_name}.pdf`)} className="bg-gray-100 text-gray-700 hover:bg-gray-200 text-xs font-bold px-3 py-2 rounded-xl flex items-center gap-1" title="הורד הצהרת בריאות כ-PDF">
                       <Download size={14} /> PDF
                     </button>
-                    <button onClick={() => { const emailBody = `שם: ${t.full_name}%0Aטלפון: ${t.phone}%0Aאימייל: ${t.email}%0Aת.ז: ${t.id_number || 'לא הוזן'}`; window.location.href = `mailto:?subject=פרטי מתאמנת - ${t.full_name}&body=${emailBody}`; }} className="bg-blue-50 text-blue-600 hover:bg-blue-100 text-xs font-bold px-3 py-2 rounded-xl flex items-center gap-1">
+                    <button onClick={() => sendEmailWithDetails(t)} className="bg-blue-50 text-blue-600 hover:bg-blue-100 text-xs font-bold px-3 py-2 rounded-xl flex items-center gap-1">
                       <Send size={14} /> מייל
                     </button>
                     <button onClick={() => handleRejectTrainee(t.id)} className="bg-red-100 text-red-600 hover:bg-red-200 text-xs font-bold px-3 py-2 rounded-xl">
@@ -1735,13 +1666,7 @@ const AdminDashboard = ({
                     >
                       <Download size={14} /> PDF
                     </button>
-                    <button 
-                      onClick={() => {
-                        const emailBody = `שם: ${t.full_name}%0Aטלפון: ${t.phone}%0Aאימייל: ${t.email}%0Aת.ז: ${t.id_number || 'לא הוזן'}%0Aת.לידה: ${t.dob || 'לא הוזן'}%0Aהצהרת בריאות - יש בעיה? ${t.health_declaration?.has_medical_condition ? 'כן' : 'לא'}`;
-                        window.location.href = `mailto:?subject=פרטי מתאמנת - ${t.full_name}&body=${emailBody}`;
-                      }}
-                      className="bg-blue-50 text-blue-600 hover:bg-blue-100 text-xs font-bold px-3 py-2 rounded-xl flex items-center gap-1"
-                    >
+<button onClick={() => sendEmailWithDetails(t)} className="bg-blue-50 text-blue-600 hover:bg-blue-100 text-xs font-bold px-3 py-2 rounded-xl flex items-center gap-1">
                       <Send size={14} /> שלח במייל
                     </button>
                     <button 
@@ -2148,8 +2073,13 @@ export default function App() {
   }, []);
 
   // שמירת הנתונים ל-Supabase אוטומטית בכל שינוי
+  const isInitialMount = useRef(true);
   useEffect(() => {
     if (!isDataLoaded) return;
+    if (isInitialMount.current) {
+      isInitialMount.current = false;
+      return; // מונע שמירה אוטומטית ריקה בשנייה שהאתר נטען!
+    }
     
     const saveGlobalState = async () => {
       const stateToSave = { settings, workouts, trainees, registrations, waitlist };
