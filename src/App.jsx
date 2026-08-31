@@ -92,14 +92,29 @@ const uploadToCloudinary = async (file, cloudName, uploadPreset) => {
 const exportToPdf = (elementId, filename) => {
   const element = document.getElementById(elementId);
   if (!element) return;
+  
+  // ניצור העתק של האלמנט כדי שנוכל להציג אותו זמנית רק עבור הצילום
+  const clone = element.cloneNode(true);
+  clone.classList.remove('hidden');
+  clone.style.display = 'block';
+  clone.style.position = 'absolute';
+  clone.style.top = '0';
+  clone.style.left = '0';
+  clone.style.zIndex = '-9999';
+  document.body.appendChild(clone);
+
   const opt = {
     margin:       10,
     filename:     filename,
     image:        { type: 'jpeg', quality: 0.98 },
-    html2canvas:  { scale: 2 },
+    html2canvas:  { scale: 2, useCORS: true, scrollY: 0 }, // useCORS קריטי לתמונות מ-Cloudinary!
     jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
   };
-  html2pdf().set(opt).from(element).save();
+  
+  html2pdf().set(opt).from(clone).save().then(() => {
+    // מחיקת העותק לאחר סיום ההורדה
+    document.body.removeChild(clone);
+  });
 };
 
 // ============================================================================
@@ -1264,9 +1279,10 @@ const AdminDashboard = ({
     );
   };
 
+  // ============================================================================
   // תבנית PDF פורמלית ונסתרת המשמשת ליצוא עבור כל מתאמן
   const renderFormalPdfTemplate = (t) => (
-    <div id={`formal_pdf_${t.id}`} className="absolute w-[210mm] min-h-[297mm] bg-white p-10 text-right text-black font-sans leading-relaxed" dir="rtl" style={{ top: '-9999px', left: '-9999px', zIndex: -50, direction: 'rtl' }}>
+    <div id={`formal_pdf_${t.id}`} className="hidden w-[210mm] min-h-[297mm] bg-white p-10 text-right text-black font-sans leading-relaxed" dir="rtl" style={{ direction: 'rtl' }}>
       <div className="flex justify-between items-end border-b-4 border-black pb-4 mb-6">
         <div>
           <h1 className="text-3xl font-black text-black">טופס הצהרת בריאות</h1>
