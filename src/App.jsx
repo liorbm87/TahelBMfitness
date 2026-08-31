@@ -976,6 +976,12 @@ const UserView = ({
                       )}
                     </div>
                   </div>
+                  
+                  <div className="mt-4 pt-3 border-t border-gray-100/60">
+                    <p className="text-[10px] text-gray-500 font-medium text-center sm:text-right">
+                      * האימון יתקיים במידה ויהיו {workout.max_participants} מתאמנות, במידה ולא, ייתכן והאימון יבוטל.
+                    </p>
+                  </div>
                 </div>
               );
             })
@@ -1361,7 +1367,7 @@ const AdminDashboard = ({
             {settings.logoUrl && <img src={settings.logoUrl} alt="לוגו" className="h-24 object-contain" />}
           </div>
         </div>
-        <div className="text-[9px] mb-2 leading-snug">
+        <div className="text-[10px] mb-3 leading-relaxed">
           <p>השאלון הבא נועד לבדוק את כשירותך הגופנית במטרה להתאים עבורך באופן אישי את התכנית הטובה ביותר.</p>
           <p>על כן, עליי לדעת האם ישנה בעיה רפואית כלשהיא הדורשת התייחסות ספציפית ו/או עלולה להיות גורם מגביל כלשהוא. כל הפרטים בשאלון זה הינם חסויים. יש לסמן במקום המתאים.</p>
         </div>
@@ -1372,8 +1378,8 @@ const AdminDashboard = ({
           <p>טלפון: {t.phone}</p>
         </div>
         <h3 className="text-lg font-bold mb-2 bg-gray-200 p-1.5 rounded">חלק א': שאלון רפואי</h3>
-        <div className="text-[9px] space-y-0.5 mb-2">
-          <p className="mb-0.5 text-[10px] font-bold">האם סומנו מגבלות רפואיות או תשובות 'כן' בשאלון הדיגיטלי? <span className="text-red-600">{t.health_declaration?.has_medical_condition ? 'כן' : 'לא'}</span></p>
+        <div className="text-[10px] space-y-1 mb-4">
+          <p className="mb-1 text-xs">האם סומנו מגבלות רפואיות או תשובות 'כן' בשאלון הדיגיטלי? <span className="font-bold">{t.health_declaration?.has_medical_condition ? 'כן' : 'לא'}</span></p>
           {t.health_declaration?.answers && [
             { id: 'q1', text: '1. האם הרופא שלך אמר לך שאתה סובל ממחלת לב?' },
             { id: 'q2_header', type: 'header', text: '2. האם אתה חש כאבים בחזה (אנא סמן את תשובתך בכל אחת מהאפשרויות המפורטות מטה)-' },
@@ -1395,12 +1401,12 @@ const AdminDashboard = ({
           ].map(q => {
             if (q.type === 'header') return <div key={q.id} className="font-bold text-gray-800 mt-1">{q.text}</div>;
             return (
-            <div key={q.id} className="border-b border-gray-100 flex justify-between gap-2">
-              <span className="text-[9px] text-gray-700 leading-none pr-1">{q.text}</span>
-              <span className="font-bold text-[9px]">{t.health_declaration.answers[q.id] ? 'כן' : 'לא'}</span>
+            <div key={q.id} className="border-b border-gray-200 pb-0.5 flex justify-between gap-4">
+              <span className="text-[10px] text-gray-700 leading-tight pr-2">{q.text}</span>
+              <span className="font-bold text-[10px]">{t.health_declaration.answers[q.id] ? 'כן' : 'לא'}</span>
             </div>
           )})}
-          {t.health_declaration?.medical_cert_url && <p className="mt-1 text-red-600 font-bold text-[10px]">צורף אישור רפואי חיצוני.</p>}
+          {t.health_declaration?.medical_cert_url && <p className="mt-1 text-red-600 font-bold">צורף אישור רפואי חיצוני.</p>}
         </div>
         <h3 className="text-lg font-bold mb-2 bg-gray-200 p-1.5 rounded">חלק ב': הצהרה והצהרת בריאות</h3>
         <div className="text-[9px] mb-3 leading-tight space-y-1">
