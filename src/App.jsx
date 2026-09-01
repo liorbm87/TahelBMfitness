@@ -3058,64 +3058,61 @@ export default function App() {
     <Router>
       <style>{`@import url('https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;700;900&display=swap'); * { font-family: 'Heebo', sans-serif !important; }`}</style>
       <div dir="rtl" className="text-gray-900 antialiased selection:bg-amber-200 relative min-h-screen">
-        
-        {/* רקע מקובע שתופס את כל המסך גם במובייל וגם בגלילה */}
-        <div 
-          className="fixed inset-0 z-[-1] bg-cover bg-top h-screen w-screen bg-no-repeat" 
-          style={{ backgroundImage: `url(${settings.backgroundUrl})` }}
-        ></div>
-        
+        <div className="fixed inset-0 z-[-1] bg-cover bg-top h-screen w-screen bg-no-repeat" style={{ backgroundImage: `url(${settings.backgroundUrl})` }}></div>
         <div className="min-h-screen bg-gradient-to-b from-white/80 via-white/70 to-white/85 backdrop-blur-[3px] pb-12 relative z-10">
-          
-          <MainHeader 
-            settings={settings}
-            isAdmin={isAdminLoggedIn}
-            onOpenAdminLogin={() => setIsAdminLoginModalOpen(true)}
-            onLogout={() => { setIsAdminLoggedIn(false); sessionStorage.removeItem('tahel_admin_logged_in'); }}
-            currentUser={currentUser}
-            setCurrentUser={setCurrentUser}
-            setTrainees={setTrainees}
-            onRefresh={loadGlobalState}
-          />
-
-          <main className="px-4">
-            {isAdminLoggedIn ? (
-              <AdminDashboard 
-                workouts={workouts}
-                setWorkouts={setWorkouts}
-                trainees={trainees}
-                setTrainees={setTrainees}
-                registrations={registrations}
-                setRegistrations={setRegistrations}
-                settings={settings}
-                setSettings={setSettings}
-                onRefresh={loadGlobalState}
-              />
-
-            ) : (
-              <UserView 
-                trainees={trainees}
-                setTrainees={setTrainees}
-                workouts={workouts}
-                registrations={registrations}
-                setRegistrations={setRegistrations}
-                waitlist={waitlist}
-                setWaitlist={setWaitlist}
-                currentUser={currentUser}
-                setCurrentUser={setCurrentUser}
-                settings={settings}
-              />
-            )}
-          </main>
-
-          <AdminLoginModal 
-            isOpen={isAdminLoginModalOpen}
-            onClose={() => setIsAdminLoginModalOpen(false)}
-            onLogin={() => { setIsAdminLoggedIn(true); sessionStorage.setItem('tahel_admin_logged_in', 'true'); }}
-            currentPassword={settings.adminPassword}
-          />
-
-          <Footer />
+          <Routes>
+            <Route path="/admin" element={
+              <>
+                <MainHeader 
+                  settings={settings}
+                  isAdmin={isAdminLoggedIn}
+                  onOpenAdminLogin={() => {}}
+                  onLogout={() => { setIsAdminLoggedIn(false); window.location.href = '/'; }}
+                  currentUser={null}
+                  setCurrentUser={() => {}}
+                  setTrainees={setTrainees}
+                  onRefresh={loadGlobalState}
+                />
+                <main className="px-4">
+                  {isAdminLoggedIn ? (
+                    <AdminDashboard workouts={workouts} setWorkouts={setWorkouts} trainees={trainees} setTrainees={setTrainees} registrations={registrations} setRegistrations={setRegistrations} waitlist={waitlist} setWaitlist={setWaitlist} settings={settings} setSettings={setSettings} onRefresh={loadGlobalState} />
+                  ) : (
+                    <div className="text-center py-20">אנא התחברי למערכת...</div>
+                  )}
+                </main>
+                {!isAdminLoggedIn && (
+                  <div className="fixed inset-0 bg-black/80 backdrop-blur-md flex items-center justify-center p-4 z-[9999]">
+                    <div className="bg-white rounded-3xl p-6 max-w-sm w-full shadow-2xl">
+                      <h3 className="font-bold text-xl text-gray-900 mb-4 flex items-center gap-2"><Lock /> התחברות למנהלת</h3>
+                      <input type="password" placeholder="הקלידי סיסמה..." id="directAdminPass" className="w-full p-3 border border-gray-300 rounded-xl mb-4 text-center text-lg font-bold tracking-widest outline-none focus:border-amber-500" autoFocus onKeyDown={(e) => {
+                        if(e.key === 'Enter') {
+                          if(e.target.value === settings.adminPassword) { setIsAdminLoggedIn(true); } else { alert('סיסמה שגויה!'); e.target.value = ''; }
+                        }
+                      }}/>
+                      <button onClick={() => {
+                        const val = document.getElementById('directAdminPass').value;
+                        if(val === settings.adminPassword) { setIsAdminLoggedIn(true); } else { alert('סיסמה שגויה!'); document.getElementById('directAdminPass').value = ''; }
+                      }} className="w-full bg-gray-900 text-white font-bold py-3 rounded-xl">היכנסי לפאנל</button>
+                    </div>
+                  </div>
+                )}
+              </>
+            } />
+            <Route path="*" element={
+              <>
+                <MainHeader settings={settings} isAdmin={isAdminLoggedIn} onOpenAdminLogin={() => setIsAdminLoginModalOpen(true)} onLogout={() => setIsAdminLoggedIn(false)} currentUser={currentUser} setCurrentUser={setCurrentUser} setTrainees={setTrainees} onRefresh={loadGlobalState} />
+                <main className="px-4">
+                  {isAdminLoggedIn ? (
+                    <AdminDashboard workouts={workouts} setWorkouts={setWorkouts} trainees={trainees} setTrainees={setTrainees} registrations={registrations} setRegistrations={setRegistrations} waitlist={waitlist} setWaitlist={setWaitlist} settings={settings} setSettings={setSettings} onRefresh={loadGlobalState} />
+                  ) : (
+                    <UserView trainees={trainees} setTrainees={setTrainees} workouts={workouts} registrations={registrations} setRegistrations={setRegistrations} waitlist={waitlist} setWaitlist={setWaitlist} currentUser={currentUser} setCurrentUser={setCurrentUser} settings={settings} />
+                  )}
+                </main>
+                <AdminLoginModal isOpen={isAdminLoginModalOpen} onClose={() => setIsAdminLoginModalOpen(false)} onLogin={() => setIsAdminLoggedIn(true)} currentPassword={settings.adminPassword} />
+                <Footer />
+              </>
+            } />
+          </Routes>
         </div>
       </div>
     </Router>
