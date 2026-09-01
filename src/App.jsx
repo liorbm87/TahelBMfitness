@@ -1096,6 +1096,10 @@ const AdminDashboard = ({
   const [messageModal, setMessageModal] = useState(null); // { workout, type: 'broadcast' | 'invite' }
   const [messageText, setMessageText] = useState('');
   const [sentMessageUserIds, setSentMessageUserIds] = useState([]);
+  
+  const [historyModalUser, setHistoryModalUser] = useState(null);
+  const [unpaidBroadcastModal, setUnpaidBroadcastModal] = useState(false);
+  const [unpaidMessageText, setUnpaidMessageText] = useState('היי [שם פרטי]! רציתי להזכיר שטרם הוסדר תשלום על אימון [פרטי האימון] בסך [מחיר]. אשמח להסדרה!');
 
   const processMessageText = (text, user, workout) => {
     const workoutLink = `${window.location.origin}?workout=${workout.id}`;
@@ -1706,7 +1710,24 @@ const AdminDashboard = ({
                         {regList.map(r => {
                           const user = trainees.find(t => t.id === r.user_id);
                           return (
-                            <span key={r.id} className="bg-gray-100 text-gray-800 text-[11px] px-2.5 py-1 rounded-xl font-medium flex items-center gap-1">
+                            <span 
+                              key={r.id} 
+                              onClick={() => {
+                                if (r.payment_status === 'paid') {
+                                  if (window.confirm('האם לבטל את סימון התשלום?')) {
+                                    if (window.confirm('לבטל בטוח?')) {
+                                      handleUpdatePaymentStatus(r.id, 'unpaid');
+                                    }
+                                  }
+                                } else {
+                                  if (window.confirm('האם לסמן שולם?')) {
+                                    handleUpdatePaymentStatus(r.id, 'paid');
+                                  }
+                                }
+                              }}
+                              className="cursor-pointer hover:bg-gray-200 transition bg-gray-100 text-gray-800 text-[11px] px-2.5 py-1 rounded-xl font-medium flex items-center gap-1"
+                              title="לחצי כדי לשנות סטטוס תשלום"
+                            >
                               {user ? user.full_name : 'מתאמן'}
                               <span className={`w-2 h-2 rounded-full ${r.payment_status === 'paid' ? 'bg-emerald-500' : 'bg-red-500'}`}></span>
                             </span>
@@ -1828,37 +1849,60 @@ const AdminDashboard = ({
           </div>
 
           <div className="space-y-3">
+            {stats.unpaidDebtsList.length > 0 && (
+              <div 
+                onClick={() => setUnpaidBroadcastModal(true)}
+                className="bg-red-50 border border-red-200 p-4 rounded-2xl flex items-center justify-between gap-4 shadow-sm cursor-pointer hover:bg-red-100 transition mb-4"
+              >
+                <div className="flex items-center gap-3">
+                  <AlertCircle className="text-red-600" size={24} />
+                  <div>
+                    <h3 className="font-black text-red-900 text-sm">חובות פתוחים מאימוני עבר!</h3>
+                    <p className="text-xs text-red-800">ישנם {stats.unpaidDebtsList.length} תשלומים חסרים. לחצי כאן לגבייה מרוכזת.</p>
+                  </div>
+                </div>
+                <ChevronRight className="text-red-600" size={20} />
+              </div>
+            )}
+
             <h3 className="font-bold text-gray-900 text-sm">מתאמנים פעילים ({trainees.filter(t => t.is_approved && !t.is_archived).length})</h3>
 
-            <div className="grid grid-cols-1 gap-6">
+            <div className="grid grid-cols-1 gap-4">
               {trainees.filter(t => t.is_approved && !t.is_archived).map(t => (
-                <div key={t.id} className="bg-white/95 p-5 rounded-2xl shadow-sm border border-gray-100 space-y-3 relative overflow-hidden">
+                <div key={t.id} className="bg-white/95 p-4 rounded-2xl shadow-sm border border-gray-100 relative overflow-hidden">
                   {renderFormalPdfTemplate(t)}
-                  {checkAdminNeedsRenewal(t) && <div className="absolute top-0 right-0 bg-red-600 text-white text-[10px] font-bold px-3 py-1 rounded-bl-xl">ממתין להצהרה חדשה</div>}
+                  {checkAdminNeedsRenewal(t) && <div className="absolute top-0 right-0 bg-red-600 text-white text-[10px] font-bold px-3 py-1 rounded-bl-xl z-10">ממתין להצהרה חדשה</div>}
                   
                   {/* תוכן תצוגה בלבד - ה-PDF נמשך מהתבנית המוסתרת */}
-                  <div className="p-4 bg-white space-y-3">
-                    <div className="flex justify-between items-center border-b pb-2">
-                      <div>
-                        <h2 className="font-black text-lg text-gray-900">הצהרת בריאות ופרטי מתאמנת</h2>
-                        <h4 className="font-bold text-base text-gray-800 mt-1">{t.full_name}</h4>
+                  <div className="bg-white mb-3">
+                    <details className="group">
+                      <summary className="font-bold text-base text-gray-800 cursor-pointer flex justify-between items-center bg-gray-50 p-3 rounded-xl hover:bg-gray-100 transition list-none">
+                        <div className="flex items-center gap-2">
+                          <span>{t.full_name}</span>
+                          <span className="text-xs text-gray-500 font-normal">({t.phone})</span>
+                        </div>
+                        <span className="group-open:rotate-180 transition-transform"><ChevronDown size={18} /></span>
+                      </summary>
+                      <div className="mt-3 space-y-3 px-2">
+                        <div className="grid grid-cols-2 gap-2 text-sm text-gray-700">
+                          <p><strong>ת.ז:</strong> {t.id_number || 'לא הוזן'}</p>
+                          <p><strong>ת. לידה:</strong> {t.dob ? new Date(t.dob).toLocaleDateString('he-IL') : 'לא הוזן'}</p>
+                          <p><strong>אימייל:</strong> {t.email}</p>
+                          <p><strong>תאריך חתימה:</strong> {t.health_declaration?.signed_at || new Date(t.created_at).toLocaleDateString('he-IL')}</p>
+                        </div>
+                        {renderHealthDeclarationAccordion(t)}
                       </div>
-                      <img src={settings.logoUrl || ''} alt="לוגו" className="h-10 object-contain hidden print:block" />
-                    </div>
-                    
-                    <div className="grid grid-cols-2 gap-2 text-sm text-gray-700">
-                      <p><strong>ת.ז:</strong> {t.id_number || 'לא הוזן'}</p>
-                      <p><strong>ת. לידה:</strong> {t.dob ? new Date(t.dob).toLocaleDateString('he-IL') : 'לא הוזן'}</p>
-                      <p><strong>טלפון:</strong> {t.phone}</p>
-                      <p><strong>אימייל:</strong> {t.email}</p>
-                      <p className="col-span-2"><strong>תאריך חתימה:</strong> {t.health_declaration?.signed_at || new Date(t.created_at).toLocaleDateString('he-IL')}</p>
-                    </div>
-
-                    {renderHealthDeclarationAccordion(t)}
+                    </details>
                   </div>
 
                   {/* כפתורי פעולה (לא יופיעו ב-PDF כי הם מחוץ ל-div של ה-PDF) */}
-                  <div className="flex flex-wrap gap-2 pt-2 border-t border-gray-100">
+                  <div className="flex flex-wrap gap-2 pt-3 border-t border-gray-100">
+                    <button 
+                      onClick={() => setHistoryModalUser(t)}
+                      className="flex-1 bg-purple-50 text-purple-700 hover:bg-purple-100 text-xs font-bold py-2 rounded-xl flex justify-center items-center gap-1 min-w-[120px]"
+                    >
+                      <Calendar size={14} /> היסטוריית אימונים
+                    </button>
                     <label className="flex-1 bg-blue-50 text-blue-700 hover:bg-blue-100 text-xs font-bold py-2 rounded-xl flex justify-center items-center gap-1 cursor-pointer min-w-[100px]">
                       <Upload size={14} /> העלי אישור
                       <input type="file" accept="image/*,application/pdf" className="hidden" onChange={(e) => handleAdminUploadCert(t.id, e)} />
@@ -2195,6 +2239,114 @@ const AdminDashboard = ({
         </div>
       )}
 
+      {unpaidBroadcastModal && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-3xl p-6 max-w-lg w-full shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto">
+            <div className="flex justify-between items-center border-b pb-3">
+              <h3 className="font-bold text-base text-gray-900">גביית חובות מאימוני עבר</h3>
+              <button onClick={() => setUnpaidBroadcastModal(false)} className="text-gray-400 hover:text-gray-600"><X size={20} /></button>
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold text-gray-700 mb-1">נוסח ההודעה (לחצי על התגיות להוספה):</label>
+              <div className="flex flex-wrap gap-1 mb-2">
+                {['[שם פרטי]', '[פרטי האימון]', '[מחיר]'].map(tag => (
+                  <button key={tag} onClick={() => setUnpaidMessageText(prev => prev + ' ' + tag)} className="bg-gray-100 hover:bg-red-100 text-gray-700 text-[10px] px-2 py-1 rounded-lg border font-semibold transition cursor-pointer">
+                    {tag}
+                  </button>
+                ))}
+              </div>
+              <textarea 
+                value={unpaidMessageText}
+                onChange={(e) => setUnpaidMessageText(e.target.value)}
+                className="w-full p-3 border rounded-xl text-xs outline-none focus:border-red-400"
+                rows={4}
+              />
+            </div>
+
+            <div>
+              <h4 className="text-xs font-bold text-gray-700 mb-2">רשימת מתאמנים עם תשלום חסר:</h4>
+              <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
+                {stats.unpaidDebtsList.map((debt, idx) => (
+                  <div key={idx} className="flex flex-col sm:flex-row justify-between sm:items-center bg-gray-50 p-2.5 rounded-xl text-xs border border-gray-200 gap-2">
+                    <div>
+                      <span className="font-bold text-gray-800">{debt.user.full_name}</span>
+                      <p className="text-[10px] text-gray-500">{debt.workout.type} - {debt.workout.date}</p>
+                      <p className="text-[10px] font-bold text-red-600">{debt.amount} ₪</p>
+                    </div>
+                    <div className="flex gap-2">
+                      <button 
+                        onClick={() => {
+                          const finalMsg = processMessageText(unpaidMessageText, debt.user, debt.workout);
+                          openWhatsApp(debt.user.phone, finalMsg);
+                        }}
+                        className="bg-emerald-500 hover:bg-emerald-600 text-white px-2.5 py-1.5 rounded-lg font-bold flex items-center gap-1 transition"
+                      >
+                        <MessageCircle size={14} /> וואטסאפ
+                      </button>
+                      <button 
+                        onClick={() => handleUpdatePaymentStatus(debt.regId, 'paid')}
+                        className="bg-blue-100 hover:bg-blue-200 text-blue-800 px-2.5 py-1.5 rounded-lg font-bold flex items-center gap-1 transition"
+                      >
+                        <Check size={14} /> סמן שולם
+                      </button>
+                    </div>
+                  </div>
+                ))}
+                {stats.unpaidDebtsList.length === 0 && (
+                  <p className="text-xs text-gray-500 text-center py-4 font-bold">כל החובות הוסדרו!</p>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {historyModalUser && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-3xl p-6 max-w-lg w-full shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto">
+            <div className="flex justify-between items-center border-b pb-3">
+              <h3 className="font-bold text-base text-gray-900">היסטוריית אימונים - {historyModalUser.full_name}</h3>
+              <button onClick={() => setHistoryModalUser(null)} className="text-gray-400 hover:text-gray-600"><X size={20} /></button>
+            </div>
+            <div className="space-y-3 max-h-64 overflow-y-auto pr-1">
+              {registrations.filter(r => r.user_id === historyModalUser.id).length === 0 ? (
+                <p className="text-xs text-gray-500">המתאמנת לא רשומה לאף אימון במערכת.</p>
+              ) : (
+                registrations.filter(r => r.user_id === historyModalUser.id)
+                  .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
+                  .map(r => {
+                  const w = workouts.find(wo => wo.id === r.workout_id);
+                  if (!w) return null;
+                  return (
+                    <div key={r.id} className="flex justify-between items-center bg-gray-50 p-3 rounded-xl border border-gray-100">
+                      <div>
+                        <p className="font-bold text-gray-800 text-sm">{w.type}</p>
+                        <p className="text-xs text-gray-500">{w.date.split('-').reverse().join('/')} | {w.time}</p>
+                      </div>
+                      <div className="flex flex-col items-end gap-1">
+                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md ${r.payment_status === 'paid' ? 'bg-emerald-100 text-emerald-800' : 'bg-red-100 text-red-800'}`}>
+                          {r.payment_status === 'paid' ? 'שולם' : 'לא שולם'}
+                        </span>
+                        <button 
+                          onClick={() => handleUpdatePaymentStatus(r.id, r.payment_status === 'paid' ? 'unpaid' : 'paid')}
+                          className="text-[10px] text-blue-600 underline font-semibold cursor-pointer hover:text-blue-800"
+                        >
+                          שנה סטטוס תשלום
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+            <button onClick={() => setHistoryModalUser(null)} className="w-full bg-gray-900 text-white font-bold py-2.5 rounded-xl text-xs mt-2 hover:bg-gray-800 transition">
+              סגרי חלון
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* מודאל עריכת אימון */}
       {editWorkoutData && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50">
@@ -2264,18 +2416,26 @@ const AdminDashboard = ({
                   return (
                     <div key={r.id} className="flex justify-between items-center bg-gray-50 p-2.5 rounded-xl border border-gray-100 text-xs">
                       <span className="font-bold text-gray-800">{u.full_name}</span>
-                      <button 
-                        onClick={() => {
-                          if(window.confirm(`להסיר את ${u.full_name} מהאימון?`)) {
-                            if(window.confirm('אזהרה כפולה: פעולה זו תמחק את הרישום שלה לאימון זה לחלוטין. להמשיך?')) {
-                              setRegistrations(prev => prev.filter(reg => reg.id !== r.id));
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => handleUpdatePaymentStatus(r.id, r.payment_status === 'paid' ? 'unpaid' : 'paid')}
+                          className={`px-3 py-1.5 rounded-lg font-bold transition ${r.payment_status === 'paid' ? 'bg-emerald-100 text-emerald-700' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}`}
+                        >
+                          {r.payment_status === 'paid' ? 'שולם ✓' : 'סמן שולם'}
+                        </button>
+                        <button 
+                          onClick={() => {
+                            if(window.confirm(`להסיר את ${u.full_name} מהאימון?`)) {
+                              if(window.confirm('אזהרה כפולה: פעולה זו תמחק את הרישום שלה לאימון זה לחלוטין. להמשיך?')) {
+                                setRegistrations(prev => prev.filter(reg => reg.id !== r.id));
+                              }
                             }
-                          }
-                        }}
-                        className="bg-red-50 text-red-600 hover:bg-red-100 px-3 py-1.5 rounded-lg font-bold transition"
-                      >
-                        הסרה מהאימון
-                      </button>
+                          }}
+                          className="bg-red-50 text-red-600 hover:bg-red-100 px-3 py-1.5 rounded-lg font-bold transition"
+                        >
+                          הסרה
+                        </button>
+                      </div>
                     </div>
                   )
                 })}
