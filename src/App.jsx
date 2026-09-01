@@ -107,8 +107,9 @@ const exportToPdf = (elementId, filename) => {
 // ============================================================================
 // 4. כותרת, לוגו מרכזי ואזור אישי (MAIN HEADER)
 // ============================================================================
-const MainHeader = ({ settings, isAdmin, onOpenAdminLogin, onLogout, currentUser, setCurrentUser, setTrainees, onRefresh }) => {
+const MainHeader = ({ settings, isAdmin, onOpenAdminLogin, onLogout, currentUser, setCurrentUser, setTrainees, onRefresh, workouts = [], registrations = [] }) => {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false);
   const [editForm, setEditForm] = useState({ full_name: '', phone: '', email: '' });
 
   const openEditModal = () => {
@@ -190,11 +191,11 @@ const MainHeader = ({ settings, isAdmin, onOpenAdminLogin, onLogout, currentUser
             שלום, {currentUser.full_name}
           </button>
           <button
-            onClick={() => openWhatsApp('972545222008', 'היי תהל, אשמח להתייעץ איתך!')}
-            className="w-full sm:w-auto bg-emerald-500 hover:bg-emerald-600 text-white px-6 py-3 rounded-2xl text-sm font-bold flex items-center justify-center gap-2 shadow-md transition active:scale-95"
+            onClick={() => setIsHistoryModalOpen(true)}
+            className="w-full sm:w-auto text-sm font-bold text-purple-800 bg-purple-50 hover:bg-purple-100 px-6 py-3 rounded-2xl transition flex items-center justify-center gap-2 shadow-sm border border-purple-200"
           >
-            <MessageCircle size={18} />
-            דברי איתי
+            <Archive size={16} />
+            היסטוריית אימונים
           </button>
           </>)}
         </div>
@@ -258,6 +259,46 @@ const MainHeader = ({ settings, isAdmin, onOpenAdminLogin, onLogout, currentUser
                 שמירת שינויים
               </button>
             </form>
+          </div>
+        </div>
+      )}
+
+      {isHistoryModalOpen && currentUser && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-fadeIn">
+          <div className="bg-white rounded-3xl p-6 max-w-lg w-full shadow-2xl border border-purple-100 max-h-[85vh] overflow-y-auto">
+            <div className="flex justify-between items-center mb-6">
+              <h3 className="font-bold text-lg text-gray-900 flex items-center gap-2"><Archive className="text-purple-600"/> היסטוריית אימונים ותשלומים</h3>
+              <button onClick={() => setIsHistoryModalOpen(false)} className="text-gray-400 hover:text-gray-600"><X size={20} /></button>
+            </div>
+            <div className="space-y-3">
+              {registrations.filter(r => r.user_id === currentUser.id).length === 0 ? (
+                <p className="text-sm text-gray-500 text-center py-4">אין היסטוריית אימונים עדיין.</p>
+              ) : (
+                registrations.filter(r => r.user_id === currentUser.id)
+                  .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
+                  .map(reg => {
+                    const workout = workouts.find(w => w.id === reg.workout_id);
+                    if (!workout) return null;
+                    return (
+                      <div key={reg.id} className="bg-gray-50 p-4 rounded-xl border border-gray-200 text-right">
+                        <h4 className="font-bold text-gray-900 text-md">{workout.type}</h4>
+                        <div className="text-xs text-gray-600 mt-1 space-y-1">
+                          <p><strong>תאריך:</strong> {workout.date.split('-').reverse().join('/')} בשעה {workout.time}</p>
+                          <p><strong>מיקום:</strong> {workout.location}</p>
+                          <p><strong>מחיר:</strong> {workout.price} ₪</p>
+                        </div>
+                        <div className="mt-3 pt-3 border-t border-gray-200 flex justify-between items-center">
+                          <span className="text-xs font-bold text-gray-700">סטטוס תשלום:</span>
+                          <span className={`text-xs px-2.5 py-1 rounded-md font-bold ${reg.payment_status === 'paid' ? 'bg-emerald-100 text-emerald-800' : reg.payment_status === 'punch_card' ? 'bg-blue-100 text-blue-800' : 'bg-red-100 text-red-800'}`}>
+                            {reg.payment_status === 'paid' ? 'שולם' : reg.payment_status === 'punch_card' ? 'חויב מכרטיסייה' : 'טרם שולם'}
+                            {reg.payment_status !== 'punch_card' && ` (${reg.paid_amount !== undefined ? reg.paid_amount : workout.price} ₪)`}
+                          </span>
+                        </div>
+                      </div>
+                    );
+                  })
+              )}
+            </div>
           </div>
         </div>
       )}
@@ -2930,7 +2971,7 @@ const AccessibilityWidget = () => {
 
   useEffect(() => {
     if (highContrast) {
-      document.documentElement.style.setProperty('filter', 'contrast(1.25) saturate(1.2)');
+      document.documentElement.style.setProperty('filter', 'invert(0.95) hue-rotate(180deg)');
     } else {
       document.documentElement.style.removeProperty('filter');
     }
@@ -3124,6 +3165,8 @@ export default function App() {
                   setCurrentUser={() => {}}
                   setTrainees={setTrainees}
                   onRefresh={loadGlobalState}
+                  workouts={workouts}
+                  registrations={registrations}
                 />
                 <main className="px-4">
                   {isAdminLoggedIn ? (
@@ -3152,7 +3195,7 @@ export default function App() {
             } />
             <Route path="*" element={
               <>
-                <MainHeader settings={settings} isAdmin={isAdminLoggedIn} onOpenAdminLogin={() => setIsAdminLoginModalOpen(true)} onLogout={() => { setIsAdminLoggedIn(false); window.history.pushState(null, '', '/'); }} currentUser={currentUser} setCurrentUser={setCurrentUser} setTrainees={setTrainees} onRefresh={loadGlobalState} />
+                <MainHeader settings={settings} isAdmin={isAdminLoggedIn} onOpenAdminLogin={() => setIsAdminLoginModalOpen(true)} onLogout={() => { setIsAdminLoggedIn(false); window.history.pushState(null, '', '/'); }} currentUser={currentUser} setCurrentUser={setCurrentUser} setTrainees={setTrainees} onRefresh={loadGlobalState} workouts={workouts} registrations={registrations} />
                 <main className="px-4">
                   {isAdminLoggedIn ? (
                     <AdminDashboard workouts={workouts} setWorkouts={setWorkouts} trainees={trainees} setTrainees={setTrainees} registrations={registrations} setRegistrations={setRegistrations} waitlist={waitlist} setWaitlist={setWaitlist} settings={settings} setSettings={setSettings} onRefresh={loadGlobalState} />
@@ -3166,6 +3209,9 @@ export default function App() {
             } />
           </Routes>
           <AccessibilityWidget />
+          <a href="https://wa.me/972545222008?text=היי%20תהל,%20אשמח%20לפרטים" target="_blank" rel="noreferrer" className="fixed bottom-6 right-6 z-[9998] bg-emerald-500 text-white p-3 rounded-full shadow-2xl hover:bg-emerald-600 transition flex items-center justify-center hover:scale-110" style={{ width: '56px', height: '56px' }} title="שלחי הודעה לתהל">
+            <MessageCircle size={32} />
+          </a>
         </div>
       </div>
     </Router>
