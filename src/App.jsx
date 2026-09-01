@@ -202,7 +202,7 @@ const MainHeader = ({ settings, isAdmin, onOpenAdminLogin, onLogout, currentUser
 
       {/* מודאל עריכת פרטים אישיים */}
       {isEditModalOpen && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-fadeIn">
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center md:items-start justify-center p-4 md:pt-24 z-50 animate-fadeIn">
           <div className="bg-white rounded-3xl p-6 max-w-sm w-full shadow-2xl border border-amber-100">
             <div className="flex justify-between items-center mb-6">
               <h3 className="font-bold text-lg text-gray-900">עריכת פרטים אישיים</h3>
@@ -287,7 +287,7 @@ const AdminLoginModal = ({ isOpen, onClose, onLogin, currentPassword }) => {
   };
 
   return (
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-fadeIn">
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center md:items-start justify-center p-4 md:pt-24 z-50 animate-fadeIn">
       <div className="bg-white rounded-3xl p-6 max-w-sm w-full shadow-2xl border border-amber-100">
         <div className="flex justify-between items-center mb-4">
           <div className="flex items-center gap-2 text-amber-600">
@@ -2174,7 +2174,7 @@ const AdminDashboard = ({
       )}
 
       {messageModal && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center md:items-start justify-center p-4 md:pt-24 z-50">
           <div className="bg-white rounded-3xl p-6 max-w-lg w-full shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto">
             <div className="flex justify-between items-center border-b pb-3">
               <h3 className="font-bold text-base text-gray-900">
@@ -2240,7 +2240,7 @@ const AdminDashboard = ({
       )}
 
       {unpaidBroadcastModal && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center md:items-start justify-center p-4 md:pt-24 z-50">
           <div className="bg-white rounded-3xl p-6 max-w-lg w-full shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto">
             <div className="flex justify-between items-center border-b pb-3">
               <h3 className="font-bold text-base text-gray-900">גביית חובות מאימוני עבר</h3>
@@ -2303,7 +2303,7 @@ const AdminDashboard = ({
       )}
 
       {historyModalUser && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center md:items-start justify-center p-4 md:pt-24 z-50">
           <div className="bg-white rounded-3xl p-6 max-w-lg w-full shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto">
             <div className="flex justify-between items-center border-b pb-3">
               <h3 className="font-bold text-base text-gray-900">היסטוריית אימונים - {historyModalUser.full_name}</h3>
@@ -2349,7 +2349,7 @@ const AdminDashboard = ({
 
       {/* מודאל עריכת אימון */}
       {editWorkoutData && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center md:items-start justify-center p-4 md:pt-24 z-50">
           <div className="bg-white rounded-3xl p-6 max-w-lg w-full shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto">
             <div className="flex justify-between items-center border-b pb-3">
               <h3 className="font-bold text-base text-gray-900">עריכת אימון: {editWorkoutData.type}</h3>
@@ -2501,7 +2501,7 @@ const Footer = () => {
     }
 
     return (
-      <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-[60] animate-fadeIn">
+      <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center md:items-start justify-center p-4 md:pt-24 z-[60] animate-fadeIn">
         <div className="bg-white rounded-3xl p-6 max-w-lg w-full shadow-2xl border border-amber-100 max-h-[85vh] overflow-y-auto flex flex-col">
           <div className="flex justify-between items-center mb-4 border-b pb-3">
             <h3 className="font-black text-xl text-gray-900">{title}</h3>
