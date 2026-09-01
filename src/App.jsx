@@ -1521,7 +1521,7 @@ const AdminDashboard = ({
       <div className="bg-white/95 backdrop-blur-md p-2 rounded-3xl shadow-lg border border-gray-100 flex flex-wrap gap-1">
         {[
           { id: 'overview', label: 'סיכום דשבורד', icon: Award },
-          { id: 'workouts', label: 'ניהול אימונים', icon: Calendar },
+          { id: 'workouts', label: `ניהול אימונים (${workouts.filter(w => new Date(w.date + 'T' + w.time) >= new Date()).length})`, icon: Calendar },
           { id: 'trainees', label: `מתאמנים (${stats.pendingTraineesCount ? `! ${stats.pendingTraineesCount}` : stats.totalTraineesCount})`, icon: Users },
           { id: 'finance', label: `כספים ורו"ח ${stats.unpaidDebtsList.length ? '⚠️' : ''}`, icon: CreditCard },
           { id: 'settings', label: 'הגדרות ומיתוג', icon: Settings },
@@ -1725,7 +1725,8 @@ const AdminDashboard = ({
               if (!searchWorkoutQuery) return true;
               const q = searchWorkoutQuery.toLowerCase();
               return w.type.toLowerCase().includes(q) || w.location.toLowerCase().includes(q) || w.date.includes(q) || w.price.toString().includes(q);
-            }).map(workout => {
+            }).sort((a, b) => new Date(`${a.date}T${a.time}`) - new Date(`${b.date}T${b.time}`))
+            .map(workout => {
               const regList = registrations.filter(r => r.workout_id === workout.id);
               const isPast = false; // האימונים שכאן הם תמיד בעתיד כעת
               
