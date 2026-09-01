@@ -1521,7 +1521,7 @@ const AdminDashboard = ({
         {[
           { id: 'overview', label: 'סיכום דשבורד', icon: Award },
           { id: 'workouts', label: 'ניהול אימונים', icon: Calendar },
-          { id: 'trainees', label: `מתאמנים (${stats.pendingTraineesCount ? `! ${stats.pendingTraineesCount}` : trainees.length})`, icon: Users },
+          { id: 'trainees', label: `מתאמנים (${stats.pendingTraineesCount ? `! ${stats.pendingTraineesCount}` : stats.totalTraineesCount})`, icon: Users },
           { id: 'finance', label: `כספים ורו"ח ${stats.unpaidDebtsList.length ? '⚠️' : ''}`, icon: CreditCard },
           { id: 'settings', label: 'הגדרות ומיתוג', icon: Settings },
           { id: 'archive', label: 'ארכיון מתאמנים', icon: Archive },
