@@ -307,7 +307,7 @@ const AdminLoginModal = ({ isOpen, onClose, onLogin, currentPassword }) => {
               type="password"
               value={passwordInput}
               onChange={(e) => setPasswordInput(e.target.value)}
-              placeholder="הזני סיסמה..."
+              placeholder="הזני סיסמה...(טלפון)"
               className="w-full p-3 border border-gray-300 rounded-xl text-center text-lg font-bold tracking-widest focus:ring-2 focus:ring-amber-500 outline-none"
               autoFocus
             />
@@ -572,7 +572,7 @@ const UserView = ({
                 <input required type="text" value={loginIdNumber} onChange={(e) => setLoginIdNumber(e.target.value)} className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl text-sm outline-none" />
               </div>
               <div>
-                <label className="block text-xs font-bold text-gray-700 mb-1">סיסמה</label>
+                <label className="block text-xs font-bold text-gray-700 mb-1">(מספר טלפון ) סיסמה</label>
                 <input required type="password" value={loginPassword} onChange={(e) => setLoginPassword(e.target.value)} className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl text-sm outline-none" />
               </div>
               <button type="submit" className="w-full bg-gray-900 text-white font-bold py-3.5 rounded-2xl shadow-lg mt-2">היכנסי</button>
