@@ -430,7 +430,7 @@ const UserView = ({
       parent_name: isMinor ? formData.parent_name : null,
       parent_id: isMinor ? formData.parent_id : null,
       parent_signature_url: parentSignatureData,
-      signed_at: new Date().toLocaleDateString('he-IL')
+      signed_at: `${new Date().toLocaleDateString('he-IL')} | ${new Date().toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' })}`
     };
 
     if (currentUser) {
@@ -1354,7 +1354,7 @@ const AdminDashboard = ({
   // תבנית PDF פורמלית ונסתרת המשמשת ליצוא עבור כל מתאמן
   const renderFormalPdfTemplate = (t) => (
     <div style={{ position: 'absolute', left: '-9999px', top: '-9999px' }}>
-      <div id={`formal_pdf_${t.id}`} className="w-[210mm] min-h-[297mm] bg-white p-10 text-right text-black font-sans leading-tight" dir="rtl" style={{ direction: 'rtl' }}>
+      <div id={`formal_pdf_${t.id}`} className="w-[210mm] h-[292mm] overflow-hidden box-border bg-white p-10 text-right text-black font-sans leading-tight" dir="rtl" style={{ direction: 'rtl', pageBreakAfter: 'avoid' }}>
         <div className="flex justify-between items-end border-b-2 border-black pb-4 mb-4">
           <div>
             <h1 className="text-3xl font-black text-black">טופס הצהרת בריאות</h1>
@@ -1373,6 +1373,7 @@ const AdminDashboard = ({
           <p>מספר תעודת זהות: {t.id_number || '___________'}</p>
           <p>תאריך לידה: {t.dob ? t.dob.split('-').reverse().join('/') : '___________'}</p>
           <p>טלפון: {t.phone}</p>
+          <p>אימייל: {t.email}</p>
         </div>
         <h3 className="text-lg font-bold mb-2 bg-gray-200 p-1.5 rounded">חלק א': שאלון רפואי</h3>
         <div className="text-[10px] space-y-1 mb-4">
@@ -1411,6 +1412,7 @@ const AdminDashboard = ({
           <p>ב. אנו ממליצים לעבור בדיקת רופא לפני כל תחילת תכנית אימונים בייחוד אם הנך סובל/ת מבעיות לב/ לחץ דם גבוה/ כאבים בחזה/ עברת ניתוחים בעבר/ סוכרת/ אסטמה/ אפילפסיה או כל פציעה משמעותית גופנית.</p>
           <p>ג. בחתימה על מסמך זה הנך מקבל על עצמך אחריות מלאה למצבך הבריאותי ומסיר כל אחריות מתהל בן משה, כעת ובעתיד לכל שינוי במצבך הבריאותי כתוצאה מפעילות גופנית זו לרבות: התקף לב, כאבי שרירים, קרעים בשריר, שברים, פגיעות חום, כאבי ברכיים, גב או כל כאב אחר ומוות.</p>
           <p className="font-bold pt-1">אני הח"מ מצהיר/ה בזה כי מצב בריאותי תקין וכי איני סובל/ת מכל מחלה ומגבלה, שיש בהם כדי להשפיע או למנוע את השתתפותי בכל פעילות גופנית. במידה והנני סובל/ת מבעיות כאמור, הנני מתחייב לפרטן על גבי מסמך זה וכן בעל פה למאמן הכושר. במידה ולא אעשה כן, הרי שכל פגיעה בי בעת קיום הפעילות הנ"ל הינה על אחריותי בלבד. הנני מתחייב להודיע על כל שינוי שיחול במצבי הבריאותי ו/או בכושרי הפיזי. כמו כן הנני מצהיר/ה שכל הפרטים אשר מסרתי ומילאתי לעיל, הינם נכונים.</p>
+          <p className="font-bold pt-1">בכל מקרה של שינוי במצבך הרפואי, לרבות הופעת כאב, פציעה, מגבלה או תסמין חדש, עליך להתייעץ עם רופא בדבר המשך ביצוע פעילות גופנית.</p>
         </div>
         <div className="flex justify-between items-end border-t border-gray-400 pt-3 mt-4">
           <div>
