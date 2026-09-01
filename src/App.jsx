@@ -1065,11 +1065,12 @@ const UserView = ({
                     </div>
                     
                     <div className="text-left">
-                      <span className={`text-xs px-3 py-1 rounded-full font-bold ${
+                      <span className={`text-xs px-3 py-1 rounded-full font-bold flex items-center justify-center gap-1 ${
                         reg.payment_status === 'paid' ? 'bg-emerald-100 text-emerald-800' :
                         reg.payment_status === 'punch_card' ? 'bg-blue-100 text-blue-800' : 'bg-red-100 text-red-800'
                       }`}>
                         {reg.payment_status === 'paid' ? 'שולם' : reg.payment_status === 'punch_card' ? 'כרטיסייה' : 'טרם שולם'}
+                        <span className="text-[10px] font-black opacity-75">| {reg.paid_amount !== undefined ? reg.paid_amount : workout.price} ₪</span>
                       </span>
                     </div>
                   </div>
@@ -1807,22 +1808,23 @@ const AdminDashboard = ({
                                     }
                                   }
                                 } else {
-                                  const doDiscount = window.confirm(`האם הסכום הוא ${workout.price} ₪ (אישור) או שתרצי להזין סכום שונה / מחיר ידני (ביטול)?`);
+                                  const doDiscount = window.confirm(`האם הסכום לתשלום הוא ${workout.price} ₪ (אישור) או שתרצי להזין מחיר ידני (ביטול)?`);
                                   let finalPrice = workout.price;
                                   if (!doDiscount) {
-                                    const customAmount = window.prompt('הזיני את הסכום לתשלום (₪):', workout.price);
+                                    const customAmount = window.prompt('הזיני את הסכום (₪):', workout.price);
                                     if (customAmount === null) return;
                                     finalPrice = Number(customAmount) || workout.price;
                                   }
-                                  handleUpdatePaymentStatus(r.id, 'paid');
+                                  const isPaidNow = window.confirm('האם התשלום התקבל בפועל (שולם)?\nאישור = שולם, ביטול = טרם שולם');
+                                  handleUpdatePaymentStatus(r.id, isPaidNow ? 'paid' : 'unpaid');
                                   setRegistrations(prev => prev.map(reg => reg.id === r.id ? { ...reg, paid_amount: finalPrice } : reg));
                                 }
                               }}
                               className="cursor-pointer hover:bg-gray-200 transition bg-gray-100 text-gray-800 text-[11px] px-2.5 py-1 rounded-xl font-medium flex items-center gap-1"
                               title="לחצי כדי לשנות סטטוס תשלום"
                             >
-                              {user ? user.full_name : 'מתאמן'}
-                              <span className={`w-2 h-2 rounded-full ${r.payment_status === 'paid' ? 'bg-emerald-500' : 'bg-red-500'}`}></span>
+                              {user ? user.full_name : 'מתאמן'} | {r.paid_amount !== undefined ? r.paid_amount : workout.price} ₪
+                              <span className={`w-2 h-2 rounded-full ${r.payment_status === 'paid' || r.payment_status === 'punch_card' ? 'bg-emerald-500' : 'bg-red-500'}`}></span>
                             </span>
                           );
                         })}
@@ -2446,8 +2448,8 @@ const AdminDashboard = ({
                         <p className="text-xs text-gray-500">{w.date.split('-').reverse().join('/')} | {w.time}</p>
                       </div>
                       <div className="flex flex-col items-end gap-1">
-                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md ${r.payment_status === 'paid' ? 'bg-emerald-100 text-emerald-800' : 'bg-red-100 text-red-800'}`}>
-                          {r.payment_status === 'paid' ? 'שולם' : 'לא שולם'}
+                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md ${r.payment_status === 'paid' || r.payment_status === 'punch_card' ? 'bg-emerald-100 text-emerald-800' : 'bg-red-100 text-red-800'}`}>
+                          {r.payment_status === 'paid' ? 'שולם' : r.payment_status === 'punch_card' ? 'כרטיסייה' : 'לא שולם'} ({r.paid_amount !== undefined ? r.paid_amount : w.price} ₪)
                         </span>
                         <button 
                           onClick={() => {
@@ -2459,14 +2461,15 @@ const AdminDashboard = ({
                                 }
                               }
                             } else {
-                              const doDiscount = window.confirm(`האם הסכום הוא ${w.price} ₪ (אישור) או שתרצי להזין סכום שונה / מחיר ידני (ביטול)?`);
+                              const doDiscount = window.confirm(`האם הסכום לתשלום הוא ${w.price} ₪ (אישור) או שתרצי להזין מחיר ידני (ביטול)?`);
                               let finalPrice = w.price;
                               if (!doDiscount) {
-                                const customAmount = window.prompt('הזיני את הסכום לתשלום (₪):', w.price);
+                                const customAmount = window.prompt('הזיני את הסכום (₪):', w.price);
                                 if (customAmount === null) return; 
                                 finalPrice = Number(customAmount) || w.price;
                               }
-                              handleUpdatePaymentStatus(r.id, 'paid');
+                              const isPaidNow = window.confirm('האם התשלום התקבל בפועל (שולם)?\nאישור = שולם, ביטול = טרם שולם');
+                              handleUpdatePaymentStatus(r.id, isPaidNow ? 'paid' : 'unpaid');
                               setRegistrations(prev => prev.map(reg => reg.id === r.id ? { ...reg, paid_amount: finalPrice } : reg));
                             }
                           }}
@@ -2681,20 +2684,21 @@ const AdminDashboard = ({
                                 }
                               }
                             } else {
-                              const doDiscount = window.confirm(`האם הסכום הוא ${editWorkoutData.price} ₪ (אישור) או שתרצי להזין סכום שונה / מחיר ידני (ביטול)?`);
+                              const doDiscount = window.confirm(`האם הסכום לתשלום הוא ${editWorkoutData.price} ₪ (אישור) או שתרצי להזין מחיר ידני (ביטול)?`);
                               let finalPrice = editWorkoutData.price;
                               if (!doDiscount) {
-                                const customAmount = window.prompt('הזיני את הסכום לתשלום (₪):', editWorkoutData.price);
+                                const customAmount = window.prompt('הזיני את הסכום (₪):', editWorkoutData.price);
                                 if (customAmount === null) return; 
                                 finalPrice = Number(customAmount) || editWorkoutData.price;
                               }
-                              handleUpdatePaymentStatus(r.id, 'paid');
+                              const isPaidNow = window.confirm('האם התשלום התקבל בפועל (שולם)?\nאישור = שולם, ביטול = טרם שולם');
+                              handleUpdatePaymentStatus(r.id, isPaidNow ? 'paid' : 'unpaid');
                               setRegistrations(prev => prev.map(reg => reg.id === r.id ? { ...reg, paid_amount: finalPrice } : reg));
                             }
                           }}
                           className={`px-3 py-1.5 rounded-lg font-bold transition ${r.payment_status === 'paid' ? 'bg-emerald-100 text-emerald-700' : r.payment_status === 'punch_card' ? 'bg-indigo-100 text-indigo-700' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}`}
                         >
-                          {r.payment_status === 'paid' ? 'שולם ✓' : r.payment_status === 'punch_card' ? 'שולם כרטיסייה' : 'סמן שולם'}
+                          {r.payment_status === 'paid' ? 'שולם ✓' : r.payment_status === 'punch_card' ? 'שולם כרטיסייה' : 'טרם שולם'} ({r.paid_amount !== undefined ? r.paid_amount : editWorkoutData.price} ₪)
                         </button>
                         <button 
                           onClick={() => {
