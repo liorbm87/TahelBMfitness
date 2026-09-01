@@ -1799,16 +1799,23 @@ const AdminDashboard = ({
                             <span 
                               key={r.id} 
                               onClick={() => {
-                                if (r.payment_status === 'paid') {
+                                if (r.payment_status === 'paid' || r.payment_status === 'punch_card') {
                                   if (window.confirm('האם לבטל את סימון התשלום?')) {
                                     if (window.confirm('לבטל בטוח?')) {
                                       handleUpdatePaymentStatus(r.id, 'unpaid');
+                                      setRegistrations(prev => prev.map(reg => reg.id === r.id ? { ...reg, paid_amount: 0 } : reg));
                                     }
                                   }
                                 } else {
-                                  if (window.confirm('האם לסמן שולם?')) {
-                                    handleUpdatePaymentStatus(r.id, 'paid');
+                                  const doDiscount = window.confirm(`האם הסכום הוא ${workout.price} ₪ (אישור) או שתרצי להזין סכום שונה / מחיר ידני (ביטול)?`);
+                                  let finalPrice = workout.price;
+                                  if (!doDiscount) {
+                                    const customAmount = window.prompt('הזיני את הסכום לתשלום (₪):', workout.price);
+                                    if (customAmount === null) return;
+                                    finalPrice = Number(customAmount) || workout.price;
                                   }
+                                  handleUpdatePaymentStatus(r.id, 'paid');
+                                  setRegistrations(prev => prev.map(reg => reg.id === r.id ? { ...reg, paid_amount: finalPrice } : reg));
                                 }
                               }}
                               className="cursor-pointer hover:bg-gray-200 transition bg-gray-100 text-gray-800 text-[11px] px-2.5 py-1 rounded-xl font-medium flex items-center gap-1"
@@ -2302,7 +2309,7 @@ const AdminDashboard = ({
             <div>
               <label className="block text-xs font-bold text-gray-700 mb-1">נוסח ההודעה (לחצי על התגיות להוספה):</label>
               <div className="flex flex-wrap gap-1 mb-2">
-                {['[שם פרטי]', '[פרטי האימון]', '[מחיר]', '[כתובת האתר]', '[קישור האימון]'].map(tag => (
+                {['[שם פרטי]', '[פרטי האימון]', '[מחיר]', '[מיקום מדויק]', '[כתובת האתר]', '[קישור האימון]'].map(tag => (
                   <button key={tag} onClick={() => setMessageText(prev => prev + ' ' + tag)} className="bg-gray-100 hover:bg-amber-100 text-gray-700 text-[10px] px-2 py-1 rounded-lg border font-semibold transition cursor-pointer">
                     {tag}
                   </button>
@@ -2443,7 +2450,26 @@ const AdminDashboard = ({
                           {r.payment_status === 'paid' ? 'שולם' : 'לא שולם'}
                         </span>
                         <button 
-                          onClick={() => handleUpdatePaymentStatus(r.id, r.payment_status === 'paid' ? 'unpaid' : 'paid')}
+                          onClick={() => {
+                            if (r.payment_status === 'paid' || r.payment_status === 'punch_card') {
+                              if (window.confirm('האם לבטל את סימון התשלום?')) {
+                                if (window.confirm('לבטל בטוח?')) {
+                                  handleUpdatePaymentStatus(r.id, 'unpaid');
+                                  setRegistrations(prev => prev.map(reg => reg.id === r.id ? { ...reg, paid_amount: 0 } : reg));
+                                }
+                              }
+                            } else {
+                              const doDiscount = window.confirm(`האם הסכום הוא ${w.price} ₪ (אישור) או שתרצי להזין סכום שונה / מחיר ידני (ביטול)?`);
+                              let finalPrice = w.price;
+                              if (!doDiscount) {
+                                const customAmount = window.prompt('הזיני את הסכום לתשלום (₪):', w.price);
+                                if (customAmount === null) return; 
+                                finalPrice = Number(customAmount) || w.price;
+                              }
+                              handleUpdatePaymentStatus(r.id, 'paid');
+                              setRegistrations(prev => prev.map(reg => reg.id === r.id ? { ...reg, paid_amount: finalPrice } : reg));
+                            }
+                          }}
                           className="text-[10px] text-blue-600 underline font-semibold cursor-pointer hover:text-blue-800"
                         >
                           שנה סטטוס תשלום
@@ -2649,16 +2675,18 @@ const AdminDashboard = ({
                           onClick={() => {
                             if (r.payment_status === 'paid' || r.payment_status === 'punch_card') {
                               if (window.confirm('האם לבטל את סימון התשלום?')) {
-                                handleUpdatePaymentStatus(r.id, 'unpaid');
-                                setRegistrations(prev => prev.map(reg => reg.id === r.id ? { ...reg, paid_amount: 0 } : reg));
+                                if (window.confirm('לבטל בטוח?')) {
+                                  handleUpdatePaymentStatus(r.id, 'unpaid');
+                                  setRegistrations(prev => prev.map(reg => reg.id === r.id ? { ...reg, paid_amount: 0 } : reg));
+                                }
                               }
                             } else {
-                              const doDiscount = window.confirm(`האם הסכום הוא ${workout.price} ₪ (אישור) או לעשות הנחה (ביטול)?`);
-                              let finalPrice = workout.price;
+                              const doDiscount = window.confirm(`האם הסכום הוא ${editWorkoutData.price} ₪ (אישור) או שתרצי להזין סכום שונה / מחיר ידני (ביטול)?`);
+                              let finalPrice = editWorkoutData.price;
                               if (!doDiscount) {
-                                const customAmount = window.prompt('הזיני את הסכום החדש (₪):', workout.price);
+                                const customAmount = window.prompt('הזיני את הסכום לתשלום (₪):', editWorkoutData.price);
                                 if (customAmount === null) return; 
-                                finalPrice = Number(customAmount) || workout.price;
+                                finalPrice = Number(customAmount) || editWorkoutData.price;
                               }
                               handleUpdatePaymentStatus(r.id, 'paid');
                               setRegistrations(prev => prev.map(reg => reg.id === r.id ? { ...reg, paid_amount: finalPrice } : reg));
