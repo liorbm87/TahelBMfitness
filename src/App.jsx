@@ -1137,9 +1137,10 @@ const AdminDashboard = ({
   waitlist = [], setWaitlist,
   settings, setSettings, onRefresh 
 }) => {
-  const [activeTab, setActiveTab] = useState('overview');
+  const [activeTab, setActiveTab] = useState(() => sessionStorage.getItem('tahel_admin_tab') || 'overview');
 
   useEffect(() => {
+    sessionStorage.setItem('tahel_admin_tab', activeTab);
     if (onRefresh) onRefresh();
   }, [activeTab]);
   
@@ -2068,42 +2069,79 @@ const AdminDashboard = ({
 
       {activeTab === 'archive' && (
         <div className="space-y-6">
-          <div className="bg-gray-100 border border-gray-300 p-5 rounded-3xl space-y-3">
-            <h3 className="font-extrabold text-gray-900 text-sm flex items-center gap-2">
-              <Archive size={18} className="text-gray-600" /> מתאמנים בארכיון ({trainees.filter(t => t.is_archived).length})
-            </h3>
-            {trainees.filter(t => t.is_archived).length === 0 ? (
-              <p className="text-xs text-gray-500">אין מתאמנים בארכיון כרגע.</p>
-            ) : (
-              trainees.filter(t => t.is_archived).map(t => (
-                <div key={t.id} className="bg-white p-4 rounded-2xl shadow-sm border border-gray-200 flex justify-between items-center">
-                  <div>
-                    <h4 className="font-bold text-sm text-gray-500 line-through">{t.full_name} <span className="font-normal text-xs text-gray-400">(ת.ז: {t.id_number || '-'})</span></h4>
-                    <p className="text-xs text-gray-400">{t.phone} | {t.email} | ילידת: {t.dob ? t.dob.split('-').reverse().join('/') : '-'}</p>
+          <div className="bg-gray-100 border border-gray-300 p-5 rounded-3xl space-y-4">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-gray-200 pb-3">
+              <h3 className="font-extrabold text-gray-900 text-sm flex items-center gap-2">
+                <Archive size={18} className="text-gray-600" /> מתאמנים בארכיון ({trainees.filter(t => t.is_archived && !t.is_deleted).length})
+              </h3>
+              <div className="relative">
+                <Search size={16} className="absolute right-3 top-2.5 text-gray-400" />
+                <input type="text" placeholder="חיפוש בארכיון..." value={searchTraineeQuery} onChange={(e) => setSearchTraineeQuery(e.target.value)} className="w-full md:w-72 pl-4 pr-9 py-2 bg-white border border-gray-300 rounded-xl text-xs outline-none focus:border-amber-400 shadow-sm" />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 gap-4 opacity-80 hover:opacity-100 transition duration-300">
+              {trainees.filter(t => t.is_archived && !t.is_deleted).filter(t => {
+                if (!searchTraineeQuery) return true;
+                const q = searchTraineeQuery.toLowerCase();
+                return t.full_name.toLowerCase().includes(q) || t.phone.includes(q) || t.email.toLowerCase().includes(q) || (t.id_number && t.id_number.includes(q));
+              }).map(t => (
+                <div key={t.id} className="bg-white/90 p-4 rounded-2xl shadow-sm border border-gray-300 relative overflow-hidden grayscale-[0.3]">
+                  <div className="bg-gray-50 mb-3 rounded-xl border border-gray-200">
+                    <details className="group">
+                      <summary className="font-bold text-base text-gray-600 cursor-pointer flex justify-between items-center p-3 hover:bg-gray-100 transition list-none">
+                        <div className="flex items-center gap-2">
+                          <span className="line-through">{t.full_name}</span>
+                          <span className="text-xs text-gray-500 font-normal">({t.phone})</span>
+                        </div>
+                        <span className="group-open:rotate-180 transition-transform"><ChevronDown size={18} /></span>
+                      </summary>
+                      <div className="mt-2 space-y-3 px-3 pb-3">
+                        <div className="grid grid-cols-2 gap-2 text-sm text-gray-700">
+                          <p><strong>ת.ז:</strong> {t.id_number || 'לא הוזן'}</p>
+                          <p><strong>ת. לידה:</strong> {t.dob ? new Date(t.dob).toLocaleDateString('he-IL') : 'לא הוזן'}</p>
+                          <p><strong>אימייל:</strong> {t.email}</p>
+                        </div>
+                        {renderHealthDeclarationAccordion(t)}
+                      </div>
+                    </details>
                   </div>
-                  <div className="flex gap-2">
+
+                  <div className="flex flex-wrap gap-2 pt-2 border-t border-gray-200">
+                    <button onClick={() => { setPunchCardModalUser(t); setPunchCardForm({ entries: t.punch_card?.entries || 10 }); }} className="flex-1 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 text-xs font-bold py-2 rounded-xl flex justify-center items-center gap-1 min-w-[100px]">
+                      <Award size={14} /> כרטיסייה
+                    </button>
+                    <button onClick={() => setHistoryModalUser(t)} className="flex-1 bg-purple-50 text-purple-700 hover:bg-purple-100 text-xs font-bold py-2 rounded-xl flex justify-center items-center gap-1 min-w-[120px]">
+                      <Calendar size={14} /> היסטוריה
+                    </button>
+                    <button onClick={() => openWhatsApp(t.phone, `היי ${t.full_name}, תהל כאן!`)} className="flex-1 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 text-xs font-bold py-2 rounded-xl flex justify-center items-center gap-1 min-w-[80px]">
+                      <MessageCircle size={14} /> הודעה
+                    </button>
+                    <button onClick={() => handleRestoreTrainee(t.id)} className="flex-1 bg-blue-50 text-blue-700 hover:bg-blue-100 text-xs font-bold py-2 rounded-xl flex justify-center items-center gap-1 min-w-[100px]">
+                      <RefreshCw size={14} /> שחזור פעילות
+                    </button>
                     <button 
                       onClick={() => {
-                        if(window.confirm('האם את בטוחה שברצונך למחוק את המתאמנת לצמיתות?')) {
-                          if(window.confirm('אזהרה כפולה: מחיקה זו תעלים את המתאמנת לחלוטין מכל הרישומים כולל כספים. להמשיך?')) {
+                        if(window.confirm('האם למחוק את המשתמש לגמרי מהארכיון?')) {
+                          if(window.confirm('האם למחוק גם מהדוחות הכספיים?\n\nאישור (כן) = מחיקה מוחלטת כולל כספים\nביטול (לא) = המשתמש יימחק מהארכיון אך סכומיו יישמרו בדוחות')) {
                             setTrainees(prev => prev.filter(tr => tr.id !== t.id));
+                            setRegistrations(prev => prev.filter(r => r.user_id !== t.id));
+                          } else {
+                            setTrainees(prev => prev.map(tr => tr.id === t.id ? { ...tr, is_deleted: true } : tr));
                           }
                         }
                       }}
-                      className="bg-red-50 text-red-600 hover:bg-red-100 text-xs font-bold px-4 py-2 rounded-xl"
+                      className="flex-1 bg-red-50 text-red-600 hover:bg-red-100 text-xs font-bold py-2 rounded-xl flex justify-center items-center gap-1 min-w-[100px]"
                     >
-                      מחיקה לצמיתות
-                    </button>
-                    <button 
-                      onClick={() => handleRestoreTrainee(t.id)}
-                      className="bg-gray-900 hover:bg-gray-800 text-white text-xs font-bold px-4 py-2 rounded-xl"
-                    >
-                      שחזור מתאמנת
+                      <Trash2 size={14} /> מחיקה
                     </button>
                   </div>
                 </div>
-              ))
-            )}
+              ))}
+              {trainees.filter(t => t.is_archived && !t.is_deleted).length === 0 && (
+                <p className="text-xs text-gray-500 font-bold">אין מתאמנים בארכיון.</p>
+              )}
+            </div>
           </div>
         </div>
       )}
@@ -2111,44 +2149,91 @@ const AdminDashboard = ({
       {activeTab === 'archive_workouts' && (
         <div className="space-y-6">
           <div className="bg-gray-100 border border-gray-300 p-5 rounded-3xl space-y-4">
-            <h3 className="font-extrabold text-gray-900 text-sm flex items-center gap-2">
-              <Archive size={18} className="text-gray-600" /> היסטוריית אימונים שעברו ({workouts.filter(w => new Date(`${w.date}T${w.time}`) < new Date()).length})
-            </h3>
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-gray-200 pb-3">
+              <h3 className="font-extrabold text-gray-900 text-sm flex items-center gap-2">
+                <Archive size={18} className="text-gray-600" /> היסטוריית אימונים שעברו ({workouts.filter(w => new Date(`${w.date}T${w.time}`) < new Date()).length})
+              </h3>
+              <div className="relative">
+                <Search size={16} className="absolute right-3 top-2.5 text-gray-400" />
+                <input type="text" placeholder="חיפוש בארכיון אימונים..." value={searchWorkoutQuery} onChange={(e) => setSearchWorkoutQuery(e.target.value)} className="w-full md:w-72 pl-4 pr-9 py-2 bg-white border border-gray-300 rounded-xl text-xs outline-none focus:border-amber-400 shadow-sm" />
+              </div>
+            </div>
             
-            {workouts.filter(w => new Date(`${w.date}T${w.time}`) < new Date()).length === 0 ? (
-              <p className="text-xs text-gray-500">אין אימוני עבר בארכיון.</p>
-            ) : (
-              workouts.filter(w => new Date(`${w.date}T${w.time}`) < new Date())
-                .sort((a, b) => new Date(`${b.date}T${b.time}`) - new Date(`${a.date}T${a.time}`)) // מיון מהחדש לישן
-                .map(workout => {
-                  const regList = registrations.filter(r => r.workout_id === workout.id);
-                  return (
-                    <div key={workout.id} className="bg-white/70 p-5 rounded-3xl shadow-sm border border-gray-200 opacity-80">
-                      <div className="flex flex-col md:flex-row justify-between md:items-center gap-4">
-                        <div>
-                          <div className="flex items-center gap-2">
-                            <span className="font-extrabold text-base text-gray-900">{workout.type}</span>
-                            <span className="bg-gray-200 text-gray-700 text-[10px] px-2 py-0.5 rounded-md font-bold">הושלם</span>
-                          </div>
-                          <p className="text-xs text-gray-600 mt-0.5">
-                            {workout.date.split('-').reverse().join('/')} בשעה {workout.time} | {workout.location}
-                          </p>
-                          <p className="text-xs text-gray-500 mt-1 font-semibold">
-                            משתתפים בפועל: {regList.length} / {workout.max_participants}
-                          </p>
+            <div className="space-y-4 opacity-80 hover:opacity-100 transition duration-300">
+              {workouts.filter(w => new Date(`${w.date}T${w.time}`) < new Date()).filter(w => {
+                if (!searchWorkoutQuery) return true;
+                const q = searchWorkoutQuery.toLowerCase();
+                return w.type.toLowerCase().includes(q) || w.location.toLowerCase().includes(q) || w.date.includes(q);
+              }).sort((a, b) => new Date(`${b.date}T${b.time}`) - new Date(`${a.date}T${a.time}`))
+              .map(workout => {
+                const regList = registrations.filter(r => r.workout_id === workout.id);
+                return (
+                  <div key={workout.id} className="bg-white/90 p-5 rounded-3xl shadow-sm border border-gray-300 grayscale-[0.2]">
+                    <div className="flex flex-col md:flex-row justify-between md:items-center gap-4">
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <span className="font-extrabold text-base text-gray-700 line-through">{workout.type}</span>
+                          <span className="bg-gray-300 text-gray-700 text-[10px] px-2 py-0.5 rounded-md font-bold">הושלם בארכיון</span>
                         </div>
-                        <button 
-                          onClick={() => handleDeleteWorkout(workout.id)}
-                          className="p-2 text-red-500 hover:bg-red-50 rounded-xl transition"
-                          title="מחק אימון עבר לצמיתות"
-                        >
-                          <Trash2 size={18} />
-                        </button>
+                        <p className="text-xs text-gray-500 mt-0.5">
+                          {workout.date.split('-').reverse().join('/')} בשעה {workout.time} | {workout.location} | <span className="font-bold">{workout.price} ₪</span>
+                        </p>
+                        <p className="text-xs text-gray-500 mt-1 font-semibold">
+                          משתתפים בפועל: {regList.length} / {workout.max_participants}
+                        </p>
                       </div>
+                      <button onClick={() => handleDeleteWorkout(workout.id)} className="p-2 text-red-500 hover:bg-red-50 rounded-xl transition" title="מחק אימון עבר לצמיתות">
+                        <Trash2 size={18} />
+                      </button>
                     </div>
-                  );
-              })
-            )}
+
+                    {regList.length > 0 && (
+                      <div className="mt-4 pt-3 border-t border-gray-200">
+                        <p className="text-[11px] font-bold text-gray-600 mb-2">משתתפים באימון עבר זה:</p>
+                        <div className="flex flex-wrap gap-2">
+                          {regList.map(r => {
+                            const user = trainees.find(t => t.id === r.user_id);
+                            return (
+                              <span 
+                                key={r.id} 
+                                onClick={() => {
+                                  if (r.payment_status === 'paid' || r.payment_status === 'punch_card') {
+                                    if (window.confirm('האם לבטל את סימון התשלום?')) {
+                                      if (window.confirm('לבטל בטוח?')) {
+                                        handleUpdatePaymentStatus(r.id, 'unpaid');
+                                      }
+                                    }
+                                  } else {
+                                    const currentPrice = r.paid_amount !== undefined ? r.paid_amount : workout.price;
+                                    const doDiscount = window.confirm(`האם הסכום לתשלום הוא ${currentPrice} ₪ (אישור) או שתרצי להזין מחיר ידני (ביטול)?`);
+                                    let finalPrice = currentPrice;
+                                    if (!doDiscount) {
+                                      const customAmount = window.prompt('הזיני את הסכום (₪):', currentPrice);
+                                      if (customAmount === null) return;
+                                      finalPrice = Number(customAmount) || currentPrice;
+                                    }
+                                    const isPaidNow = window.confirm('האם התשלום התקבל בפועל (שולם)?\nאישור = שולם, ביטול = טרם שולם');
+                                    handleUpdatePaymentStatus(r.id, isPaidNow ? 'paid' : 'unpaid');
+                                    setRegistrations(prev => prev.map(reg => reg.id === r.id ? { ...reg, paid_amount: finalPrice } : reg));
+                                  }
+                                }}
+                                className="cursor-pointer hover:bg-gray-300 transition bg-gray-200 text-gray-800 text-[11px] px-2.5 py-1 rounded-xl font-medium flex items-center gap-1"
+                              >
+                                {user ? user.full_name : 'מתאמן'} | {r.paid_amount !== undefined ? r.paid_amount : workout.price} ₪
+                                <span className={`w-2 h-2 rounded-full ${r.payment_status === 'paid' || r.payment_status === 'punch_card' ? 'bg-emerald-500' : 'bg-red-500'}`}></span>
+                              </span>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+              {workouts.filter(w => new Date(`${w.date}T${w.time}`) < new Date()).length === 0 && (
+                <p className="text-xs text-gray-500 font-bold">אין אימוני עבר בארכיון.</p>
+              )}
+            </div>
           </div>
         </div>
       )}
@@ -2844,7 +2929,7 @@ export default function App() {
   const [registrations, setRegistrations] = useState(INITIAL_REGISTRATIONS);
   const [waitlist, setWaitlist] = useState(INITIAL_WAITLIST);
   
-  const [isAdminLoggedIn, setIsAdminLoggedIn] = useState(false);
+  const [isAdminLoggedIn, setIsAdminLoggedIn] = useState(() => sessionStorage.getItem('tahel_admin_logged_in') === 'true');
   const [isAdminLoginModalOpen, setIsAdminLoginModalOpen] = useState(false);
   
   // מתאמן חדש יתחיל כ-null (יצטרך להירשם), אבל האתר יזכור אותו לפי המכשיר שלו
@@ -2986,7 +3071,7 @@ export default function App() {
             settings={settings}
             isAdmin={isAdminLoggedIn}
             onOpenAdminLogin={() => setIsAdminLoginModalOpen(true)}
-            onLogout={() => setIsAdminLoggedIn(false)}
+            onLogout={() => { setIsAdminLoggedIn(false); sessionStorage.removeItem('tahel_admin_logged_in'); }}
             currentUser={currentUser}
             setCurrentUser={setCurrentUser}
             setTrainees={setTrainees}
@@ -3026,7 +3111,7 @@ export default function App() {
           <AdminLoginModal 
             isOpen={isAdminLoginModalOpen}
             onClose={() => setIsAdminLoginModalOpen(false)}
-            onLogin={() => setIsAdminLoggedIn(true)}
+            onLogin={() => { setIsAdminLoggedIn(true); sessionStorage.setItem('tahel_admin_logged_in', 'true'); }}
             currentPassword={settings.adminPassword}
           />
 
