@@ -307,7 +307,7 @@ const AdminLoginModal = ({ isOpen, onClose, onLogin, currentPassword }) => {
               type="password"
               value={passwordInput}
               onChange={(e) => setPasswordInput(e.target.value)}
-              placeholder="הזני סיסמה...(טלפון)"
+              placeholder="הזני סיסמה"
               className="w-full p-3 border border-gray-300 rounded-xl text-center text-lg font-bold tracking-widest focus:ring-2 focus:ring-amber-500 outline-none"
               autoFocus
             />
@@ -1060,7 +1060,7 @@ const UserView = ({
                   <div key={reg.id} className="bg-white/95 p-5 rounded-3xl shadow-md border border-gray-100 flex justify-between items-center">
                     <div>
                       <h4 className="font-bold text-gray-900">{workout.type}</h4>
-                      <p className="text-xs text-gray-500">{workout.date} | {workout.time} | {workout.location}</p>
+                      <p className="text-xs text-gray-500">{workout.date.split('-').reverse().join('/')} | {workout.time} | {workout.location}</p>
                       <p className="text-xs font-bold text-amber-800 mt-1">מחיר: {workout.price} ₪</p>
                     </div>
                     
@@ -1105,7 +1105,7 @@ const UserView = ({
                           מקום {spot} בתור
                         </span>
                       </div>
-                      <p className="text-xs text-gray-600 mt-1">{workout.date} בשעה {workout.time} | {workout.location}</p>
+                      <p className="text-xs text-gray-600 mt-1">{workout.date.split('-').reverse().join('/')} בשעה {workout.time} | {workout.location}</p>
                     </div>
 
                     <button 
@@ -1301,7 +1301,7 @@ const AdminDashboard = ({
   // תהל שולחת הצעת מקום מהמתנה בוואטסאפ (אפשרות לכל מתאמנת בהמתנה!)
   const handleSendWaitlistOfferWhatsApp = (trainee, workout) => {
     const siteUrl = window.location.origin;
-    const msg = `היי ${trainee.full_name}! 👋 התפנה מקום לאימון ${workout.type} בתאריך ${workout.date} בשעה ${workout.time}. אם תרצי להירשם, כנסי לאתר: ${siteUrl}`;
+    const msg = `היי ${trainee.full_name}! 👋 התפנה מקום לאימון ${workout.type} בתאריך ${workout.date.split('-').reverse().join('/')} בשעה ${workout.time}. אם תרצי להירשם, כנסי לאתר: ${siteUrl}`;
     openWhatsApp(trainee.phone, msg);
   };
 
@@ -1323,7 +1323,7 @@ const AdminDashboard = ({
     alert(`${trainee.full_name} הועברה בהצלחה מרשימת ההמתנה לאימון! כעת ייפתח חלון וואטסאפ לעדכונה.`);
 
     // 3. שליחת הודעת וואטסאפ מאשרת
-    const msg = `היי ${trainee.full_name}! 👋 שמחה לעדכן אותך שנרשמת בהצלחה לאימון ${workout.type} בתאריך ${workout.date} בשעה ${workout.time}! נתראה!`;
+    const msg = `היי ${trainee.full_name}! 👋 שמחה לעדכן אותך שנרשמת בהצלחה לאימון ${workout.type} בתאריך ${workout.date.split('-').reverse().join('/')} בשעה ${workout.time}! נתראה!`;
     openWhatsApp(trainee.phone, msg);
   };
 
@@ -1587,13 +1587,13 @@ const AdminDashboard = ({
                     <div>
                       <span className="font-bold text-gray-900">{debt.user.full_name}</span>
                       <span className="text-gray-500"> ({debt.user.phone}) - </span>
-                      <span className="font-semibold text-gray-700">{debt.workout.type} ב-{debt.workout.date}</span>
+                      <span className="font-semibold text-gray-700">{debt.workout.type} ב-{debt.workout.date.split('-').reverse().join('/')}</span>
                       <span className="font-black text-red-600 ml-2">[{debt.amount} ₪]</span>
                     </div>
 
                     <button 
                       onClick={() => {
-                        const msg = `היי ${debt.user.full_name}! 👋 ראיתי שטרם הסדרת תשלום על אימון ${debt.workout.type} בתאריך ${debt.workout.date} בסך ${debt.amount} ש"ח. אשמח להסדרה :)`;
+                        const msg = `היי ${debt.user.full_name}! 👋 ראיתי שטרם הסדרת תשלום על אימון ${debt.workout.type} בתאריך ${debt.workout.date.split('-').reverse().join('/')} בסך ${debt.amount} ש"ח. אשמח להסדרה :)`;
                         openWhatsApp(debt.user.phone, msg);
                       }}
                       className="bg-emerald-500 hover:bg-emerald-600 text-white px-3 py-1.5 rounded-xl font-bold flex items-center gap-1 text-[11px] self-start sm:self-auto"
@@ -1743,7 +1743,7 @@ const AdminDashboard = ({
                         {isPast && <span className="bg-gray-200 text-gray-700 text-[10px] px-2 py-0.5 rounded-md font-bold">היסטוריה (ארכיון)</span>}
                       </div>
                       <p className="text-xs text-gray-600 mt-0.5">
-                        {workout.date} בשעה {workout.time} | {workout.location} | <span className="font-bold text-amber-800">{workout.price} ₪</span>
+                        {workout.date.split('-').reverse().join('/')} בשעה {workout.time} | {workout.location} | <span className="font-bold text-amber-800">{workout.price} ₪</span>
                       </p>
                       <p className="text-xs text-gray-500 mt-1 font-semibold">
                         משתתפים: {regList.length} / {workout.max_participants}
@@ -2289,7 +2289,7 @@ const AdminDashboard = ({
                       <tr key={reg.id} className="hover:bg-gray-50/50">
                         <td className="p-3 font-bold text-gray-900">{trainee.full_name}</td>
                         <td className="p-3">{workout.type}</td>
-                        <td className="p-3">{workout.date}</td>
+                        <td className="p-3">{workout.date.split('-').reverse().join('/')}</td>
                         <td className="p-3 font-extrabold text-gray-900">
                           <input 
                             type="number" 
@@ -2499,7 +2499,7 @@ const AdminDashboard = ({
                   <div key={idx} className="flex flex-col sm:flex-row justify-between sm:items-center bg-gray-50 p-2.5 rounded-xl text-xs border border-gray-200 gap-2">
                     <div>
                       <span className="font-bold text-gray-800">{debt.user.full_name}</span>
-                      <p className="text-[10px] text-gray-500">{debt.workout.type} - {debt.workout.date}</p>
+                      <p className="text-[10px] text-gray-500">{debt.workout.type} - {debt.workout.date.split('-').reverse().join('/')}</p>
                       <p className="text-[10px] font-bold text-red-600">{debt.amount} ₪</p>
                     </div>
                     <div className="flex gap-2">
@@ -2929,7 +2929,7 @@ export default function App() {
   const [registrations, setRegistrations] = useState(INITIAL_REGISTRATIONS);
   const [waitlist, setWaitlist] = useState(INITIAL_WAITLIST);
   
-  const [isAdminLoggedIn, setIsAdminLoggedIn] = useState(() => sessionStorage.getItem('tahel_admin_logged_in') === 'true');
+  const [isAdminLoggedIn, setIsAdminLoggedIn] = useState(false);
   const [isAdminLoginModalOpen, setIsAdminLoginModalOpen] = useState(false);
   
   // מתאמן חדש יתחיל כ-null (יצטרך להירשם), אבל האתר יזכור אותו לפי המכשיר שלו
@@ -3086,12 +3086,12 @@ export default function App() {
                       <h3 className="font-bold text-xl text-gray-900 mb-4 flex items-center gap-2"><Lock /> התחברות למנהלת</h3>
                       <input type="password" placeholder="הקלידי סיסמה..." id="directAdminPass" className="w-full p-3 border border-gray-300 rounded-xl mb-4 text-center text-lg font-bold tracking-widest outline-none focus:border-amber-500" autoFocus onKeyDown={(e) => {
                         if(e.key === 'Enter') {
-                          if(e.target.value === settings.adminPassword) { setIsAdminLoggedIn(true); } else { alert('סיסמה שגויה!'); e.target.value = ''; }
+                          if(e.target.value === settings.adminPassword) { setIsAdminLoggedIn(true); window.history.pushState(null, '', '?admin'); } else { alert('סיסמה שגויה!'); e.target.value = ''; }
                         }
                       }}/>
                       <button onClick={() => {
                         const val = document.getElementById('directAdminPass').value;
-                        if(val === settings.adminPassword) { setIsAdminLoggedIn(true); } else { alert('סיסמה שגויה!'); document.getElementById('directAdminPass').value = ''; }
+                        if(val === settings.adminPassword) { setIsAdminLoggedIn(true); window.history.pushState(null, '', '?admin'); } else { alert('סיסמה שגויה!'); document.getElementById('directAdminPass').value = ''; }
                       }} className="w-full bg-gray-900 text-white font-bold py-3 rounded-xl">היכנסי לפאנל</button>
                     </div>
                   </div>
@@ -3108,7 +3108,7 @@ export default function App() {
                     <UserView trainees={trainees} setTrainees={setTrainees} workouts={workouts} registrations={registrations} setRegistrations={setRegistrations} waitlist={waitlist} setWaitlist={setWaitlist} currentUser={currentUser} setCurrentUser={setCurrentUser} settings={settings} />
                   )}
                 </main>
-                <AdminLoginModal isOpen={isAdminLoginModalOpen} onClose={() => setIsAdminLoginModalOpen(false)} onLogin={() => setIsAdminLoggedIn(true)} currentPassword={settings.adminPassword} />
+                <AdminLoginModal isOpen={isAdminLoginModalOpen} onClose={() => setIsAdminLoginModalOpen(false)} onLogin={() => { setIsAdminLoggedIn(true); window.history.pushState(null, '', '?admin'); }} currentPassword={settings.adminPassword} />
                 <Footer />
               </>
             } />
