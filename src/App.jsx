@@ -1244,12 +1244,12 @@ const AdminDashboard = ({
     setWorkouts(prev => [created, ...prev]);
     alert('האימון נוסף בהצלחה!');
     setNewWorkout({
-      type: 'אימון כוח וחיטוב',
+      type: '',
       date: new Date().toISOString().split('T')[0],
-      time: '18:00',
-      location: 'סטודיו מרכזי, הוד השרון',
-      price: 70,
-      max_participants: 10,
+      time: '',
+      location: '',
+      price: '',
+      max_participants: '',
       notes: ''
     });
   };
