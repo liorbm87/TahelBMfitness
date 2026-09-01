@@ -377,6 +377,9 @@ const UserView = ({
   const [loginPassword, setLoginPassword] = useState(''); 
   const isRegistered = !!currentUser;
   const isApproved = currentUser?.is_approved;
+  
+  const hasActivePunchCard = currentUser?.punch_card?.entries > 0 && new Date(currentUser.punch_card.expires_at) >= new Date();
+  const [isBannerDismissed, setIsBannerDismissed] = useState(() => localStorage.getItem('tahel_punch_banner_hidden') === 'true');
 
   // האזנה לקישור דינמי של אימון מהוואטסאפ וגלילה אליו
   useEffect(() => {
@@ -500,17 +503,30 @@ const UserView = ({
       return;
     }
 
+    let appliedPaymentStatus = 'unpaid';
+    let updatedUser = { ...currentUser };
+
+    if (currentUser.punch_card && currentUser.punch_card.entries > 0 && new Date(currentUser.punch_card.expires_at) >= new Date()) {
+      appliedPaymentStatus = 'punch_card';
+      updatedUser.punch_card.entries -= 1;
+      setTrainees(prev => prev.map(t => t.id === currentUser.id ? updatedUser : t));
+      setCurrentUser(updatedUser);
+      alert(`נרשמת בהצלחה לאימון ${workout.type}!\nההרשמה חויבה אוטומטית מהכרטיסייה (נותרו ${updatedUser.punch_card.entries} כניסות).`);
+    } else {
+      alert(`נרשמת בהצלחה לאימון ${workout.type}!\nנא לשלוח לתהל בביט או בפייבוקס ${workout.price} ₪ למספר 0545222008.`);
+    }
+
     const newReg = {
       id: 'r_' + Date.now(),
       workout_id: workoutId,
       user_id: currentUser.id,
-      payment_status: 'unpaid',
+      payment_status: appliedPaymentStatus,
+      paid_amount: appliedPaymentStatus === 'punch_card' ? 0 : workout.price,
       created_at: new Date().toISOString()
     };
 
     setRegistrations(prev => [...prev, newReg]);
-    alert(`נרשמת בהצלחה לאימון ${workout.type}!\nנא לשלוח לתהל בביט או בפייבוקס ${workout.price} ₪ למספר 0545222008.`);
-    triggerMakeWebhook(settings.makeWebhookUrl, 'workout_registered', { workout, user: currentUser });
+    triggerMakeWebhook(settings.makeWebhookUrl, 'workout_registered', { workout, user: updatedUser });
   };
 
   // ביטול אימון (חוק 12 השעות) + הודעת וואטסאפ אוטומטית לתהל
@@ -528,6 +544,16 @@ const UserView = ({
     }
 
     if (window.confirm(`האם לבטל את הרשמתך לאימון ${workout.type}?`)) {
+      const regToCancel = registrations.find(r => r.workout_id === workoutId && r.user_id === currentUser.id);
+      if (regToCancel?.payment_status === 'punch_card') {
+        const updatedUser = { ...currentUser };
+        if (!updatedUser.punch_card) updatedUser.punch_card = { entries: 0 };
+        updatedUser.punch_card.entries += 1;
+        setTrainees(prev => prev.map(t => t.id === currentUser.id ? updatedUser : t));
+        setCurrentUser(updatedUser);
+        alert('האימון בוטל בהצלחה, והכניסה הוחזרה אוטומטית לכרטיסייה שלך!');
+      }
+
       setRegistrations(prev => prev.filter(r => !(r.workout_id === workoutId && r.user_id === currentUser.id)));
       const workoutDateReversed = workout.date.split('-').reverse().join('/');
       const msg = `היי תהל, ביטלתי את האימון!\nשם: ${currentUser.full_name}\nסוג אימון: ${workout.type}\nתאריך: ${workoutDateReversed} בשעה ${workout.time}`;
@@ -832,6 +858,39 @@ const UserView = ({
         </div>
       )}
 
+      {isRegistered && isApproved && !hasActivePunchCard && !isBannerDismissed && (
+        <div className="bg-amber-100 text-amber-900 px-4 py-2 rounded-2xl flex items-center justify-between text-xs font-bold shadow-sm mb-4 cursor-pointer hover:bg-amber-200 transition" onClick={() => openWhatsApp('0545222008', 'אשמח לשמוע פרטים על כרטיסייה')}>
+          <div className="flex items-center gap-2">
+            <MessageCircle size={16} />
+            <span>אשמח לשמוע פרטים על רכישת כרטיסייה 🎟️</span>
+          </div>
+          <button 
+            onClick={(e) => {
+              e.stopPropagation();
+              setIsBannerDismissed(true);
+              localStorage.setItem('tahel_punch_banner_hidden', 'true');
+            }} 
+            className="p-1 hover:bg-amber-300 rounded-full transition text-amber-700"
+            title="הסתר הודעה"
+          >
+            <X size={16} />
+          </button>
+        </div>
+      )}
+      
+      {isRegistered && isApproved && currentUser?.punch_card?.entries > 0 && (
+        <div className="bg-indigo-50 border border-indigo-200 px-4 py-3 rounded-2xl flex flex-col sm:flex-row justify-between sm:items-center text-xs font-bold shadow-sm mb-4 gap-2">
+          <div className="flex items-center gap-2 text-indigo-900">
+            <Award size={18} className="text-indigo-600" />
+            <span>כרטיסייה פעילה: נותרו {currentUser.punch_card.entries} כניסות</span>
+          </div>
+          <span className={`px-2 py-1 rounded-lg ${new Date(currentUser.punch_card.expires_at) - new Date() <= 14 * 24 * 60 * 60 * 1000 ? 'bg-red-100 text-red-700 animate-pulse' : 'bg-indigo-100 text-indigo-700'}`}>
+            תוקף: {new Date(currentUser.punch_card.expires_at).toLocaleDateString('he-IL')}
+            {new Date(currentUser.punch_card.expires_at) - new Date() <= 14 * 24 * 60 * 60 * 1000 && ' (פג תוקף בקרוב!)'}
+          </span>
+        </div>
+      )}
+
       {isRegistered && !isApproved && (
         <div className="bg-amber-50 border border-amber-200 p-4 rounded-3xl flex flex-col sm:flex-row items-center justify-between gap-4 shadow-sm animate-fadeIn">
           <div className="flex items-center gap-3">
@@ -1102,17 +1161,28 @@ const AdminDashboard = ({
   const [unpaidMessageText, setUnpaidMessageText] = useState('היי [שם פרטי]! רציתי להזכיר שטרם הוסדר תשלום על אימון [פרטי האימון] בסך [מחיר]. אשמח להסדרה!');
 
   const processMessageText = (text, user, workout) => {
+    if (!workout) {
+      return text.replace(/\[שם פרטי\]/g, user.full_name.split(' ')[0]).replace(/\[כתובת האתר\]/g, window.location.origin);
+    }
     const workoutLink = `${window.location.origin}?workout=${workout.id}`;
     const workoutDetails = `${workout.type} ב-${workout.date.split('-').reverse().join('/')} בשעה ${workout.time} במיקום: ${workout.location}`;
     return text
       .replace(/\[שם פרטי\]/g, user.full_name.split(' ')[0])
       .replace(/\[פרטי האימון\]/g, workoutDetails)
       .replace(/\[מחיר\]/g, workout.price + ' ₪')
+      .replace(/\[מיקום מדויק\]/g, workout.location)
       .replace(/\[כתובת האתר\]/g, window.location.origin)
       .replace(/\[קישור האימון\]/g, workoutLink);
   };
   const [financeMonth, setFinanceMonth] = useState('2026-08');
   const [editWorkoutData, setEditWorkoutData] = useState(null); // סטייט לעריכת אימון
+  
+  const [searchTraineeQuery, setSearchTraineeQuery] = useState('');
+  const [searchWorkoutQuery, setSearchWorkoutQuery] = useState('');
+  const [punchCardModalUser, setPunchCardModalUser] = useState(null);
+  const [punchCardForm, setPunchCardForm] = useState({ entries: 10 });
+  const [globalBroadcastModal, setGlobalBroadcastModal] = useState(false);
+  const [globalMessageText, setGlobalMessageText] = useState('היי [שם פרטי]! ');
   
   // משתנה זמני לשמירת הגדרות האתר לפני שמירה סופית
   const [tempSettings, setTempSettings] = useState(settings);
@@ -1132,9 +1202,9 @@ const AdminDashboard = ({
       if (!w || !user) return;
 
       if (reg.payment_status === 'paid') {
-        totalRevenue += Number(w.price || 0);
+        totalRevenue += Number(reg.paid_amount !== undefined ? reg.paid_amount : w.price || 0);
       } else if (reg.payment_status === 'unpaid') {
-        unpaidAmount += Number(w.price || 0);
+        unpaidAmount += Number(reg.paid_amount !== undefined ? reg.paid_amount : w.price || 0);
         const workoutDateTime = new Date(`${w.date}T${w.time}`);
         if (workoutDateTime < new Date()) {
           unpaidDebtsList.push({ regId: reg.id, user, workout: w, amount: w.price });
@@ -1638,9 +1708,19 @@ const AdminDashboard = ({
           </div>
 
           <div className="space-y-4">
-            <h4 className="font-bold text-gray-900 text-sm">אימונים עתידיים במערכת ({workouts.filter(w => new Date(`${w.date}T${w.time}`) >= new Date()).length})</h4>
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+              <h4 className="font-bold text-gray-900 text-sm">אימונים עתידיים במערכת ({workouts.filter(w => new Date(`${w.date}T${w.time}`) >= new Date()).length})</h4>
+              <div className="relative">
+                <Search size={16} className="absolute right-3 top-2.5 text-gray-400" />
+                <input type="text" placeholder="חיפוש לפי תאריך, סוג, מיקום או מחיר..." value={searchWorkoutQuery} onChange={(e) => setSearchWorkoutQuery(e.target.value)} className="w-full md:w-72 pl-4 pr-9 py-2 bg-white border border-gray-200 rounded-xl text-xs outline-none focus:border-amber-400 transition shadow-sm" />
+              </div>
+            </div>
             
-            {workouts.filter(w => new Date(`${w.date}T${w.time}`) >= new Date()).map(workout => {
+            {workouts.filter(w => new Date(`${w.date}T${w.time}`) >= new Date()).filter(w => {
+              if (!searchWorkoutQuery) return true;
+              const q = searchWorkoutQuery.toLowerCase();
+              return w.type.toLowerCase().includes(q) || w.location.toLowerCase().includes(q) || w.date.includes(q) || w.price.toString().includes(q);
+            }).map(workout => {
               const regList = registrations.filter(r => r.workout_id === workout.id);
               const isPast = false; // האימונים שכאן הם תמיד בעתיד כעת
               
@@ -1867,10 +1947,25 @@ const AdminDashboard = ({
               </div>
             )}
 
-            <h3 className="font-bold text-gray-900 text-sm">מתאמנים פעילים ({trainees.filter(t => t.is_approved && !t.is_archived).length})</h3>
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-gray-100 pb-3">
+              <h3 className="font-bold text-gray-900 text-sm">מתאמנים פעילים ({trainees.filter(t => t.is_approved && !t.is_archived).length})</h3>
+              <div className="flex flex-col sm:flex-row gap-2">
+                <button onClick={() => setGlobalBroadcastModal(true)} className="bg-emerald-50 text-emerald-700 hover:bg-emerald-100 px-4 py-2 rounded-xl text-xs font-bold flex items-center justify-center gap-1 shadow-sm">
+                  <MessageCircle size={14} /> הודעה לכולם
+                </button>
+                <div className="relative">
+                  <Search size={16} className="absolute right-3 top-2.5 text-gray-400" />
+                  <input type="text" placeholder="חיפוש מתאמנים לפי שם, טלפון, אימייל..." value={searchTraineeQuery} onChange={(e) => setSearchTraineeQuery(e.target.value)} className="w-full md:w-72 pl-4 pr-9 py-2 bg-white border border-gray-200 rounded-xl text-xs outline-none focus:border-amber-400 transition shadow-sm" />
+                </div>
+              </div>
+            </div>
 
             <div className="grid grid-cols-1 gap-4">
-              {trainees.filter(t => t.is_approved && !t.is_archived).map(t => (
+              {trainees.filter(t => t.is_approved && !t.is_archived).filter(t => {
+                if (!searchTraineeQuery) return true;
+                const q = searchTraineeQuery.toLowerCase();
+                return t.full_name.toLowerCase().includes(q) || t.phone.includes(q) || t.email.toLowerCase().includes(q) || (t.id_number && t.id_number.includes(q));
+              }).map(t => (
                 <div key={t.id} className="bg-white/95 p-4 rounded-2xl shadow-sm border border-gray-100 relative overflow-hidden">
                   {renderFormalPdfTemplate(t)}
                   {checkAdminNeedsRenewal(t) && <div className="absolute top-0 right-0 bg-red-600 text-white text-[10px] font-bold px-3 py-1 rounded-bl-xl z-10">ממתין להצהרה חדשה</div>}
@@ -1900,10 +1995,16 @@ const AdminDashboard = ({
                   {/* כפתורי פעולה (לא יופיעו ב-PDF כי הם מחוץ ל-div של ה-PDF) */}
                   <div className="flex flex-wrap gap-2 pt-3 border-t border-gray-100">
                     <button 
+                      onClick={() => { setPunchCardModalUser(t); setPunchCardForm({ entries: t.punch_card?.entries || 10 }); }}
+                      className="flex-1 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 text-xs font-bold py-2 rounded-xl flex justify-center items-center gap-1 min-w-[100px]"
+                    >
+                      <Award size={14} /> כרטיסייה
+                    </button>
+                    <button 
                       onClick={() => setHistoryModalUser(t)}
                       className="flex-1 bg-purple-50 text-purple-700 hover:bg-purple-100 text-xs font-bold py-2 rounded-xl flex justify-center items-center gap-1 min-w-[120px]"
                     >
-                      <Calendar size={14} /> היסטוריית אימונים
+                      <Calendar size={14} /> היסטוריה
                     </button>
                     <label className="flex-1 bg-blue-50 text-blue-700 hover:bg-blue-100 text-xs font-bold py-2 rounded-xl flex justify-center items-center gap-1 cursor-pointer min-w-[100px]">
                       <Upload size={14} /> העלי אישור
@@ -2092,7 +2193,14 @@ const AdminDashboard = ({
                         <td className="p-3 font-bold text-gray-900">{trainee.full_name}</td>
                         <td className="p-3">{workout.type}</td>
                         <td className="p-3">{workout.date}</td>
-                        <td className="p-3 font-extrabold text-gray-900">{workout.price} ₪</td>
+                        <td className="p-3 font-extrabold text-gray-900">
+                          <input 
+                            type="number" 
+                            className="w-16 bg-gray-50 border border-gray-200 rounded p-1 text-center font-bold outline-none" 
+                            value={reg.paid_amount !== undefined ? reg.paid_amount : workout.price} 
+                            onChange={(e) => setRegistrations(prev => prev.map(r => r.id === reg.id ? { ...r, paid_amount: Number(e.target.value) } : r))}
+                          /> ₪
+                        </td>
                         <td className="p-3">
                           <select 
                             value={reg.payment_status}
@@ -2349,6 +2457,120 @@ const AdminDashboard = ({
         </div>
       )}
 
+      {punchCardModalUser && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-3xl p-6 max-w-sm w-full shadow-2xl space-y-4">
+            <div className="flex justify-between items-center border-b pb-3">
+              <h3 className="font-bold text-base text-gray-900">ניהול כרטיסייה - {punchCardModalUser.full_name}</h3>
+              <button onClick={() => setPunchCardModalUser(null)} className="text-gray-400 hover:text-gray-600"><X size={20} /></button>
+            </div>
+            
+            <div className="space-y-4">
+              {punchCardModalUser.punch_card ? (
+                <div className="bg-indigo-50 p-4 rounded-xl border border-indigo-200">
+                  <p className="text-sm font-bold text-indigo-900">סטטוס כרטיסייה נוכחי:</p>
+                  <p className="text-xs text-indigo-800 mt-1">יתרת כניסות: <strong>{punchCardModalUser.punch_card.entries}</strong></p>
+                  <p className="text-xs text-indigo-800">בתוקף עד: <strong>{new Date(punchCardModalUser.punch_card.expires_at).toLocaleDateString('he-IL')}</strong></p>
+                </div>
+              ) : (
+                <p className="text-xs text-gray-500 font-bold bg-gray-50 p-3 rounded-xl">למתאמנת אין כרטיסייה פעילה.</p>
+              )}
+
+              <div>
+                <label className="block text-xs font-bold text-gray-700 mb-1">כמה כניסות להזין? (שבועות תוקף):</label>
+                <input 
+                  type="number" 
+                  min="1"
+                  value={punchCardForm.entries} 
+                  onChange={e => setPunchCardForm({ entries: Number(e.target.value) })}
+                  className="w-full p-3 border rounded-xl text-sm outline-none focus:border-indigo-500 bg-gray-50"
+                />
+              </div>
+
+              <button 
+                onClick={() => {
+                  if (punchCardModalUser.punch_card) {
+                    if (!window.confirm('שימי לב: הקצאת כניסות חדשות תדרוס ותאריך את התוקף הקיים בהתאם למספר השבועות החדש. להמשיך?')) return;
+                    if (!window.confirm('אזהרה כפולה: האם את בטוחה שברצונך לשנות את פרטי הכרטיסייה הקיימת?')) return;
+                  }
+                  
+                  const expires = new Date();
+                  expires.setDate(expires.getDate() + (punchCardForm.entries * 7)); // כל כניסה = שבוע תוקף
+                  
+                  const updatedUser = { 
+                    ...punchCardModalUser, 
+                    punch_card: { entries: punchCardForm.entries, expires_at: expires.toISOString() } 
+                  };
+                  
+                  setTrainees(prev => prev.map(t => t.id === updatedUser.id ? updatedUser : t));
+                  alert('הכרטיסייה הוקצתה והתוקף חושב בהצלחה!');
+                  setPunchCardModalUser(null);
+                }}
+                className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 rounded-xl transition shadow-md flex items-center justify-center gap-2"
+              >
+                <Award size={18} /> שמירה ועדכון כרטיסייה
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {globalBroadcastModal && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-3xl p-6 max-w-lg w-full shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto">
+            <div className="flex justify-between items-center border-b pb-3">
+              <h3 className="font-bold text-base text-gray-900">הודעת תפוצה לכל המתאמנים</h3>
+              <button onClick={() => setGlobalBroadcastModal(false)} className="text-gray-400 hover:text-gray-600"><X size={20} /></button>
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold text-gray-700 mb-1">נוסח ההודעה הכללית:</label>
+              <div className="flex flex-wrap gap-1 mb-2">
+                {['[שם פרטי]', '[כתובת האתר]'].map(tag => (
+                  <button type="button" key={tag} onClick={() => setGlobalMessageText(prev => prev + ' ' + tag)} className="bg-gray-100 hover:bg-emerald-100 text-gray-700 text-[10px] px-2 py-1 rounded-lg border font-semibold transition cursor-pointer">
+                    {tag}
+                  </button>
+                ))}
+              </div>
+              <textarea 
+                value={globalMessageText}
+                onChange={(e) => setGlobalMessageText(e.target.value)}
+                className="w-full p-3 border rounded-xl text-xs outline-none focus:border-emerald-400"
+                rows={4}
+              />
+            </div>
+
+            <div>
+              <h4 className="text-xs font-bold text-gray-700 mb-2">רשימת נמענים פעילים:</h4>
+              <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
+                {trainees.filter(t => t.is_approved && !t.is_archived).map(user => {
+                  const isSent = sentMessageUserIds.includes(user.id);
+                  return (
+                    <div key={user.id} className="flex justify-between items-center bg-gray-50 p-2.5 rounded-xl text-xs border border-gray-100">
+                      <span className="font-bold text-gray-800">{user.full_name}</span>
+                      <button 
+                        onClick={() => {
+                          const finalMsg = processMessageText(globalMessageText, user, null);
+                          openWhatsApp(user.phone, finalMsg);
+                          if (!isSent) setSentMessageUserIds(prev => [...prev, user.id]);
+                        }}
+                        className={`px-3 py-1.5 rounded-lg font-bold flex items-center gap-1 transition ${
+                          isSent ? 'bg-emerald-100 text-emerald-800' : 'bg-emerald-500 hover:bg-emerald-600 text-white shadow-sm'
+                        }`}
+                      >
+                        {isSent ? <CheckCircle2 size={14} /> : <MessageCircle size={14} />}
+                        <span>{isSent ? 'נשלח ✓' : 'שלחי'}</span>
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+            <button onClick={() => setGlobalBroadcastModal(false)} className="w-full bg-gray-900 text-white font-bold py-2.5 rounded-xl text-xs mt-2 hover:bg-gray-800 transition">סגרי חלון</button>
+          </div>
+        </div>
+      )}
+
       {/* מודאל עריכת אימון */}
       {editWorkoutData && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50">
@@ -2420,22 +2642,48 @@ const AdminDashboard = ({
                       <span className="font-bold text-gray-800">{u.full_name}</span>
                       <div className="flex gap-2">
                         <button
-                          onClick={() => handleUpdatePaymentStatus(r.id, r.payment_status === 'paid' ? 'unpaid' : 'paid')}
-                          className={`px-3 py-1.5 rounded-lg font-bold transition ${r.payment_status === 'paid' ? 'bg-emerald-100 text-emerald-700' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}`}
+                          onClick={() => {
+                            if (r.payment_status === 'paid' || r.payment_status === 'punch_card') {
+                              if (window.confirm('האם לבטל את סימון התשלום?')) {
+                                handleUpdatePaymentStatus(r.id, 'unpaid');
+                                setRegistrations(prev => prev.map(reg => reg.id === r.id ? { ...reg, paid_amount: 0 } : reg));
+                              }
+                            } else {
+                              const doDiscount = window.confirm(`האם הסכום הוא ${workout.price} ₪ (אישור) או לעשות הנחה (ביטול)?`);
+                              let finalPrice = workout.price;
+                              if (!doDiscount) {
+                                const customAmount = window.prompt('הזיני את הסכום החדש (₪):', workout.price);
+                                if (customAmount === null) return; 
+                                finalPrice = Number(customAmount) || workout.price;
+                              }
+                              handleUpdatePaymentStatus(r.id, 'paid');
+                              setRegistrations(prev => prev.map(reg => reg.id === r.id ? { ...reg, paid_amount: finalPrice } : reg));
+                            }
+                          }}
+                          className={`px-3 py-1.5 rounded-lg font-bold transition ${r.payment_status === 'paid' ? 'bg-emerald-100 text-emerald-700' : r.payment_status === 'punch_card' ? 'bg-indigo-100 text-indigo-700' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}`}
                         >
-                          {r.payment_status === 'paid' ? 'שולם ✓' : 'סמן שולם'}
+                          {r.payment_status === 'paid' ? 'שולם ✓' : r.payment_status === 'punch_card' ? 'שולם כרטיסייה' : 'סמן שולם'}
                         </button>
                         <button 
                           onClick={() => {
                             if(window.confirm(`להסיר את ${u.full_name} מהאימון?`)) {
                               if(window.confirm('אזהרה כפולה: פעולה זו תמחק את הרישום שלה לאימון זה לחלוטין. להמשיך?')) {
+                                if (r.payment_status === 'punch_card') {
+                                  setTrainees(prev => prev.map(tr => {
+                                    if (tr.id === u.id && tr.punch_card) {
+                                      return { ...tr, punch_card: { ...tr.punch_card, entries: tr.punch_card.entries + 1 } };
+                                    }
+                                    return tr;
+                                  }));
+                                  alert('הכניסה הוחזרה אוטומטית למלאי הכרטיסייה של המתאמנת!');
+                                }
                                 setRegistrations(prev => prev.filter(reg => reg.id !== r.id));
                               }
                             }
                           }}
                           className="bg-red-50 text-red-600 hover:bg-red-100 px-3 py-1.5 rounded-lg font-bold transition"
                         >
-                          הסרה
+                          {r.payment_status === 'punch_card' ? 'הסרה + החזר כרטיסייה' : 'הסרה'}
                         </button>
                       </div>
                     </div>
