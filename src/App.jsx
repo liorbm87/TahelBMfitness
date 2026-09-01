@@ -2931,7 +2931,7 @@ export default function App() {
   const [waitlist, setWaitlist] = useState(INITIAL_WAITLIST);
   
   const [isAdminLoggedIn, setIsAdminLoggedIn] = useState(false);
-  const [isAdminLoginModalOpen, setIsAdminLoginModalOpen] = useState(false);
+  const [isAdminLoginModalOpen, setIsAdminLoginModalOpen] = useState(() => window.location.search.includes('admin'));
   
   // מתאמן חדש יתחיל כ-null (יצטרך להירשם), אבל האתר יזכור אותו לפי המכשיר שלו
   const [currentUser, setCurrentUser] = useState(() => {
@@ -3101,7 +3101,7 @@ export default function App() {
             } />
             <Route path="*" element={
               <>
-                <MainHeader settings={settings} isAdmin={isAdminLoggedIn} onOpenAdminLogin={() => setIsAdminLoginModalOpen(true)} onLogout={() => setIsAdminLoggedIn(false)} currentUser={currentUser} setCurrentUser={setCurrentUser} setTrainees={setTrainees} onRefresh={loadGlobalState} />
+                <MainHeader settings={settings} isAdmin={isAdminLoggedIn} onOpenAdminLogin={() => setIsAdminLoginModalOpen(true)} onLogout={() => { setIsAdminLoggedIn(false); window.history.pushState(null, '', '/'); }} currentUser={currentUser} setCurrentUser={setCurrentUser} setTrainees={setTrainees} onRefresh={loadGlobalState} />
                 <main className="px-4">
                   {isAdminLoggedIn ? (
                     <AdminDashboard workouts={workouts} setWorkouts={setWorkouts} trainees={trainees} setTrainees={setTrainees} registrations={registrations} setRegistrations={setRegistrations} waitlist={waitlist} setWaitlist={setWaitlist} settings={settings} setSettings={setSettings} onRefresh={loadGlobalState} />
