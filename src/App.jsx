@@ -2921,6 +2921,57 @@ const Footer = () => {
 };
 
 // ============================================================================
+// 7.6 ווידג'ט נגישות (ACCESSIBILITY WIDGET)
+// ============================================================================
+const AccessibilityWidget = () => {
+  const [isOpen, setIsOpen] = useState(false);
+  const [highContrast, setHighContrast] = useState(false);
+  const [largeText, setLargeText] = useState(false);
+
+  useEffect(() => {
+    if (highContrast) {
+      document.documentElement.style.setProperty('filter', 'contrast(1.25) saturate(1.2)');
+    } else {
+      document.documentElement.style.removeProperty('filter');
+    }
+  }, [highContrast]);
+
+  useEffect(() => {
+    if (largeText) {
+      document.documentElement.style.setProperty('font-size', '110%');
+    } else {
+      document.documentElement.style.removeProperty('font-size');
+    }
+  }, [largeText]);
+
+  return (
+    <div className="fixed bottom-6 left-6 z-[9999]">
+      {isOpen && (
+        <div className="bg-white border border-gray-200 shadow-2xl rounded-2xl p-4 mb-3 w-48 space-y-3 animate-fadeIn">
+          <h4 className="font-bold text-sm text-gray-900 border-b pb-2 flex items-center gap-2">
+            <Eye size={16} /> תפריט נגישות
+          </h4>
+          <button onClick={() => setHighContrast(!highContrast)} className="w-full text-xs font-bold bg-gray-50 hover:bg-gray-100 p-2.5 rounded-xl border flex items-center justify-between transition">
+            ניגודיות גבוהה {highContrast ? '✅' : ''}
+          </button>
+          <button onClick={() => setLargeText(!largeText)} className="w-full text-xs font-bold bg-gray-50 hover:bg-gray-100 p-2.5 rounded-xl border flex items-center justify-between transition">
+            הגדלת טקסט {largeText ? '✅' : ''}
+          </button>
+        </div>
+      )}
+      <button 
+        onClick={() => setIsOpen(!isOpen)} 
+        className="bg-blue-600 text-white p-3 rounded-full shadow-lg hover:bg-blue-700 transition flex items-center justify-center outline-none focus:ring-4 focus:ring-blue-300"
+        title="התאמות נגישות"
+        style={{ width: '50px', height: '50px' }}
+      >
+        <Eye size={24} />
+      </button>
+    </div>
+  );
+};
+
+// ============================================================================
 // 8. רכיב האפליקציה הראשי (APP COMPONENT - SUPABASE GLOBAL SYNC)
 // ============================================================================
 export default function App() {
@@ -3114,6 +3165,7 @@ export default function App() {
               </>
             } />
           </Routes>
+          <AccessibilityWidget />
         </div>
       </div>
     </Router>
