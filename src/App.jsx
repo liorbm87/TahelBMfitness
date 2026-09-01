@@ -3208,11 +3208,13 @@ export default function App() {
               </>
             } />
           </Routes>
-          <AccessibilityWidget />
-          <a href="https://wa.me/972545222008?text=היי%20תהל,%20אשמח%20לפרטים" target="_blank" rel="noreferrer" className="fixed bottom-6 right-6 z-[9998] bg-emerald-500 text-white p-3 rounded-full shadow-2xl hover:bg-emerald-600 transition flex items-center justify-center hover:scale-110" style={{ width: '56px', height: '56px' }} title="שלחי הודעה לתהל">
-            <MessageCircle size={32} />
-          </a>
         </div>
+
+        {/* העברנו את הכפתורים הצפים מחוץ לדיב של הטשטוש כדי שיישארו קבועים למסך */}
+        <AccessibilityWidget />
+        <a href="https://wa.me/972545222008?text=היי%20תהל,%20אשמח%20לפרטים" target="_blank" rel="noreferrer" className="fixed bottom-6 right-6 z-[9999] bg-emerald-500 text-white p-3 rounded-full shadow-2xl hover:bg-emerald-600 transition flex items-center justify-center hover:scale-110" style={{ width: '56px', height: '56px' }} title="שלחי הודעה לתהל">
+          <MessageCircle size={32} />
+        </a>
       </div>
     </Router>
   );
