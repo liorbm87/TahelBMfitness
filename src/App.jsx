@@ -1668,7 +1668,7 @@ const AdminDashboard = ({
                   min="1"
                   value={newWorkout.price}
                   onChange={(e) => setNewWorkout({...newWorkout, price: e.target.value})}
-                  placeholder="70"
+                  placeholder="60"
                   className="w-full p-2.5 bg-amber-50 border border-amber-300 rounded-xl font-bold text-gray-900 outline-none"
                 />
               </div>
@@ -2004,7 +2004,7 @@ const AdminDashboard = ({
                       onClick={() => setHistoryModalUser(t)}
                       className="flex-1 bg-purple-50 text-purple-700 hover:bg-purple-100 text-xs font-bold py-2 rounded-xl flex justify-center items-center gap-1 min-w-[120px]"
                     >
-                      <Calendar size={14} /> היסטוריה
+                      <Calendar size={14} /> היסטוריית אימונים
                     </button>
                     <label className="flex-1 bg-blue-50 text-blue-700 hover:bg-blue-100 text-xs font-bold py-2 rounded-xl flex justify-center items-center gap-1 cursor-pointer min-w-[100px]">
                       <Upload size={14} /> העלי אישור
