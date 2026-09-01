@@ -1609,12 +1609,16 @@ const AdminDashboard = ({
 
       {activeTab === 'workouts' && (
         <div className="space-y-6">
-          <div className="bg-white/95 p-6 rounded-3xl shadow-md border border-gray-100">
-            <h3 className="font-extrabold text-gray-900 text-base mb-4 flex items-center gap-2">
-              <Plus size={18} className="text-amber-600" /> הוספת אימון שבועי חדש
-            </h3>
+          <details className="bg-white/95 p-5 rounded-3xl shadow-md border border-gray-100 group">
+            <summary className="font-extrabold text-gray-900 text-base flex items-center justify-between cursor-pointer list-none outline-none">
+              <div className="flex items-center gap-2">
+                <Plus size={18} className="text-amber-600" /> 
+                הוספת אימון שבועי חדש
+              </div>
+              <ChevronDown size={20} className="text-gray-400 group-open:rotate-180 transition-transform" />
+            </summary>
 
-            <form onSubmit={handleAddWorkoutSubmit} className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 text-xs">
+            <form onSubmit={handleAddWorkoutSubmit} className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 text-xs mt-5 pt-5 border-t border-gray-100">
               <div>
                 <label className="block font-bold text-gray-700 mb-1">סוג האימון *</label>
                 <input 
@@ -1705,7 +1709,7 @@ const AdminDashboard = ({
                 </button>
               </div>
             </form>
-          </div>
+          </details>
 
           <div className="space-y-4">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
