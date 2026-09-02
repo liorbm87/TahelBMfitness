@@ -1196,7 +1196,7 @@ const AdminDashboard = ({
   });
 
   const [additionalDates, setAdditionalDates] = useState([]);
-  const [recurringWeeks, setRecurringWeeks] = useState(1);
+  const [recurringWeeks, setRecurringWeeks] = useState(0);
 
   const [messageModal, setMessageModal] = useState(null); // { workout, type: 'broadcast' | 'invite' }
   const [messageText, setMessageText] = useState('');
@@ -1281,11 +1281,11 @@ const AdminDashboard = ({
     let allDates = [newWorkout.date];
 
     // יצירת שכפולים אוטומטיים לשבועות הבאים
-    if (recurringWeeks > 1) {
+    if (recurringWeeks > 0) {
       const baseParts = newWorkout.date.split('-');
       const baseDateObj = new Date(baseParts[0], baseParts[1] - 1, baseParts[2]);
       
-      for (let i = 1; i < recurringWeeks; i++) {
+      for (let i = 1; i <= recurringWeeks; i++) {
         const nextDate = new Date(baseDateObj);
         nextDate.setDate(baseDateObj.getDate() + (i * 7));
         
@@ -1324,7 +1324,7 @@ const AdminDashboard = ({
       notes: ''
     });
     setAdditionalDates([]);
-    setRecurringWeeks(1);
+    setRecurringWeeks(0);
   };
 
   const handleDeleteWorkout = (id) => {
@@ -1768,11 +1768,11 @@ const AdminDashboard = ({
                   <p className="text-[10px] text-amber-700 mb-2">כמה שבועות קדימה ליצור את האימון באותו יום ושעה?</p>
                   <input 
                     type="number"
-                    min="1"
+                    min="0"
                     value={recurringWeeks}
                     onChange={(e) => setRecurringWeeks(Number(e.target.value))}
                     className="w-full p-2.5 bg-white border border-amber-300 rounded-xl outline-none focus:ring-2 focus:ring-amber-500"
-                    placeholder="1 = רק האימון הנוכחי"
+                    placeholder="0 = רק האימון הנוכחי"
                   />
                 </div>
                 <div>
