@@ -1238,6 +1238,11 @@ const AdminDashboard = ({
   const availableFinanceMonths = useMemo(() => {
     const months = new Set();
     registrations.forEach(reg => {
+      if (reg.is_punch_card_purchase) {
+        const dateToUse = reg.payment_date || reg.created_at;
+        months.add(dateToUse.substring(0, 7));
+        return;
+      }
       const w = workouts.find(wo => wo.id === reg.workout_id);
       if (w && w.date) {
         const dateToUse = (reg.payment_status !== 'unpaid' && reg.payment_date) ? reg.payment_date : w.date;
@@ -1260,7 +1265,7 @@ const AdminDashboard = ({
   const [searchTraineeQuery, setSearchTraineeQuery] = useState('');
   const [searchWorkoutQuery, setSearchWorkoutQuery] = useState('');
   const [punchCardModalUser, setPunchCardModalUser] = useState(null);
-  const [punchCardForm, setPunchCardForm] = useState({ entries: 10 });
+  const [punchCardForm, setPunchCardForm] = useState({ entries: 10, price: 0 });
   const [globalBroadcastModal, setGlobalBroadcastModal] = useState(false);
   const [globalMessageText, setGlobalMessageText] = useState('היי [שם פרטי]! ');
   
@@ -1277,9 +1282,14 @@ const AdminDashboard = ({
     const unpaidDebtsList = [];
 
     registrations.forEach(reg => {
-      const w = workouts.find(item => item.id === reg.workout_id);
       const user = trainees.find(u => u.id === reg.user_id);
-      if (!w || !user) return;
+      if (!user) return;
+      if (reg.is_punch_card_purchase) {
+        if (reg.payment_status === 'paid') totalRevenue += Number(reg.paid_amount || 0);
+        return;
+      }
+      const w = workouts.find(item => item.id === reg.workout_id);
+      if (!w) return;
 
       if (reg.payment_status === 'paid') {
         totalRevenue += Number(reg.paid_amount !== undefined ? reg.paid_amount : w.price || 0);
@@ -1483,6 +1493,29 @@ const AdminDashboard = ({
   };
 
   const handleUpdatePaymentStatus = (regId, newStatus) => {
+    const reg = registrations.find(r => r.id === regId);
+    if (!reg) return;
+
+    if (newStatus === 'punch_card' && reg.payment_status !== 'punch_card') {
+      const trainee = trainees.find(t => t.id === reg.user_id);
+      if (!trainee || !trainee.punch_card || trainee.punch_card.entries <= 0 || new Date(trainee.punch_card.expires_at) < new Date()) {
+        alert('שגיאה: אי אפשר לשנות לכרטיסייה - למתאמנת זו אין כרטיסייה פעילה או שנגמרו לה הכניסות!');
+        return; // עוצרים ולא מעדכנים
+      }
+      const updatedUser = { ...trainee, punch_card: { ...trainee.punch_card, entries: trainee.punch_card.entries - 1 } };
+      setTrainees(prev => prev.map(t => t.id === trainee.id ? updatedUser : t));
+      alert(`מעולה! כניסה הופחתה אוטומטית מכרטיסיית המתאמנת. נותרו: ${updatedUser.punch_card.entries} כניסות.`);
+    }
+
+    if (reg.payment_status === 'punch_card' && newStatus !== 'punch_card') {
+      const trainee = trainees.find(t => t.id === reg.user_id);
+      if (trainee && trainee.punch_card) {
+        const updatedUser = { ...trainee, punch_card: { ...trainee.punch_card, entries: trainee.punch_card.entries + 1 } };
+        setTrainees(prev => prev.map(t => t.id === trainee.id ? updatedUser : t));
+        alert('הכניסה הוחזרה בהצלחה לכרטיסיית המתאמנת!');
+      }
+    }
+
     setRegistrations(prev => prev.map(r => {
       if (r.id === regId) {
         const update = { ...r, payment_status: newStatus };
@@ -2510,11 +2543,12 @@ const AdminDashboard = ({
               <p className="text-xs font-bold text-emerald-600">
                 סה"כ נגבה בחודש זה: {
                   registrations.filter(r => {
+                    if (r.is_punch_card_purchase) return (r.payment_date || r.created_at).startsWith(financeMonth);
                     const w = workouts.find(wo => wo.id === r.workout_id);
                     if (!w) return false;
                     const dateToCheck = (r.payment_status !== 'unpaid' && r.payment_date) ? r.payment_date : w.date;
                     return dateToCheck.startsWith(financeMonth);
-                  }).reduce((acc, r) => r.payment_status === 'paid' ? acc + (r.paid_amount !== undefined ? r.paid_amount : (workouts.find(w => w.id === r.workout_id)?.price || 0)) : acc, 0)
+                  }).reduce((acc, r) => r.payment_status === 'paid' ? acc + (r.paid_amount !== undefined ? r.paid_amount : (r.is_punch_card_purchase ? 0 : workouts.find(w => w.id === r.workout_id)?.price || 0)) : acc, 0)
                 } ₪
               </p>
             </div>
@@ -2533,14 +2567,42 @@ const AdminDashboard = ({
                 </thead>
                 <tbody className="divide-y">
                   {registrations.filter(reg => {
+                    if (reg.is_punch_card_purchase) return (reg.payment_date || reg.created_at).startsWith(financeMonth);
                     const w = workouts.find(wo => wo.id === reg.workout_id);
                     if (!w) return false;
                     const dateToCheck = (reg.payment_status !== 'unpaid' && reg.payment_date) ? reg.payment_date : w.date;
                     return dateToCheck.startsWith(financeMonth);
                   }).map(reg => {
-                    const workout = workouts.find(w => w.id === reg.workout_id);
                     const trainee = trainees.find(t => t.id === reg.user_id);
-                    if (!workout || !trainee) return null;
+                    if (!trainee) return null;
+
+                    if (reg.is_punch_card_purchase) {
+                      return (
+                        <tr key={reg.id} className="hover:bg-gray-50/50 bg-indigo-50/40">
+                          <td className="p-3 font-bold text-gray-900">{trainee.full_name}</td>
+                          <td className="p-3 font-bold text-indigo-700">כרטיסייה</td>
+                          <td className="p-3 text-gray-400">---</td>
+                          <td className="p-3 font-semibold text-emerald-700">{reg.payment_date ? reg.payment_date.substring(0,10).split('-').reverse().join('/') : '---'}</td>
+                          <td className="p-3 font-extrabold text-gray-900">{reg.paid_amount} ₪</td>
+                          <td className="p-3">
+                            <div className="hide-on-pdf flex items-center gap-2">
+                              <span className="px-2 py-1.5 rounded-xl font-bold text-xs bg-emerald-100 text-emerald-800">שולם</span>
+                              <button onClick={() => {
+                                if(window.confirm('האם את בטוחה שברצונך למחוק רכישת כרטיסייה זו? (לא יחזיר כניסות למתאמנת)')) {
+                                  if(window.confirm('אזהרה 2: מחיקת הרשומה תסיר אותה לחלוטין מדוח הכספים. להמשיך?')) {
+                                    setRegistrations(prev => prev.filter(r => r.id !== reg.id));
+                                  }
+                                }
+                              }} className="text-red-500 hover:text-red-700 ml-1" title="מחיקת רשומה מהדוח"><Trash2 size={14}/></button>
+                            </div>
+                            <span className="show-on-pdf px-2.5 py-1.5 rounded-xl font-bold text-xs bg-emerald-100 text-emerald-800">שולם</span>
+                          </td>
+                        </tr>
+                      );
+                    }
+
+                    const workout = workouts.find(w => w.id === reg.workout_id);
+                    if (!workout) return null;
 
                     return (
                       <tr key={reg.id} className="hover:bg-gray-50/50">
@@ -2562,7 +2624,7 @@ const AdminDashboard = ({
                           </span>
                         </td>
                         <td className="p-3">
-                          <div className="hide-on-pdf">
+                          <div className="hide-on-pdf flex items-center gap-2">
                             <select 
                               value={reg.payment_status}
                               onChange={(e) => handleUpdatePaymentStatus(reg.id, e.target.value)}
@@ -2575,6 +2637,13 @@ const AdminDashboard = ({
                               <option value="unpaid">לא שולם</option>
                               <option value="punch_card">כרטיסייה</option>
                             </select>
+                            <button onClick={() => {
+                                if(window.confirm('האם את בטוחה שברצונך למחוק רשומה זו?')) {
+                                  if(window.confirm('אזהרה 2: מחיקת הרשומה תסיר אותה לחלוטין מדוח הכספים. להמשיך?')) {
+                                    setRegistrations(prev => prev.filter(r => r.id !== reg.id));
+                                  }
+                                }
+                              }} className="text-red-500 hover:text-red-700 ml-1" title="מחיקת רשומה מהדוח"><Trash2 size={14}/></button>
                           </div>
                           <span className={`show-on-pdf px-2.5 py-1.5 rounded-xl font-bold text-xs ${
                             reg.payment_status === 'paid' ? 'bg-emerald-100 text-emerald-800' :
@@ -2592,11 +2661,12 @@ const AdminDashboard = ({
                     <td colSpan="4" className="p-4 text-left font-black text-emerald-900 text-sm">סה"כ הכנסות (ששולמו) בחודש זה:</td>
                     <td colSpan="2" className="p-4 font-black text-emerald-700 text-lg">
                       {registrations.filter(r => {
+                        if (r.is_punch_card_purchase) return (r.payment_date || r.created_at).startsWith(financeMonth);
                         const w = workouts.find(wo => wo.id === r.workout_id);
                         if (!w) return false;
                         const dateToCheck = (r.payment_status !== 'unpaid' && r.payment_date) ? r.payment_date : w.date;
                         return dateToCheck.startsWith(financeMonth);
-                      }).reduce((acc, r) => r.payment_status === 'paid' ? acc + (r.paid_amount !== undefined ? r.paid_amount : (workouts.find(w => w.id === r.workout_id)?.price || 0)) : acc, 0)} ₪
+                      }).reduce((acc, r) => r.payment_status === 'paid' ? acc + (r.paid_amount !== undefined ? r.paid_amount : (r.is_punch_card_purchase ? 0 : workouts.find(w => w.id === r.workout_id)?.price || 0)) : acc, 0)} ₪
                     </td>
                   </tr>
                 </tfoot>
@@ -2904,8 +2974,19 @@ const AdminDashboard = ({
                   type="number" 
                   min="1"
                   value={punchCardForm.entries} 
-                  onChange={e => setPunchCardForm({ entries: Number(e.target.value) })}
+                  onChange={e => setPunchCardForm({ ...punchCardForm, entries: Number(e.target.value) })}
                   className="w-full p-3 border rounded-xl text-sm outline-none focus:border-indigo-500 bg-gray-50"
+                />
+              </div>
+              <div className="mt-3">
+                <label className="block text-xs font-bold text-gray-700 mb-1">מחיר הכרטיסייה (₪):</label>
+                <input 
+                  type="number" 
+                  min="0"
+                  value={punchCardForm.price || 0} 
+                  onChange={e => setPunchCardForm({ ...punchCardForm, price: Number(e.target.value) })}
+                  className="w-full p-3 border rounded-xl text-sm outline-none focus:border-indigo-500 bg-gray-50"
+                  placeholder="לרישום בדוח הפיננסי"
                 />
               </div>
 
@@ -2925,6 +3006,21 @@ const AdminDashboard = ({
                   };
                   
                   setTrainees(prev => prev.map(t => t.id === updatedUser.id ? updatedUser : t));
+                  
+                  if (punchCardForm.price > 0) {
+                    const newPunchReg = {
+                      id: 'r_punch_' + Date.now(),
+                      user_id: punchCardModalUser.id,
+                      workout_id: 'punch_card_purchase',
+                      payment_status: 'paid',
+                      paid_amount: punchCardForm.price,
+                      payment_date: new Date().toISOString(),
+                      created_at: new Date().toISOString(),
+                      is_punch_card_purchase: true
+                    };
+                    setRegistrations(prev => [...prev, newPunchReg]);
+                  }
+
                   alert('הכרטיסייה הוקצתה והתוקף חושב בהצלחה!');
                   setPunchCardModalUser(null);
                 }}
