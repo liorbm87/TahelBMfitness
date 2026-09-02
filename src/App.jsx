@@ -1227,6 +1227,24 @@ const AdminDashboard = ({
       .replace(/\[קישור האימון\]/g, workoutLink);
   };
   const [financeMonth, setFinanceMonth] = useState('2026-08');
+  
+  // יצירת רשימת חודשים ייחודית שיש בהם הרשמות בפועל
+  const availableFinanceMonths = useMemo(() => {
+    const months = new Set();
+    registrations.forEach(reg => {
+      const w = workouts.find(wo => wo.id === reg.workout_id);
+      if (w && w.date) months.add(w.date.substring(0, 7)); // שומר פורמט YYYY-MM
+    });
+    return Array.from(months).sort((a, b) => b.localeCompare(a)); // ממיין מהחדש לישן
+  }, [registrations, workouts]);
+
+  // בחירה אוטומטית של החודש העדכני ביותר אם החודש הנוכחי לא קיים ברשימה
+  useEffect(() => {
+    if (availableFinanceMonths.length > 0 && !availableFinanceMonths.includes(financeMonth)) {
+      setFinanceMonth(availableFinanceMonths[0]);
+    }
+  }, [availableFinanceMonths, financeMonth]);
+
   const [selectedAdminMonth, setSelectedAdminMonth] = useState(() => new Date().toISOString().substring(0, 7)); // הוספת הסטייט החסר
   const [editWorkoutData, setEditWorkoutData] = useState(null); // סטייט לעריכת אימון
   
@@ -2447,12 +2465,16 @@ const AdminDashboard = ({
             </div>
 
             <div className="flex items-center gap-2">
-              <input 
-                type="month"
+              <select 
                 value={financeMonth}
                 onChange={(e) => setFinanceMonth(e.target.value)}
-                className="p-2 border rounded-xl text-xs font-bold outline-none"
-              />
+                className="p-2 border rounded-xl text-xs font-bold outline-none bg-white cursor-pointer"
+              >
+                {availableFinanceMonths.length === 0 && <option value="">אין נתונים</option>}
+                {availableFinanceMonths.map(m => (
+                  <option key={m} value={m}>{m.split('-').reverse().join('/')}</option>
+                ))}
+              </select>
               <button 
                 onClick={() => exportToPdf('accounting-report-table', `דוח_הכנסות_${financeMonth}.pdf`)}
                 className="bg-gradient-to-r from-gray-900 to-amber-900 text-white text-xs font-bold px-4 py-2.5 rounded-xl flex items-center gap-1.5 shadow-md"
@@ -2465,7 +2487,14 @@ const AdminDashboard = ({
           <div id="accounting-report-table" className="bg-white p-6 rounded-3xl shadow-md border border-gray-100 space-y-4">
             <div className="flex justify-between items-center border-b pb-3">
               <h4 className="font-black text-gray-900 text-sm">פירוט תשלומים לחודש {financeMonth}</h4>
-              <p className="text-xs font-bold text-emerald-600">סה"כ נגבה: {stats.totalRevenue} ₪</p>
+              <p className="text-xs font-bold text-emerald-600">
+                סה"כ נגבה בחודש זה: {
+                  registrations.filter(r => {
+                    const w = workouts.find(wo => wo.id === r.workout_id);
+                    return w && w.date.startsWith(financeMonth);
+                  }).reduce((acc, r) => r.payment_status === 'paid' ? acc + (r.paid_amount !== undefined ? r.paid_amount : (workouts.find(w => w.id === r.workout_id)?.price || 0)) : acc, 0)
+                } ₪
+              </p>
             </div>
 
             <div className="overflow-x-auto">
@@ -2480,7 +2509,10 @@ const AdminDashboard = ({
                   </tr>
                 </thead>
                 <tbody className="divide-y">
-                  {registrations.map(reg => {
+                  {registrations.filter(reg => {
+                    const w = workouts.find(wo => wo.id === reg.workout_id);
+                    return w && w.date.startsWith(financeMonth);
+                  }).map(reg => {
                     const workout = workouts.find(w => w.id === reg.workout_id);
                     const trainee = trainees.find(t => t.id === reg.user_id);
                     if (!workout || !trainee) return null;
