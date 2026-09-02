@@ -195,6 +195,11 @@ const MainHeader = ({ settings, isAdmin, onOpenAdminLogin, onLogout, currentUser
           >
             <Edit size={16} className="text-amber-600" />
             שלום, {currentUser.full_name}
+            {currentUser.punch_card?.entries > 0 && (
+              <span className="bg-indigo-100 text-indigo-800 px-2 py-0.5 rounded-full text-[11px] font-black border border-indigo-200 flex items-center gap-1">
+                <Award size={12} /> נותרו {currentUser.punch_card.entries} ניקובים
+              </span>
+            )}
           </button>
           <button
             onClick={() => setIsHistoryModalOpen(true)}
@@ -2261,6 +2266,11 @@ const AdminDashboard = ({
                         <div className="flex items-center gap-2">
                           <span>{t.full_name}</span>
                           <span className="text-xs text-gray-500 font-normal">({t.phone})</span>
+                          {t.punch_card?.entries > 0 && (
+                            <span className="bg-indigo-100 text-indigo-800 px-2 py-0.5 rounded-full text-[10px] font-black border border-indigo-200 flex items-center gap-1">
+                              <Award size={10} /> {t.punch_card.entries} כניסות
+                            </span>
+                          )}
                         </div>
                         <span className="group-open:rotate-180 transition-transform"><ChevronDown size={18} /></span>
                       </summary>
@@ -2969,29 +2979,41 @@ const AdminDashboard = ({
               )}
 
               <div>
-                <label className="block text-xs font-bold text-gray-700 mb-1">כמה כניסות להזין? (שבועות תוקף):</label>
+                <label className="block text-xs font-bold text-gray-700 mb-1">כמה כניסות להזין? (0 לאיפוס):</label>
                 <input 
                   type="number" 
-                  min="1"
+                  min="0"
                   value={punchCardForm.entries} 
                   onChange={e => setPunchCardForm({ ...punchCardForm, entries: Number(e.target.value) })}
                   className="w-full p-3 border rounded-xl text-sm outline-none focus:border-indigo-500 bg-gray-50"
                 />
               </div>
-              <div className="mt-3">
-                <label className="block text-xs font-bold text-gray-700 mb-1">מחיר הכרטיסייה (₪):</label>
-                <input 
-                  type="number" 
-                  min="0"
-                  value={punchCardForm.price || 0} 
-                  onChange={e => setPunchCardForm({ ...punchCardForm, price: Number(e.target.value) })}
-                  className="w-full p-3 border rounded-xl text-sm outline-none focus:border-indigo-500 bg-gray-50"
-                  placeholder="לרישום בדוח הפיננסי"
-                />
-              </div>
+              {punchCardForm.entries > 0 && (
+                <div className="mt-3">
+                  <label className="block text-xs font-bold text-gray-700 mb-1">מחיר הכרטיסייה (₪):</label>
+                  <input 
+                    type="number" 
+                    min="0"
+                    value={punchCardForm.price || 0} 
+                    onChange={e => setPunchCardForm({ ...punchCardForm, price: Number(e.target.value) })}
+                    className="w-full p-3 border rounded-xl text-sm outline-none focus:border-indigo-500 bg-gray-50"
+                    placeholder="לרישום בדוח הפיננסי"
+                  />
+                </div>
+              )}
 
               <button 
                 onClick={() => {
+                  if (punchCardForm.entries === 0) {
+                    if (!window.confirm('האם את בטוחה שברצונך לאפס ולמחוק את הכרטיסייה למתאמנת זו? (היסטוריית התשלומים לא תימחק)')) return;
+                    const updatedUser = { ...punchCardModalUser };
+                    delete updatedUser.punch_card;
+                    setTrainees(prev => prev.map(t => t.id === updatedUser.id ? updatedUser : t));
+                    alert('הכרטיסייה אופסה ונמחקה בהצלחה למתאמנת!');
+                    setPunchCardModalUser(null);
+                    return;
+                  }
+
                   if (punchCardModalUser.punch_card) {
                     if (!window.confirm('שימי לב: הקצאת כניסות חדשות תדרוס ותאריך את התוקף הקיים בהתאם למספר השבועות החדש. להמשיך?')) return;
                     if (!window.confirm('אזהרה כפולה: האם את בטוחה שברצונך לשנות את פרטי הכרטיסייה הקיימת?')) return;
@@ -3024,9 +3046,10 @@ const AdminDashboard = ({
                   alert('הכרטיסייה הוקצתה והתוקף חושב בהצלחה!');
                   setPunchCardModalUser(null);
                 }}
-                className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 rounded-xl transition shadow-md flex items-center justify-center gap-2"
+                className={`w-full font-bold py-3 rounded-xl transition shadow-md flex items-center justify-center gap-2 text-white ${punchCardForm.entries === 0 ? 'bg-red-500 hover:bg-red-600' : 'bg-indigo-600 hover:bg-indigo-700'}`}
               >
-                <Award size={18} /> שמירה ועדכון כרטיסייה
+                {punchCardForm.entries === 0 ? <Trash2 size={18} /> : <Award size={18} />}
+                {punchCardForm.entries === 0 ? 'איפוס ומחיקת כרטיסייה' : 'שמירה ועדכון כרטיסייה'}
               </button>
             </div>
           </div>
