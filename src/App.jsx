@@ -328,8 +328,8 @@ const AdminLoginModal = ({ isOpen, onClose, onLogin, currentPassword }) => {
   };
 
   return (
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-fadeIn">
-      <div className="bg-white rounded-3xl p-6 max-w-sm w-full shadow-2xl border border-amber-100">
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-fadeIn h-[100dvh]">
+      <div className="bg-white rounded-3xl p-6 max-w-sm w-full shadow-2xl border border-amber-100 m-auto">
         <div className="flex justify-between items-center mb-4">
           <div className="flex items-center gap-2 text-amber-600">
             <Lock size={22} />
@@ -1228,12 +1228,15 @@ const AdminDashboard = ({
   };
   const [financeMonth, setFinanceMonth] = useState('2026-08');
   
-  // יצירת רשימת חודשים ייחודית שיש בהם הרשמות בפועל
+  // יצירת רשימת חודשים (לפי תאריך אימון לחובות, ולפי תאריך תשלום להכנסות ששולמו)
   const availableFinanceMonths = useMemo(() => {
     const months = new Set();
     registrations.forEach(reg => {
       const w = workouts.find(wo => wo.id === reg.workout_id);
-      if (w && w.date) months.add(w.date.substring(0, 7)); // שומר פורמט YYYY-MM
+      if (w && w.date) {
+        const dateToUse = (reg.payment_status !== 'unpaid' && reg.payment_date) ? reg.payment_date : w.date;
+        months.add(dateToUse.substring(0, 7)); // שומר פורמט YYYY-MM
+      }
     });
     return Array.from(months).sort((a, b) => b.localeCompare(a)); // ממיין מהחדש לישן
   }, [registrations, workouts]);
@@ -1474,7 +1477,18 @@ const AdminDashboard = ({
   };
 
   const handleUpdatePaymentStatus = (regId, newStatus) => {
-    setRegistrations(prev => prev.map(r => r.id === regId ? { ...r, payment_status: newStatus } : r));
+    setRegistrations(prev => prev.map(r => {
+      if (r.id === regId) {
+        const update = { ...r, payment_status: newStatus };
+        if (newStatus === 'paid' || newStatus === 'punch_card') {
+          update.payment_date = new Date().toISOString();
+        } else {
+          update.payment_date = null; // מחיקת תאריך התשלום אם בוטל
+        }
+        return update;
+      }
+      return r;
+    }));
   };
 
   const handleAdminUploadCert = async (traineeId, e) => {
@@ -2491,7 +2505,9 @@ const AdminDashboard = ({
                 סה"כ נגבה בחודש זה: {
                   registrations.filter(r => {
                     const w = workouts.find(wo => wo.id === r.workout_id);
-                    return w && w.date.startsWith(financeMonth);
+                    if (!w) return false;
+                    const dateToCheck = (r.payment_status !== 'unpaid' && r.payment_date) ? r.payment_date : w.date;
+                    return dateToCheck.startsWith(financeMonth);
                   }).reduce((acc, r) => r.payment_status === 'paid' ? acc + (r.paid_amount !== undefined ? r.paid_amount : (workouts.find(w => w.id === r.workout_id)?.price || 0)) : acc, 0)
                 } ₪
               </p>
@@ -2503,7 +2519,8 @@ const AdminDashboard = ({
                   <tr className="bg-gray-50 text-gray-500 border-b">
                     <th className="p-3">שם המתאמנ/ת</th>
                     <th className="p-3">אימון</th>
-                    <th className="p-3">תאריך</th>
+                    <th className="p-3">ת. אימון</th>
+                    <th className="p-3">ת. תשלום</th>
                     <th className="p-3">סכום</th>
                     <th className="p-3">סטטוס תשלום</th>
                   </tr>
@@ -2511,7 +2528,9 @@ const AdminDashboard = ({
                 <tbody className="divide-y">
                   {registrations.filter(reg => {
                     const w = workouts.find(wo => wo.id === reg.workout_id);
-                    return w && w.date.startsWith(financeMonth);
+                    if (!w) return false;
+                    const dateToCheck = (reg.payment_status !== 'unpaid' && reg.payment_date) ? reg.payment_date : w.date;
+                    return dateToCheck.startsWith(financeMonth);
                   }).map(reg => {
                     const workout = workouts.find(w => w.id === reg.workout_id);
                     const trainee = trainees.find(t => t.id === reg.user_id);
@@ -2522,6 +2541,7 @@ const AdminDashboard = ({
                         <td className="p-3 font-bold text-gray-900">{trainee.full_name}</td>
                         <td className="p-3">{workout.type}</td>
                         <td className="p-3">{workout.date.split('-').reverse().join('/')}</td>
+                        <td className="p-3 font-semibold text-emerald-700">{reg.payment_date && reg.payment_status !== 'unpaid' ? reg.payment_date.substring(0,10).split('-').reverse().join('/') : '---'}</td>
                         <td className="p-3 font-extrabold text-gray-900">
                           <input 
                             type="number" 
@@ -2548,6 +2568,19 @@ const AdminDashboard = ({
                     );
                   })}
                 </tbody>
+                <tfoot>
+                  <tr className="bg-emerald-50 border-t-2 border-emerald-200">
+                    <td colSpan="4" className="p-4 text-left font-black text-emerald-900 text-sm">סה"כ הכנסות (ששולמו) בחודש זה:</td>
+                    <td colSpan="2" className="p-4 font-black text-emerald-700 text-lg">
+                      {registrations.filter(r => {
+                        const w = workouts.find(wo => wo.id === r.workout_id);
+                        if (!w) return false;
+                        const dateToCheck = (r.payment_status !== 'unpaid' && r.payment_date) ? r.payment_date : w.date;
+                        return dateToCheck.startsWith(financeMonth);
+                      }).reduce((acc, r) => r.payment_status === 'paid' ? acc + (r.paid_amount !== undefined ? r.paid_amount : (workouts.find(w => w.id === r.workout_id)?.price || 0)) : acc, 0)} ₪
+                    </td>
+                  </tr>
+                </tfoot>
               </table>
             </div>
           </div>
@@ -2613,8 +2646,8 @@ const AdminDashboard = ({
       )}
 
       {messageModal && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-3xl p-6 max-w-lg w-full shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto">
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50 h-[100dvh]">
+          <div className="bg-white rounded-3xl p-6 max-w-lg w-full shadow-2xl space-y-4 max-h-[90dvh] overflow-y-auto m-auto">
             <div className="flex justify-between items-center border-b pb-3">
               <h3 className="font-bold text-base text-gray-900">
                 {messageModal.type === 'broadcast' ? 'תפוצה למשתתפים' : 'שליחת הזמנה להרשמה'} - {messageModal.workout.type}
@@ -3371,8 +3404,8 @@ export default function App() {
                   )}
                 </main>
                 {!isAdminLoggedIn && (
-                  <div className="fixed inset-0 bg-black/80 backdrop-blur-md flex items-center justify-center p-4 z-[9999]">
-                    <div className="bg-white rounded-3xl p-6 max-w-sm w-full shadow-2xl">
+                  <div className="fixed inset-0 bg-black/80 backdrop-blur-md flex items-center justify-center p-4 z-[9999] h-[100dvh]">
+                    <div className="bg-white rounded-3xl p-6 max-w-sm w-full shadow-2xl max-h-[90dvh] overflow-y-auto m-auto">
                       <h3 className="font-bold text-xl text-gray-900 mb-4 flex items-center gap-2"><Lock /> התחברות למנהלת</h3>
                       <input type="password" placeholder="הקלידי סיסמה..." id="directAdminPass" className="w-full p-3 border border-gray-300 rounded-xl mb-4 text-center text-lg font-bold tracking-widest outline-none focus:border-amber-500" autoFocus onKeyDown={(e) => {
                         if(e.key === 'Enter') {
