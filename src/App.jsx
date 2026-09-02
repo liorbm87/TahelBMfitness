@@ -1227,6 +1227,7 @@ const AdminDashboard = ({
       .replace(/\[קישור האימון\]/g, workoutLink);
   };
   const [financeMonth, setFinanceMonth] = useState('2026-08');
+  const [selectedAdminMonth, setSelectedAdminMonth] = useState(() => new Date().toISOString().substring(0, 7)); // הוספת הסטייט החסר
   const [editWorkoutData, setEditWorkoutData] = useState(null); // סטייט לעריכת אימון
   
   const [searchTraineeQuery, setSearchTraineeQuery] = useState('');
