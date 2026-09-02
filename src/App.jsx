@@ -3,7 +3,7 @@ import { BrowserRouter as Router, Routes, Route, useNavigate, Navigate } from 'r
 import { createClient } from '@supabase/supabase-js';
 import SignatureCanvas from 'react-signature-canvas';
 import html2pdf from 'html2pdf.js';
-import { 
+import {  
   Calendar, Users, Settings, LogOut, Check, X, CreditCard, MessageCircle, 
   Download, Upload, Plus, Trash2, AlertCircle, CheckCircle2, Clock, 
   DollarSign, Edit, Search, Send, FileText, ChevronRight, Filter, Eye, 
