@@ -2601,7 +2601,7 @@ const AdminDashboard = ({
                       return (
                         <tr key={reg.id} className="hover:bg-gray-50/50 bg-indigo-50/40">
                           <td className="p-3 font-bold text-gray-900">{trainee.full_name}</td>
-                          <td className="p-3 font-bold text-indigo-700">כרטיסייה</td>
+                          <td className="p-3 font-bold text-indigo-700">כרטיסייה {reg.purchased_entries ? `(${reg.purchased_entries} ניקובים)` : ''}</td>
                           <td className="p-3 text-gray-400">---</td>
                           <td className="p-3 font-semibold text-emerald-700">{reg.payment_date ? reg.payment_date.substring(0,10).split('-').reverse().join('/') : '---'}</td>
                           <td className="p-3 font-extrabold text-gray-900">{reg.paid_amount} ₪</td>
@@ -2620,9 +2620,15 @@ const AdminDashboard = ({
                           }
                           return t;
                         }));
-                        // מחיקת הרשומה הפיננסית
-                        setRegistrations(prev => prev.filter(r => r.id !== reg.id));
-                        alert('הפעולה בוצעה: הרשומה נמחקה מהדוח והכרטיסייה בוטלה למתאמנת.');
+                        // מחיקת הרשומה הפיננסית ושינוי אימונים שחויבו ממנה ל"לא שולם"
+                        setRegistrations(prev => prev.filter(r => r.id !== reg.id).map(r => {
+                          // הופך כל אימון של המתאמנת הזו ששולם בכרטיסייה, בחזרה ללא שולם
+                          if (r.user_id === reg.user_id && r.payment_status === 'punch_card') {
+                            return { ...r, payment_status: 'unpaid', payment_date: null, paid_amount: undefined };
+                          }
+                          return r;
+                        }));
+                        alert('הפעולה בוצעה: הרשומה נמחקה, הכרטיסייה בוטלה, ואימונים שחויבו ממנה סומנו כ"לא שולם".');
                       }
                     }
                   }} className="text-red-500 hover:text-red-700 ml-1" title="מחיקת רשומה מהדוח וביטול כרטיסייה"><Trash2 size={14}/></button>
@@ -3069,7 +3075,8 @@ const AdminDashboard = ({
                       paid_amount: punchCardForm.price,
                       payment_date: new Date().toISOString(),
                       created_at: new Date().toISOString(),
-                      is_punch_card_purchase: true
+                      is_punch_card_purchase: true,
+                      purchased_entries: punchCardForm.entries // שמירת כמות הניקובים שנרכשו
                     };
                     setRegistrations(prev => [...prev, newPunchReg]);
                   }
