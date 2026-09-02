@@ -2609,12 +2609,23 @@ const AdminDashboard = ({
                             <div className="hide-on-pdf flex items-center gap-2">
                               <span className="px-2 py-1.5 rounded-xl font-bold text-xs bg-emerald-100 text-emerald-800">שולם</span>
                               <button onClick={() => {
-                                if(window.confirm('האם את בטוחה שברצונך למחוק רכישת כרטיסייה זו? (לא יחזיר כניסות למתאמנת)')) {
-                                  if(window.confirm('אזהרה 2: מחיקת הרשומה תסיר אותה לחלוטין מדוח הכספים. להמשיך?')) {
-                                    setRegistrations(prev => prev.filter(r => r.id !== reg.id));
-                                  }
-                                }
-                              }} className="text-red-500 hover:text-red-700 ml-1" title="מחיקת רשומה מהדוח"><Trash2 size={14}/></button>
+                    if(window.confirm('האם את בטוחה שברצונך למחוק רכישת כרטיסייה זו? (שימי לב: הפעולה תאפס ותמחק למתאמנת את הכרטיסייה שלה!)')) {
+                      if(window.confirm('אזהרה 2: מחיקת הרשומה תסיר אותה לחלוטין מדוח הכספים ותבטל את הכרטיסייה למתאמנת. להמשיך?')) {
+                        // מחיקת הכרטיסייה מהמתאמנת
+                        setTrainees(prev => prev.map(t => {
+                          if (t.id === reg.user_id) {
+                            const updatedTrainee = { ...t };
+                            delete updatedTrainee.punch_card;
+                            return updatedTrainee;
+                          }
+                          return t;
+                        }));
+                        // מחיקת הרשומה הפיננסית
+                        setRegistrations(prev => prev.filter(r => r.id !== reg.id));
+                        alert('הפעולה בוצעה: הרשומה נמחקה מהדוח והכרטיסייה בוטלה למתאמנת.');
+                      }
+                    }
+                  }} className="text-red-500 hover:text-red-700 ml-1" title="מחיקת רשומה מהדוח וביטול כרטיסייה"><Trash2 size={14}/></button>
                             </div>
                             <span className="show-on-pdf px-2.5 py-1.5 rounded-xl font-bold text-xs bg-emerald-100 text-emerald-800">שולם</span>
                           </td>
