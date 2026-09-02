@@ -1365,25 +1365,27 @@ const AdminDashboard = ({
     const workoutToDelete = workouts.find(w => w.id === id);
     if (!workoutToDelete) return;
 
+    const confirmInitial = window.confirm('האם להתחיל בתהליך מחיקת אימון זה? (כל הרשמות המתאמנים יבוטלו)');
+    if (!confirmInitial) return; // אם לחצו "ביטול" כאן - הפעולה מתבטלת לגמרי ולא קורה כלום
+
     if (workoutToDelete.is_recurring && workoutToDelete.recurring_group_id) {
-      const action = window.prompt('אימון זה הוא חלק מסדרה מחזורית.
-הקלידי "1" כדי למחוק רק את האימון הזה.
-הקלידי "2" כדי למחוק את האימון הזה ואת כל האימונים העתידיים בסדרה.');
-      if (action === '1') {
-        setWorkouts(prev => prev.filter(w => w.id !== id));
-        setRegistrations(prev => prev.filter(r => r.workout_id !== id));
-      } else if (action === '2') {
+      const deleteSeries = window.confirm('אימון זה מחזורי! האם למחוק את כל האימונים העתידיים בסדרה?\n(לחצי "אישור" למחיקת כל הסדרה, או "ביטול" למחיקת אימון זה בלבד)');
+      
+      if (deleteSeries) {
         const wDate = new Date(`${workoutToDelete.date}T${workoutToDelete.time}`);
         const idsToDelete = workouts.filter(w => w.recurring_group_id === workoutToDelete.recurring_group_id && new Date(`${w.date}T${w.time}`) >= wDate).map(w => w.id);
         setWorkouts(prev => prev.filter(w => !idsToDelete.includes(w.id)));
         setRegistrations(prev => prev.filter(r => !idsToDelete.includes(r.workout_id)));
-        alert(`נמחקו ${idsToDelete.length} אימונים עתידיים בסדרה.`);
-      }
-    } else {
-      if (window.confirm('האם למחוק אימון זה? כל הרשמות המתאמנים יוסרו.')) {
+        alert(`נמחקו בהצלחה ${idsToDelete.length} אימונים (הסדרה כולה קדימה).`);
+      } else {
         setWorkouts(prev => prev.filter(w => w.id !== id));
         setRegistrations(prev => prev.filter(r => r.workout_id !== id));
+        alert('האימון הבודד נמחק בהצלחה.');
       }
+    } else {
+      setWorkouts(prev => prev.filter(w => w.id !== id));
+      setRegistrations(prev => prev.filter(r => r.workout_id !== id));
+      alert('האימון נמחק בהצלחה.');
     }
   };
 
