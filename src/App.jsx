@@ -1480,17 +1480,28 @@ const AdminDashboard = ({
     // 1. הסרה מרשימת המתנה
     setWaitlist(prev => prev.filter(w => w.id !== waitEntry.id));
 
-    // 2. הוספה להרשמות לאימון
+    // 2. בדיקת כרטיסייה והוספה להרשמות לאימון
+    let appliedPaymentStatus = 'unpaid';
+    let paidAmount = workout.price;
+
+    if (trainee.punch_card && trainee.punch_card.entries > 0 && new Date(trainee.punch_card.expires_at) >= new Date()) {
+      appliedPaymentStatus = 'punch_card';
+      paidAmount = 0;
+      const updatedUser = { ...trainee, punch_card: { ...trainee.punch_card, entries: trainee.punch_card.entries - 1 } };
+      setTrainees(prev => prev.map(t => t.id === trainee.id ? updatedUser : t));
+    }
+
     const newReg = {
       id: 'r_' + Date.now(),
       workout_id: workout.id,
       user_id: trainee.id,
-      payment_status: 'unpaid',
+      payment_status: appliedPaymentStatus,
+      paid_amount: paidAmount,
       created_at: new Date().toISOString()
     };
     setRegistrations(prev => [...prev, newReg]);
 
-    alert(`${trainee.full_name} הועברה בהצלחה מרשימת ההמתנה לאימון! כעת ייפתח חלון וואטסאפ לעדכונה.`);
+    alert(`${trainee.full_name} הועברה מרשימת ההמתנה לאימון! ${appliedPaymentStatus === 'punch_card' ? '(חויב אוטומטית מכרטיסייה)' : ''}`);
 
     // 3. שליחת הודעת וואטסאפ מאשרת
     const msg = `היי ${trainee.full_name}! 👋 שמחה לעדכן אותך שנרשמת בהצלחה לאימון ${workout.type} בתאריך ${workout.date.split('-').reverse().join('/')} בשעה ${workout.time}! נתראה!`;
@@ -2650,6 +2661,15 @@ const AdminDashboard = ({
                             <button onClick={() => {
                                 if(window.confirm('האם את בטוחה שברצונך למחוק רשומה זו?')) {
                                   if(window.confirm('אזהרה 2: מחיקת הרשומה תסיר אותה לחלוטין מדוח הכספים. להמשיך?')) {
+                                    if (reg.payment_status === 'punch_card') {
+                                      setTrainees(prev => prev.map(t => {
+                                        if (t.id === reg.user_id && t.punch_card) {
+                                          return { ...t, punch_card: { ...t.punch_card, entries: t.punch_card.entries + 1 } };
+                                        }
+                                        return t;
+                                      }));
+                                      alert('הכניסה הוחזרה אוטומטית למלאי הכרטיסייה של המתאמנת!');
+                                    }
                                     setRegistrations(prev => prev.filter(r => r.id !== reg.id));
                                   }
                                 }
@@ -3165,10 +3185,23 @@ const AdminDashboard = ({
                   className="flex-1 p-2.5 bg-gray-50 border rounded-xl text-xs outline-none"
                   onChange={(e) => {
                     if(!e.target.value) return;
-                    const newReg = { id: 'r_' + Date.now(), workout_id: editWorkoutData.id, user_id: e.target.value, payment_status: 'unpaid', paid_amount: editWorkoutData.price, created_at: new Date().toISOString() };
+                    const selectedTrainee = trainees.find(t => t.id === e.target.value);
+                    let appliedPaymentStatus = 'unpaid';
+                    let paidAmount = editWorkoutData.price;
+
+                    if (selectedTrainee && selectedTrainee.punch_card && selectedTrainee.punch_card.entries > 0 && new Date(selectedTrainee.punch_card.expires_at) >= new Date()) {
+                      appliedPaymentStatus = 'punch_card';
+                      paidAmount = 0;
+                      const updatedUser = { ...selectedTrainee, punch_card: { ...selectedTrainee.punch_card, entries: selectedTrainee.punch_card.entries - 1 } };
+                      setTrainees(prev => prev.map(t => t.id === selectedTrainee.id ? updatedUser : t));
+                      alert(`המתאמן/ת צורפ/ה בהצלחה לאימון! החיוב ירד אוטומטית מהכרטיסייה (נותרו ${updatedUser.punch_card.entries} כניסות).`);
+                    } else {
+                      alert('המתאמן/ת צורפ/ה בהצלחה לאימון!');
+                    }
+
+                    const newReg = { id: 'r_' + Date.now(), workout_id: editWorkoutData.id, user_id: e.target.value, payment_status: appliedPaymentStatus, paid_amount: paidAmount, created_at: new Date().toISOString() };
                     setRegistrations(prev => [...prev, newReg]);
                     e.target.value = '';
-                    alert('המתאמן/ת צורפ/ה בהצלחה לאימון!');
                   }}
                 >
                   <option value="">+ בחרי מתאמנת להוספה לאימון...</option>
