@@ -1195,6 +1195,9 @@ const AdminDashboard = ({
     notes: ''
   });
 
+  const [additionalDates, setAdditionalDates] = useState([]);
+  const [recurringWeeks, setRecurringWeeks] = useState(1);
+
   const [messageModal, setMessageModal] = useState(null); // { workout, type: 'broadcast' | 'invite' }
   const [messageText, setMessageText] = useState('');
   const [sentMessageUserIds, setSentMessageUserIds] = useState([]);
@@ -1275,16 +1278,42 @@ const AdminDashboard = ({
       return;
     }
 
-    const created = {
-      id: 'w_' + Date.now(),
+    let allDates = [newWorkout.date];
+
+    // יצירת שכפולים אוטומטיים לשבועות הבאים
+    if (recurringWeeks > 1) {
+      const baseParts = newWorkout.date.split('-');
+      const baseDateObj = new Date(baseParts[0], baseParts[1] - 1, baseParts[2]);
+      
+      for (let i = 1; i < recurringWeeks; i++) {
+        const nextDate = new Date(baseDateObj);
+        nextDate.setDate(baseDateObj.getDate() + (i * 7));
+        
+        const yyyy = nextDate.getFullYear();
+        const mm = String(nextDate.getMonth() + 1).padStart(2, '0');
+        const dd = String(nextDate.getDate()).padStart(2, '0');
+        allDates.push(`${yyyy}-${mm}-${dd}`);
+      }
+    }
+
+    // הוספת תאריכים ידניים (ללא כפילויות)
+    additionalDates.forEach(d => {
+      if (d && !allDates.includes(d)) allDates.push(d);
+    });
+
+    // הרכבת כלל האובייקטים והזרקתם למערכת בו-זמנית
+    const newWorkouts = allDates.map((dateStr, index) => ({
+      id: 'w_' + Date.now() + '_' + index,
       ...newWorkout,
+      date: dateStr,
       price: Number(newWorkout.price),
       max_participants: Number(newWorkout.max_participants),
       created_at: new Date().toISOString()
-    };
+    }));
 
-    setWorkouts(prev => [created, ...prev]);
-    alert('האימון נוסף בהצלחה!');
+    setWorkouts(prev => [...newWorkouts, ...prev]);
+    alert(`נוצרו בהצלחה ${newWorkouts.length} אימונים!`);
+    
     setNewWorkout({
       type: '',
       date: new Date().toISOString().split('T')[0],
@@ -1294,6 +1323,8 @@ const AdminDashboard = ({
       max_participants: '',
       notes: ''
     });
+    setAdditionalDates([]);
+    setRecurringWeeks(1);
   };
 
   const handleDeleteWorkout = (id) => {
@@ -1729,6 +1760,40 @@ const AdminDashboard = ({
                   onChange={(e) => setNewWorkout({...newWorkout, max_participants: e.target.value})}
                   className="w-full p-2.5 bg-gray-50 border rounded-xl outline-none"
                 />
+              </div>
+
+              <div className="sm:col-span-2 md:col-span-3 bg-amber-50/50 border border-amber-200 p-4 rounded-2xl grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block font-bold text-amber-900 mb-1">שכפול שבועי אוטומטי</label>
+                  <p className="text-[10px] text-amber-700 mb-2">כמה שבועות קדימה ליצור את האימון באותו יום ושעה?</p>
+                  <input 
+                    type="number"
+                    min="1"
+                    value={recurringWeeks}
+                    onChange={(e) => setRecurringWeeks(Number(e.target.value))}
+                    className="w-full p-2.5 bg-white border border-amber-300 rounded-xl outline-none focus:ring-2 focus:ring-amber-500"
+                    placeholder="1 = רק האימון הנוכחי"
+                  />
+                </div>
+                <div>
+                  <label className="block font-bold text-amber-900 mb-1">תאריכים ידניים נוספים</label>
+                  <p className="text-[10px] text-amber-700 mb-2">רוצה להוסיף תאריכים ספציפיים בנוסף?</p>
+                  <div className="space-y-2 max-h-32 overflow-y-auto pr-1">
+                    {additionalDates.map((d, i) => (
+                      <div key={i} className="flex gap-2 items-center">
+                        <input type="date" value={d} onChange={(e) => {
+                          const newDates = [...additionalDates];
+                          newDates[i] = e.target.value;
+                          setAdditionalDates(newDates);
+                        }} className="flex-1 p-2 bg-white border border-amber-300 rounded-lg outline-none text-xs" />
+                        <button type="button" onClick={() => setAdditionalDates(additionalDates.filter((_, idx) => idx !== i))} className="text-red-500 hover:text-red-700 bg-red-50 p-2 rounded-lg transition"><Trash2 size={16}/></button>
+                      </div>
+                    ))}
+                    <button type="button" onClick={() => setAdditionalDates([...additionalDates, ''])} className="w-full text-xs font-bold text-amber-800 bg-amber-200 hover:bg-amber-300 p-2 rounded-lg flex items-center justify-center gap-1 transition">
+                      <Plus size={14}/> הוספי תאריך נוסף
+                    </button>
+                  </div>
+                </div>
               </div>
 
               <div className="sm:col-span-2 md:col-span-3">
