@@ -3384,9 +3384,14 @@ export default function App() {
               <p>
                 אתר זה עושה שימוש בקובצי עוגיות (Cookies) על מנת לשפר את חווית הגלישה. גלישה באתר מהווה הסכמה ל<a href="#" onClick={(e) => { e.preventDefault(); alert('מדיניות פרטיות: האתר אוסף נתוני הרשמה בסיסיים הנדרשים לאימונים, ואינו מעביר אותם לצד ג\'. שימוש בעוגיות נועד לשמירת ההתחברות שלך בלבד.'); }} className="underline font-bold text-amber-400">מדיניות הפרטיות</a> שלנו.
               </p>
-              <button onClick={() => { localStorage.setItem('tahel_cookie_consent', 'true'); setShowCookieBanner(false); }} className="bg-amber-500 hover:bg-amber-600 text-white font-bold py-2.5 px-6 rounded-xl whitespace-nowrap transition shadow-md">
-                הבנתי ואישרתי
-              </button>
+              <div className="flex items-center gap-3 shrink-0">
+                <button onClick={() => setShowCookieBanner(false)} className="bg-gray-700 hover:bg-gray-600 text-white font-bold py-2.5 px-6 rounded-xl whitespace-nowrap transition shadow-md">
+                  סגור זמנית
+                </button>
+                <button onClick={() => { localStorage.setItem('tahel_cookie_consent', 'true'); setShowCookieBanner(false); }} className="bg-amber-500 hover:bg-amber-600 text-white font-bold py-2.5 px-6 rounded-xl whitespace-nowrap transition shadow-md">
+                  הבנתי ואישרתי
+                </button>
+              </div>
             </div>
           )}
         </div>
