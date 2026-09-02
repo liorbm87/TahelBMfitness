@@ -89,19 +89,25 @@ const uploadToCloudinary = async (file, cloudName, uploadPreset) => {
   return data.secure_url;
 };
 
-const exportToPdf = (elementId, filename) => {
+const exportToPdf = (elementId, filename, margin = 0) => {
   const element = document.getElementById(elementId);
   if (!element) return;
 
+  // מוסיפים מחלקה שמציינת שאנחנו כרגע מצלמים PDF
+  element.classList.add('pdf-export-mode');
+
   const opt = {
-    margin:       0, 
+    margin:       margin, 
     filename:     filename,
     image:        { type: 'jpeg', quality: 0.98 },
     html2canvas:  { scale: 2, useCORS: true, windowWidth: 1024 }, 
     jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
   };
   
-  html2pdf().set(opt).from(element).save();
+  html2pdf().set(opt).from(element).save().then(() => {
+    // מסירים את המחלקה מיד בסיום יצירת ה-PDF כדי להחזיר תצוגת עריכה רגילה
+    element.classList.remove('pdf-export-mode');
+  });
 };
 
 // ============================================================================
@@ -2490,7 +2496,7 @@ const AdminDashboard = ({
                 ))}
               </select>
               <button 
-                onClick={() => exportToPdf('accounting-report-table', `דוח_הכנסות_${financeMonth}.pdf`)}
+                onClick={() => exportToPdf('accounting-report-table', `דוח_הכנסות_${financeMonth}.pdf`, 10)}
                 className="bg-gradient-to-r from-gray-900 to-amber-900 text-white text-xs font-bold px-4 py-2.5 rounded-xl flex items-center gap-1.5 shadow-md"
               >
                 <Download size={16} /> ייצוא דוח לרו"ח (PDF)
@@ -2543,26 +2549,39 @@ const AdminDashboard = ({
                         <td className="p-3">{workout.date.split('-').reverse().join('/')}</td>
                         <td className="p-3 font-semibold text-emerald-700">{reg.payment_date && reg.payment_status !== 'unpaid' ? reg.payment_date.substring(0,10).split('-').reverse().join('/') : '---'}</td>
                         <td className="p-3 font-extrabold text-gray-900">
-                          <input 
-                            type="number" 
-                            className="w-16 bg-gray-50 border border-gray-200 rounded p-1 text-center font-bold outline-none" 
-                            value={reg.paid_amount !== undefined ? reg.paid_amount : workout.price} 
-                            onChange={(e) => setRegistrations(prev => prev.map(r => r.id === reg.id ? { ...r, paid_amount: Number(e.target.value) } : r))}
-                          /> ₪
+                          <span className="hide-on-pdf">
+                            <input 
+                              type="number" 
+                              className="w-16 bg-gray-50 border border-gray-200 rounded p-1 text-center font-bold outline-none" 
+                              value={reg.paid_amount !== undefined ? reg.paid_amount : workout.price} 
+                              onChange={(e) => setRegistrations(prev => prev.map(r => r.id === reg.id ? { ...r, paid_amount: Number(e.target.value) } : r))}
+                            /> ₪
+                          </span>
+                          <span className="show-on-pdf">
+                            {reg.paid_amount !== undefined ? reg.paid_amount : workout.price} ₪
+                          </span>
                         </td>
                         <td className="p-3">
-                          <select 
-                            value={reg.payment_status}
-                            onChange={(e) => handleUpdatePaymentStatus(reg.id, e.target.value)}
-                            className={`p-1.5 rounded-xl font-bold text-xs outline-none cursor-pointer ${
-                              reg.payment_status === 'paid' ? 'bg-emerald-100 text-emerald-800' :
-                              reg.payment_status === 'punch_card' ? 'bg-blue-100 text-blue-800' : 'bg-red-100 text-red-800'
-                            }`}
-                          >
-                            <option value="paid">שולם</option>
-                            <option value="unpaid">לא שולם</option>
-                            <option value="punch_card">כרטיסייה</option>
-                          </select>
+                          <div className="hide-on-pdf">
+                            <select 
+                              value={reg.payment_status}
+                              onChange={(e) => handleUpdatePaymentStatus(reg.id, e.target.value)}
+                              className={`p-1.5 rounded-xl font-bold text-xs outline-none cursor-pointer ${
+                                reg.payment_status === 'paid' ? 'bg-emerald-100 text-emerald-800' :
+                                reg.payment_status === 'punch_card' ? 'bg-blue-100 text-blue-800' : 'bg-red-100 text-red-800'
+                              }`}
+                            >
+                              <option value="paid">שולם</option>
+                              <option value="unpaid">לא שולם</option>
+                              <option value="punch_card">כרטיסייה</option>
+                            </select>
+                          </div>
+                          <span className={`show-on-pdf px-2.5 py-1.5 rounded-xl font-bold text-xs ${
+                            reg.payment_status === 'paid' ? 'bg-emerald-100 text-emerald-800' :
+                            reg.payment_status === 'punch_card' ? 'bg-blue-100 text-blue-800' : 'bg-red-100 text-red-800'
+                          }`}>
+                            {reg.payment_status === 'paid' ? 'שולם' : reg.payment_status === 'punch_card' ? 'כרטיסייה' : 'לא שולם'}
+                          </span>
                         </td>
                       </tr>
                     );
@@ -3377,7 +3396,13 @@ export default function App() {
 
   return (
     <Router>
-      <style>{`@import url('https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;700;900&display=swap'); * { font-family: 'Heebo', sans-serif !important; }`}</style>
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;700;900&display=swap'); 
+        * { font-family: 'Heebo', sans-serif !important; }
+        .pdf-export-mode .hide-on-pdf { display: none !important; }
+        .pdf-export-mode .show-on-pdf { display: inline-block !important; }
+        .show-on-pdf { display: none; }
+      `}</style>
       <div dir="rtl" className="text-gray-900 antialiased selection:bg-amber-200 relative min-h-screen">
         <div className="fixed inset-0 z-[-1] bg-cover bg-top h-screen w-screen bg-no-repeat" style={{ backgroundImage: `url(${settings.backgroundUrl})` }}></div>
         <div className="min-h-screen bg-gradient-to-b from-white/80 via-white/70 to-white/85 backdrop-blur-[3px] pb-12 relative z-10">
