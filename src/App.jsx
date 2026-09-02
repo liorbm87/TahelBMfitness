@@ -850,8 +850,14 @@ const UserView = ({
   
 
   const now = new Date();
+  const threeWeeksFromNow = new Date();
+  threeWeeksFromNow.setDate(now.getDate() + 21); // הגבלת לקוח ל-3 שבועות
+
   const upcomingWorkouts = workouts
-    .filter(w => new Date(`${w.date}T${w.time}`) >= now)
+    .filter(w => {
+      const wDate = new Date(`${w.date}T${w.time}`);
+      return wDate >= now && wDate <= threeWeeksFromNow;
+    })
     .sort((a, b) => new Date(`${a.date}T${a.time}`) - new Date(`${b.date}T${b.time}`));
 
  const myRegistrations = (registrations || []).filter(r => r?.user_id === currentUser?.id);
@@ -1189,6 +1195,7 @@ const AdminDashboard = ({
     type: '',
     date: new Date().toISOString().split('T')[0],
     time: '',
+    duration: '60', // זמן אימון דיפולטיבי בדקות
     location: '',
     price: '',
     max_participants: '',
@@ -1261,7 +1268,28 @@ const AdminDashboard = ({
     const totalBooked = registrations.length;
     const occupancyRate = totalCapacity > 0 ? Math.round((totalBooked / totalCapacity) * 100) : 0;
 
+    // מציאת סדרות מחזוריות שמסתיימות ב-3 השבועות הקרובים
+    const endingSeries = [];
+    const futureRecurring = workouts.filter(w => w.is_recurring && w.recurring_group_id && new Date(`${w.date}T${w.time}`) >= new Date());
+    const groups = {};
+    futureRecurring.forEach(w => {
+      if (!groups[w.recurring_group_id]) groups[w.recurring_group_id] = [];
+      groups[w.recurring_group_id].push(w);
+    });
+    const threeWeeksDate = new Date();
+    threeWeeksDate.setDate(threeWeeksDate.getDate() + 21);
+
+    Object.values(groups).forEach(group => {
+      group.sort((a, b) => new Date(`${b.date}T${b.time}`) - new Date(`${a.date}T${a.time}`));
+      const lastWorkout = group[0];
+      const lastDate = new Date(`${lastWorkout.date}T${lastWorkout.time}`);
+      if (lastDate <= threeWeeksDate && lastDate >= new Date()) {
+        endingSeries.push(lastWorkout);
+      }
+    });
+
     return {
+      endingSeries,
       totalTraineesCount,
       pendingTraineesCount,
       totalRevenue,
@@ -1302,12 +1330,18 @@ const AdminDashboard = ({
     });
 
     // הרכבת כלל האובייקטים והזרקתם למערכת בו-זמנית
+    const isRecurring = allDates.length > 1;
+    const groupId = isRecurring ? 'grp_' + Date.now() : null;
+
     const newWorkouts = allDates.map((dateStr, index) => ({
       id: 'w_' + Date.now() + '_' + index,
       ...newWorkout,
       date: dateStr,
+      duration: Number(newWorkout.duration),
       price: Number(newWorkout.price),
       max_participants: Number(newWorkout.max_participants),
+      is_recurring: isRecurring,
+      recurring_group_id: groupId,
       created_at: new Date().toISOString()
     }));
 
@@ -1328,9 +1362,28 @@ const AdminDashboard = ({
   };
 
   const handleDeleteWorkout = (id) => {
-    if (window.confirm('האם למחוק אימון זה? כל הרשמות המתאמנים יוסרו.')) {
-      setWorkouts(prev => prev.filter(w => w.id !== id));
-      setRegistrations(prev => prev.filter(r => r.workout_id !== id));
+    const workoutToDelete = workouts.find(w => w.id === id);
+    if (!workoutToDelete) return;
+
+    if (workoutToDelete.is_recurring && workoutToDelete.recurring_group_id) {
+      const action = window.prompt('אימון זה הוא חלק מסדרה מחזורית.
+הקלידי "1" כדי למחוק רק את האימון הזה.
+הקלידי "2" כדי למחוק את האימון הזה ואת כל האימונים העתידיים בסדרה.');
+      if (action === '1') {
+        setWorkouts(prev => prev.filter(w => w.id !== id));
+        setRegistrations(prev => prev.filter(r => r.workout_id !== id));
+      } else if (action === '2') {
+        const wDate = new Date(`${workoutToDelete.date}T${workoutToDelete.time}`);
+        const idsToDelete = workouts.filter(w => w.recurring_group_id === workoutToDelete.recurring_group_id && new Date(`${w.date}T${w.time}`) >= wDate).map(w => w.id);
+        setWorkouts(prev => prev.filter(w => !idsToDelete.includes(w.id)));
+        setRegistrations(prev => prev.filter(r => !idsToDelete.includes(r.workout_id)));
+        alert(`נמחקו ${idsToDelete.length} אימונים עתידיים בסדרה.`);
+      }
+    } else {
+      if (window.confirm('האם למחוק אימון זה? כל הרשמות המתאמנים יוסרו.')) {
+        setWorkouts(prev => prev.filter(w => w.id !== id));
+        setRegistrations(prev => prev.filter(r => r.workout_id !== id));
+      }
     }
   };
 
@@ -1646,6 +1699,16 @@ const AdminDashboard = ({
             </div>
           </div>
 
+          {stats.endingSeries && stats.endingSeries.length > 0 && (
+            <div className="bg-amber-50 border-2 border-amber-200 p-5 rounded-3xl shadow-md flex items-center gap-3">
+              <Clock size={24} className="text-amber-600" />
+              <div>
+                <h4 className="font-black text-amber-900 text-sm">התראת סדרות מחזוריות עומדות להסתיים!</h4>
+                <p className="text-xs text-amber-800">שימי לב, יש לך {stats.endingSeries.length} סוגי אימונים מחזוריים שהמופע האחרון שלהם עומד להסתיים ב-3 השבועות הקרובים. מומלץ לשכפל אותם קדימה.</p>
+              </div>
+            </div>
+          )}
+
           {stats.unpaidDebtsList.length > 0 && (
             <div className="bg-red-50 border-2 border-red-200 p-5 rounded-3xl shadow-md">
               <div className="flex items-center gap-2 text-red-800 font-black mb-3">
@@ -1722,6 +1785,18 @@ const AdminDashboard = ({
                   type="time"
                   value={newWorkout.time}
                   onChange={(e) => setNewWorkout({...newWorkout, time: e.target.value})}
+                  className="w-full p-2.5 bg-gray-50 border rounded-xl outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="block font-bold text-gray-700 mb-1">זמן אימון (בדקות) *</label>
+                <input 
+                  required
+                  type="number"
+                  min="1"
+                  value={newWorkout.duration}
+                  onChange={(e) => setNewWorkout({...newWorkout, duration: e.target.value})}
                   className="w-full p-2.5 bg-gray-50 border rounded-xl outline-none"
                 />
               </div>
@@ -1820,14 +1895,17 @@ const AdminDashboard = ({
 
           <div className="space-y-4">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-              <h4 className="font-bold text-gray-900 text-sm">אימונים עתידיים במערכת ({workouts.filter(w => new Date(`${w.date}T${w.time}`) >= new Date()).length})</h4>
+              <h4 className="font-bold text-gray-900 text-sm flex items-center gap-2">
+                אימונים עתידיים ({workouts.filter(w => new Date(`${w.date}T${w.time}`) >= new Date()).length})
+                <input type="month" value={selectedAdminMonth} onChange={(e) => setSelectedAdminMonth(e.target.value)} className="ml-2 p-1.5 border rounded-lg text-xs font-bold outline-none shadow-sm" />
+              </h4>
               <div className="relative">
                 <Search size={16} className="absolute right-3 top-2.5 text-gray-400" />
                 <input type="text" placeholder="חיפוש לפי תאריך, סוג, מיקום או מחיר..." value={searchWorkoutQuery} onChange={(e) => setSearchWorkoutQuery(e.target.value)} className="w-full md:w-72 pl-4 pr-9 py-2 bg-white border border-gray-200 rounded-xl text-xs outline-none focus:border-amber-400 transition shadow-sm" />
               </div>
             </div>
             
-            {workouts.filter(w => new Date(`${w.date}T${w.time}`) >= new Date()).filter(w => {
+            {workouts.filter(w => new Date(`${w.date}T${w.time}`) >= new Date() && w.date.startsWith(selectedAdminMonth)).filter(w => {
               if (!searchWorkoutQuery) return true;
               const q = searchWorkoutQuery.toLowerCase();
               return w.type.toLowerCase().includes(q) || w.location.toLowerCase().includes(q) || w.date.includes(q) || w.price.toString().includes(q);
@@ -1847,10 +1925,11 @@ const AdminDashboard = ({
                     <div>
                       <div className="flex items-center gap-2">
                         <span className="font-extrabold text-base text-gray-900">{workout.type}</span>
+                        {workout.is_recurring && <span className="bg-blue-100 text-blue-800 text-[10px] px-2 py-0.5 rounded-md font-bold flex items-center gap-1" title="חלק מסדרה מחזורית"><RefreshCw size={10}/> מחזורי</span>}
                         {isPast && <span className="bg-gray-200 text-gray-700 text-[10px] px-2 py-0.5 rounded-md font-bold">היסטוריה (ארכיון)</span>}
                       </div>
                       <p className="text-xs text-gray-600 mt-0.5">
-                        {workout.date.split('-').reverse().join('/')} בשעה {workout.time} | {workout.location} | <span className="font-bold text-amber-800">{workout.price} ₪</span>
+                        {workout.date.split('-').reverse().join('/')} בשעה {workout.time} {workout.duration ? `(${workout.duration} דק')` : ''} | {workout.location} | <span className="font-bold text-amber-800">{workout.price} ₪</span>
                       </p>
                       <p className="text-xs text-gray-500 mt-1 font-semibold">
                         משתתפים: {regList.length} / {workout.max_participants}
@@ -1858,6 +1937,17 @@ const AdminDashboard = ({
                     </div>
 
                     <div className="flex items-center flex-wrap gap-2">
+                      <button 
+                        onClick={() => {
+                          setNewWorkout({ type: workout.type, date: workout.date, time: workout.time, duration: workout.duration || '60', location: workout.location, price: workout.price, max_participants: workout.max_participants, notes: workout.notes || '' });
+                          window.scrollTo({ top: 0, behavior: 'smooth' });
+                          alert('פרטי האימון הועתקו לטופס היצירה למעלה. כעת תוכלי לבחור תאריכים לשכפול (מצד שמאל) ולשמור כאימון חדש.');
+                        }}
+                        className="bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 px-3 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 transition"
+                        title="שכפל אימון"
+                      >
+                        <Plus size={15} /> שכפלי אימון
+                      </button>
                       <button 
                         onClick={() => {
                           setMessageModal({ workout, type: 'broadcast' });
@@ -2838,6 +2928,10 @@ const AdminDashboard = ({
                 <input required type="time" value={editWorkoutData.time} onChange={(e) => setEditWorkoutData({...editWorkoutData, time: e.target.value})} className="w-full p-2.5 bg-gray-50 border rounded-xl outline-none" />
               </div>
               <div>
+                <label className="block font-bold text-gray-700 mb-1">זמן (דקות)</label>
+                <input required type="number" min="1" value={editWorkoutData.duration || '60'} onChange={(e) => setEditWorkoutData({...editWorkoutData, duration: e.target.value})} className="w-full p-2.5 bg-gray-50 border rounded-xl outline-none" />
+              </div>
+              <div>
                 <label className="block font-bold text-gray-700 mb-1">מיקום</label>
                 <input required type="text" value={editWorkoutData.location} onChange={(e) => setEditWorkoutData({...editWorkoutData, location: e.target.value})} className="w-full p-2.5 bg-gray-50 border rounded-xl outline-none" />
               </div>
@@ -3036,7 +3130,7 @@ const AccessibilityWidget = () => {
 
   useEffect(() => {
     if (highContrast) {
-      document.documentElement.style.setProperty('filter', 'invert(0.95) hue-rotate(180deg)');
+      document.documentElement.style.setProperty('filter', 'contrast(1.3) saturate(1.2) drop-shadow(0 0 1px black)');
     } else {
       document.documentElement.style.removeProperty('filter');
     }
@@ -3089,6 +3183,7 @@ export default function App() {
   
   const [isAdminLoggedIn, setIsAdminLoggedIn] = useState(false);
   const [isAdminLoginModalOpen, setIsAdminLoginModalOpen] = useState(() => window.location.search.includes('admin'));
+  const [showCookieBanner, setShowCookieBanner] = useState(() => localStorage.getItem('tahel_cookie_consent') !== 'true');
   
   // מתאמן חדש יתחיל כ-null (יצטרך להירשם), אבל האתר יזכור אותו לפי המכשיר שלו
   const [currentUser, setCurrentUser] = useState(() => {
@@ -3276,11 +3371,24 @@ export default function App() {
         </div>
 
         {/* העברנו את הכפתורים הצפים מחוץ לדיב של הטשטוש כדי שיישארו קבועים למסך */}
-        <AccessibilityWidget />
-        <a href="https://wa.me/972545222008?text=היי%20תהל,%20אשמח%20לפרטים" target="_blank" rel="noreferrer" className="fixed bottom-6 right-6 z-[9999] bg-emerald-500 text-white p-3 rounded-full shadow-2xl hover:bg-emerald-600 transition flex items-center justify-center hover:scale-110" style={{ width: '56px', height: '56px' }} title="שלחי הודעה לתהל">
-          <MessageCircle size={32} />
-        </a>
+          <AccessibilityWidget />
+          <a href="https://wa.me/972545222008?text=היי%20תהל,%20אשמח%20לפרטים" target="_blank" rel="noreferrer" className="fixed bottom-6 right-6 z-[9998] bg-emerald-500 text-white p-3 rounded-full shadow-2xl hover:bg-emerald-600 transition flex items-center justify-center hover:scale-110" style={{ width: '56px', height: '56px' }} title="שלחי הודעה לתהל">
+            <MessageCircle size={32} />
+          </a>
+
+          {showCookieBanner && (
+            <div className="fixed bottom-0 left-0 w-full bg-gray-900/95 backdrop-blur-md text-white p-4 z-[9999] flex flex-col sm:flex-row items-center justify-between gap-4 shadow-[0_-10px_40px_rgba(0,0,0,0.2)] text-xs sm:text-sm">
+              <p>
+                אתר זה עושה שימוש בקובצי עוגיות (Cookies) על מנת לשפר את חווית הגלישה. גלישה באתר מהווה הסכמה ל<a href="#" onClick={(e) => { e.preventDefault(); alert('מדיניות פרטיות: האתר אוסף נתוני הרשמה בסיסיים הנדרשים לאימונים, ואינו מעביר אותם לצד ג\'. שימוש בעוגיות נועד לשמירת ההתחברות שלך בלבד.'); }} className="underline font-bold text-amber-400">מדיניות הפרטיות</a> שלנו.
+              </p>
+              <button onClick={() => { localStorage.setItem('tahel_cookie_consent', 'true'); setShowCookieBanner(false); }} className="bg-amber-500 hover:bg-amber-600 text-white font-bold py-2.5 px-6 rounded-xl whitespace-nowrap transition shadow-md">
+                הבנתי ואישרתי
+              </button>
+            </div>
+          )}
+        </div>
       </div>
     </Router>
+
   );
 }
