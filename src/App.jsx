@@ -893,10 +893,10 @@ const UserView = ({
       )}
 
       {!isRegistered && (
-        <div className="bg-gray-900 text-white p-4 rounded-3xl flex flex-col sm:flex-row items-center justify-between gap-4 shadow-md animate-fadeIn">
+        <div className="bg-pink-50 border border-pink-100 text-gray-900 p-4 rounded-3xl flex flex-col sm:flex-row items-center justify-between gap-4 shadow-md animate-fadeIn">
           <div className="text-center sm:text-right">
-            <h3 className="font-black text-amber-400 text-sm">מצב צפייה כאורחת</h3>
-            <p className="text-xs text-gray-300 mt-0.5">כדי להירשם לאימונים ולצפות באזור האישי, אנא התחברי או הרשמי למערכת.</p>
+            <h3 className="font-black text-pink-700 text-sm">מצב צפייה כאורחת</h3>
+            <p className="text-xs text-gray-600 mt-0.5">כדי להירשם לאימונים ולצפות באזור האישי, אנא התחברי או הרשמי למערכת.</p>
           </div>
           <button onClick={() => setAuthMode('landing')} className="bg-amber-500 hover:bg-amber-600 text-white px-5 py-2.5 rounded-xl text-xs font-bold transition flex items-center justify-center gap-2 shrink-0 shadow-sm">
             <LogIn size={16} />
@@ -3380,12 +3380,12 @@ export default function App() {
           </a>
 
           {showCookieBanner && (
-            <div className="fixed bottom-0 left-0 w-full bg-gray-900/95 backdrop-blur-md text-white p-4 z-[9999] flex flex-col sm:flex-row items-center justify-between gap-4 shadow-[0_-10px_40px_rgba(0,0,0,0.2)] text-xs sm:text-sm">
+            <div className="fixed bottom-0 left-0 w-full bg-pink-50/95 backdrop-blur-md text-gray-900 border-t border-pink-100 p-4 z-[9999] flex flex-col sm:flex-row items-center justify-between gap-4 shadow-[0_-10px_40px_rgba(0,0,0,0.2)] text-xs sm:text-sm">
               <p>
-                אתר זה עושה שימוש בקובצי עוגיות (Cookies) על מנת לשפר את חווית הגלישה. גלישה באתר מהווה הסכמה ל<a href="#" onClick={(e) => { e.preventDefault(); alert('מדיניות פרטיות: האתר אוסף נתוני הרשמה בסיסיים הנדרשים לאימונים, ואינו מעביר אותם לצד ג\'. שימוש בעוגיות נועד לשמירת ההתחברות שלך בלבד.'); }} className="underline font-bold text-amber-400">מדיניות הפרטיות</a> שלנו.
+                אתר זה עושה שימוש בקובצי עוגיות (Cookies) על מנת לשפר את חווית הגלישה. גלישה באתר מהווה הסכמה ל<a href="#" onClick={(e) => { e.preventDefault(); alert('מדיניות פרטיות: האתר אוסף נתוני הרשמה בסיסיים הנדרשים לאימונים, ואינו מעביר אותם לצד ג\'. שימוש בעוגיות נועד לשמירת ההתחברות שלך בלבד.'); }} className="underline font-bold text-pink-600">מדיניות הפרטיות</a> שלנו.
               </p>
               <div className="flex items-center gap-3 shrink-0">
-                <button onClick={() => setShowCookieBanner(false)} className="bg-gray-700 hover:bg-gray-600 text-white font-bold py-2.5 px-6 rounded-xl whitespace-nowrap transition shadow-md">
+                <button onClick={() => setShowCookieBanner(false)} className="bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-2.5 px-6 rounded-xl whitespace-nowrap transition shadow-md">
                   סגור זמנית
                 </button>
                 <button onClick={() => { localStorage.setItem('tahel_cookie_consent', 'true'); setShowCookieBanner(false); }} className="bg-amber-500 hover:bg-amber-600 text-white font-bold py-2.5 px-6 rounded-xl whitespace-nowrap transition shadow-md">
