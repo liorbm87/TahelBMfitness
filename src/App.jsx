@@ -3387,7 +3387,8 @@ const AccessibilityWidget = () => {
 
   useEffect(() => {
     if (highContrast) {
-      document.documentElement.style.setProperty('filter', 'contrast(1.3) saturate(1.2) drop-shadow(0 0 1px black)');
+      // invert(1) הופך את כל הצבעים (לבן לשחור), ו-hue-rotate מחזיר את הצבעים המקוריים לתמונות וכפתורים
+      document.documentElement.style.setProperty('filter', 'invert(1) hue-rotate(180deg) contrast(1.2)');
     } else {
       document.documentElement.style.removeProperty('filter');
     }
