@@ -1225,18 +1225,20 @@ const AdminDashboard = ({
   const [unpaidMessageText, setUnpaidMessageText] = useState('היי [שם פרטי]! רציתי להזכיר שטרם הוסדר תשלום על אימון [פרטי האימון] בסך [מחיר]. אשמח להסדרה!');
 
   const processMessageText = (text, user, workout) => {
-    if (!workout) {
-      return text.replace(/\[שם פרטי\]/g, user.full_name.split(' ')[0]).replace(/\[כתובת האתר\]/g, window.location.origin);
-    }
-    const workoutLink = `${window.location.origin}?workout=${workout.id}`;
-    const workoutDetails = `${workout.type} ב-${workout.date.split('-').reverse().join('/')} בשעה ${workout.time} במיקום: ${workout.location}`;
-    return text
-      .replace(/\[שם פרטי\]/g, user.full_name.split(' ')[0])
-      .replace(/\[פרטי האימון\]/g, workoutDetails)
-      .replace(/\[מחיר\]/g, workout.price + ' ₪')
-      .replace(/\[כתובת האתר\]/g, window.location.origin)
-      .replace(/\[קישור האימון\]/g, workoutLink);
-  };
+  if (!workout) {
+    return text.replace(/\[שם פרטי\]/g, user.full_name.split(' ')[0]).replace(/\[כתובת האתר\]/g, window.location.origin);
+  }
+  const workoutLink = `${window.location.origin}?workout=${workout.id}`;
+  const workoutDetails = `${workout.type} ב-${workout.date.split('-').reverse().join('/')} בשעה ${workout.time} במיקום: ${workout.location}`;
+  return text
+    .replace(/\[שם פרטי\]/g, user.full_name.split(' ')[0])
+    .replace(/\[פרטי האימון\]/g, workoutDetails)
+    .replace(/\[שם האימון\]/g, workout.type)
+    .replace(/\[תאריך\]/g, workout.date.split('-').reverse().join('/'))
+    .replace(/\[מחיר\]/g, workout.price + ' ₪')
+    .replace(/\[כתובת האתר\]/g, window.location.origin)
+    .replace(/\[קישור האימון\]/g, workoutLink);
+};
   const [financeMonth, setFinanceMonth] = useState('2026-08');
   
   // יצירת רשימת חודשים (לפי תאריך אימון לחובות, ולפי תאריך תשלום להכנסות ששולמו)
@@ -2796,7 +2798,7 @@ const AdminDashboard = ({
             <div>
               <label className="block text-xs font-bold text-gray-700 mb-1">נוסח ההודעה (לחצי על התגיות להוספה):</label>
               <div className="flex flex-wrap gap-1 mb-2">
-                {['[שם פרטי]', '[פרטי האימון]', '[מחיר]', '[מיקום מדויק]', '[כתובת האתר]', '[קישור האימון]'].map(tag => (
+                {['[שם פרטי]', '[פרטי האימון]', '[שם האימון]', '[תאריך]', '[מחיר]', '[מיקום מדויק]', '[כתובת האתר]', '[קישור האימון]'].map(tag => (
                   <button 
                     key={tag} 
                     type="button"
@@ -2822,6 +2824,13 @@ const AdminDashboard = ({
                     {tag}
                   </button>
                 ))}
+                <button 
+                  type="button" 
+                  onClick={() => setMessageText('היי [שם פרטי], מה נשמע?\nראיתי שנרשמת לאימון [שם האימון] ב-[תאריך], איזה כיף! בבקשה תעבירי בהקדם את התשלום בביט או פייבוקס🩷')} 
+                  className="bg-pink-100 hover:bg-pink-200 text-pink-800 text-[10px] px-3 py-1 rounded-lg border border-pink-300 font-bold transition cursor-pointer mr-auto"
+                >
+                  הוספת תבנית תשלום מהירה
+                </button>
               </div>
               <textarea 
                 value={messageText}
