@@ -1436,13 +1436,61 @@ const AdminDashboard = ({
 
   const handleUpdateWorkoutSubmit = (e) => {
     e.preventDefault();
-    setWorkouts(prev => prev.map(w => 
-      w.id === editWorkoutData.id 
-        ? { ...editWorkoutData, price: Number(editWorkoutData.price), max_participants: Number(editWorkoutData.max_participants) } 
-        : w
-    ));
+    
+    // 1. הגדרת האימון הנוכחי המעודכן
+    const updatedCurrentWorkout = { 
+      ...editWorkoutData, 
+      price: Number(editWorkoutData.price), 
+      max_participants: Number(editWorkoutData.max_participants) 
+    };
+
+    let newWorkoutsToAdd = [];
+    let allNewDates = [];
+
+    // 2. חישוב תאריכי שכפול שבועיים
+    if (recurringWeeks > 0) {
+      const baseParts = editWorkoutData.date.split('-');
+      const baseDateObj = new Date(baseParts[0], baseParts[1] - 1, baseParts[2]);
+      
+      for (let i = 1; i <= recurringWeeks; i++) {
+        const nextDate = new Date(baseDateObj);
+        nextDate.setDate(baseDateObj.getDate() + (i * 7));
+        const yyyy = nextDate.getFullYear();
+        const mm = String(nextDate.getMonth() + 1).padStart(2, '0');
+        const dd = String(nextDate.getDate()).padStart(2, '0');
+        allNewDates.push(`${yyyy}-${mm}-${dd}`);
+      }
+    }
+
+    // 3. הוספת תאריכים ידניים
+    additionalDates.forEach(d => {
+      if (d && !allNewDates.includes(d) && d !== editWorkoutData.date) allNewDates.push(d);
+    });
+
+    // 4. יצירת האובייקטים החדשים לשכפול
+    if (allNewDates.length > 0) {
+      const groupId = editWorkoutData.recurring_group_id || ('grp_' + Date.now());
+      updatedCurrentWorkout.is_recurring = true;
+      updatedCurrentWorkout.recurring_group_id = groupId;
+
+      newWorkoutsToAdd = allNewDates.map((dateStr, index) => ({
+        ...updatedCurrentWorkout,
+        id: 'w_edit_' + Date.now() + '_' + index,
+        date: dateStr,
+        created_at: new Date().toISOString()
+      }));
+    }
+
+    // 5. שמירה למערך הראשי
+    setWorkouts(prev => {
+      const updatedPrev = prev.map(w => w.id === editWorkoutData.id ? updatedCurrentWorkout : w);
+      return [...newWorkoutsToAdd, ...updatedPrev];
+    });
+
     setEditWorkoutData(null);
-    alert('האימון עודכן בהצלחה!');
+    setRecurringWeeks(0);
+    setAdditionalDates([]);
+    alert(allNewDates.length > 0 ? `האימון עודכן ושוכפל ל-${allNewDates.length} תאריכים נוספים בהצלחה!` : 'האימון עודכן בהצלחה!');
   };
 
   const handleApproveTrainee = (trainee) => {
@@ -2063,7 +2111,11 @@ const AdminDashboard = ({
                       </button>
 
                       <button 
-                        onClick={() => setEditWorkoutData(workout)}
+                        onClick={() => {
+                          setEditWorkoutData(workout);
+                          setRecurringWeeks(0);
+                          setAdditionalDates([]);
+                        }}
                         className="p-2 text-blue-500 hover:bg-blue-50 rounded-xl transition"
                         title="ערוך פרטי אימון"
                       >
@@ -3200,6 +3252,42 @@ const AdminDashboard = ({
                 <label className="block font-bold text-gray-700 mb-1">הערות</label>
                 <input type="text" value={editWorkoutData.notes || ''} onChange={(e) => setEditWorkoutData({...editWorkoutData, notes: e.target.value})} className="w-full p-2.5 bg-gray-50 border rounded-xl outline-none" />
               </div>
+
+              {/* בלוק שכפול נוסף בעריכה */}
+              <div className="sm:col-span-2 bg-amber-50/50 border border-amber-200 p-4 rounded-2xl grid grid-cols-1 sm:grid-cols-2 gap-4 mt-2">
+                <div>
+                  <label className="block font-bold text-amber-900 mb-1">שכפול שבועי אוטומטי</label>
+                  <p className="text-[10px] text-amber-700 mb-2">כמה שבועות קדימה ליצור את האימון באותו יום ושעה?</p>
+                  <input 
+                    type="number"
+                    min="0"
+                    value={recurringWeeks}
+                    onChange={(e) => setRecurringWeeks(Number(e.target.value))}
+                    className="w-full p-2.5 bg-white border border-amber-300 rounded-xl outline-none focus:ring-2 focus:ring-amber-500"
+                    placeholder="0 = רק האימון הנוכחי"
+                  />
+                </div>
+                <div>
+                  <label className="block font-bold text-amber-900 mb-1">תאריכים ידניים נוספים</label>
+                  <p className="text-[10px] text-amber-700 mb-2">רוצה להוסיף תאריכים ספציפיים בנוסף?</p>
+                  <div className="space-y-2 max-h-32 overflow-y-auto pr-1">
+                    {additionalDates.map((d, i) => (
+                      <div key={i} className="flex gap-2 items-center">
+                        <input type="date" value={d} onChange={(e) => {
+                          const newDates = [...additionalDates];
+                          newDates[i] = e.target.value;
+                          setAdditionalDates(newDates);
+                        }} className="flex-1 p-2 bg-white border border-amber-300 rounded-lg outline-none text-xs" />
+                        <button type="button" onClick={() => setAdditionalDates(additionalDates.filter((_, idx) => idx !== i))} className="text-red-500 hover:text-red-700 bg-red-50 p-2 rounded-lg transition"><Trash2 size={16}/></button>
+                      </div>
+                    ))}
+                    <button type="button" onClick={() => setAdditionalDates([...additionalDates, ''])} className="w-full text-xs font-bold text-amber-800 bg-amber-200 hover:bg-amber-300 p-2 rounded-lg flex items-center justify-center gap-1 transition">
+                      <Plus size={14}/> הוספי תאריך נוסף
+                    </button>
+                  </div>
+                </div>
+              </div>
+
               <div className="sm:col-span-2 pt-2 pb-4 border-b border-gray-100">
                 <button type="submit" className="w-full bg-amber-500 text-white font-bold py-3 rounded-xl hover:bg-amber-600 shadow-md transition">שמירת שינויים באימון</button>
               </div>
