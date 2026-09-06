@@ -2419,6 +2419,11 @@ const AdminDashboard = ({
                               <Award size={10} /> {t.punch_card.entries} כניסות
                             </span>
                           )}
+                          {t.credit_balance > 0 && (!t.credit_expires_at || new Date(t.credit_expires_at) >= new Date()) && (
+                            <span className="bg-teal-100 text-teal-800 px-2 py-0.5 rounded-full text-[10px] font-black border border-teal-200 flex items-center gap-1">
+                              <DollarSign size={10} /> ארנק: {t.credit_balance} ₪
+                            </span>
+                          )}
                         </div>
                         <span className="group-open:rotate-180 transition-transform"><ChevronDown size={18} /></span>
                       </summary>
@@ -2428,6 +2433,11 @@ const AdminDashboard = ({
                           <p><strong>ת. לידה:</strong> {t.dob ? new Date(t.dob).toLocaleDateString('he-IL') : 'לא הוזן'}</p>
                           <p><strong>אימייל:</strong> {t.email}</p>
                           <p><strong>תאריך חתימה:</strong> {t.health_declaration?.signed_at || new Date(t.created_at).toLocaleDateString('he-IL')}</p>
+                          {t.credit_balance > 0 && (!t.credit_expires_at || new Date(t.credit_expires_at) >= new Date()) && (
+                            <p className="col-span-2 bg-teal-50 p-2 rounded-lg text-teal-900 font-medium text-xs mt-1 border border-teal-200">
+                              <strong>יתרת ארנק דיגיטלי:</strong> {t.credit_balance} ₪ (בתוקף עד: {new Date(t.credit_expires_at).toLocaleDateString('he-IL')})
+                            </p>
+                          )}
                         </div>
                         {renderHealthDeclarationAccordion(t)}
                       </div>
