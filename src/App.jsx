@@ -557,13 +557,22 @@ const UserView = ({
 
     let appliedPaymentStatus = 'unpaid';
     let updatedUser = { ...currentUser };
+    let finalPaidAmount = workout.price;
 
     if (currentUser.punch_card && currentUser.punch_card.entries > 0 && new Date(currentUser.punch_card.expires_at) >= new Date()) {
       appliedPaymentStatus = 'punch_card';
+      finalPaidAmount = 0;
       updatedUser.punch_card.entries -= 1;
       setTrainees(prev => prev.map(t => t.id === currentUser.id ? updatedUser : t));
       setCurrentUser(updatedUser);
       alert(`נרשמת בהצלחה לאימון ${workout.type}!\nההרשמה חויבה אוטומטית מהכרטיסייה (נותרו ${updatedUser.punch_card.entries} כניסות).`);
+    } else if (currentUser.credit_balance >= workout.price) {
+      appliedPaymentStatus = 'wallet_credit';
+      finalPaidAmount = workout.price;
+      updatedUser.credit_balance -= workout.price;
+      setTrainees(prev => prev.map(t => t.id === currentUser.id ? updatedUser : t));
+      setCurrentUser(updatedUser);
+      alert(`נרשמת בהצלחה לאימון ${workout.type}!\nהסכום קוזז אוטומטית מהארנק הדיגיטלי שלך (נותרה לך יתרה של ${updatedUser.credit_balance} ₪).`);
     } else {
       alert(`נרשמת בהצלחה לאימון ${workout.type}!\nנא לשלוח לתהל בביט או בפייבוקס ${workout.price} ₪ למספר 0545222008.`);
     }
@@ -573,7 +582,7 @@ const UserView = ({
       workout_id: workoutId,
       user_id: currentUser.id,
       payment_status: appliedPaymentStatus,
-      paid_amount: appliedPaymentStatus === 'punch_card' ? 0 : workout.price,
+      paid_amount: appliedPaymentStatus === 'punch_card' ? 0 : finalPaidAmount,
       created_at: new Date().toISOString()
     };
 
@@ -597,6 +606,7 @@ const UserView = ({
 
     if (window.confirm(`האם לבטל את הרשמתך לאימון ${workout.type}?`)) {
       const regToCancel = registrations.find(r => r.workout_id === workoutId && r.user_id === currentUser.id);
+      
       if (regToCancel?.payment_status === 'punch_card') {
         const updatedUser = { ...currentUser };
         if (!updatedUser.punch_card) updatedUser.punch_card = { entries: 0 };
@@ -604,9 +614,30 @@ const UserView = ({
         setTrainees(prev => prev.map(t => t.id === currentUser.id ? updatedUser : t));
         setCurrentUser(updatedUser);
         alert('האימון בוטל בהצלחה, והכניסה הוחזרה אוטומטית לכרטיסייה שלך!');
+        setRegistrations(prev => prev.filter(r => r.id !== regToCancel.id));
+
+      } else if (regToCancel?.payment_status === 'paid' || regToCancel?.payment_status === 'wallet_credit') {
+        const refundAmount = regToCancel.paid_amount !== undefined ? regToCancel.paid_amount : workout.price;
+        const updatedUser = { ...currentUser, credit_balance: (currentUser.credit_balance || 0) + refundAmount };
+        setTrainees(prev => prev.map(t => t.id === currentUser.id ? updatedUser : t));
+        setCurrentUser(updatedUser);
+        alert(`האימון בוטל בהצלחה!\nמכיוון ששילמת עליו, נוסף לך זיכוי של ${refundAmount} ₪ לארנק הדיגיטלי באתר לשימוש באימון הבא.`);
+        
+        if (regToCancel.payment_status === 'paid') {
+          // שילמה בכסף אמיתי? מייצרים הכנסת-דמה כדי לא לאבד את התיעוד לדוח רו"ח
+          setRegistrations(prev => [
+            ...prev.filter(r => r.id !== regToCancel.id),
+            { id: 'wallet_refund_' + Date.now(), user_id: currentUser.id, is_punch_card_purchase: true, custom_title: `הכנסה מאימון שבוטל והומר לזיכוי (${workout.type})`, payment_status: 'paid', paid_amount: refundAmount, payment_date: regToCancel.payment_date || new Date().toISOString() }
+          ]);
+        } else {
+          // שילמה באמצעות הארנק וביטלה שוב? הכסף הוחזר לארנק אבל אנחנו לא מתעדים שוב הכנסה כפולה
+          setRegistrations(prev => prev.filter(r => r.id !== regToCancel.id));
+        }
+      } else {
+        // טרם שולם - מוחקים בלי זיכוי
+        setRegistrations(prev => prev.filter(r => r.id !== regToCancel.id));
       }
 
-      setRegistrations(prev => prev.filter(r => !(r.workout_id === workoutId && r.user_id === currentUser.id)));
       const workoutDateReversed = workout.date.split('-').reverse().join('/');
       const msg = `היי תהל, ביטלתי את האימון!\nשם: ${currentUser.full_name}\nסוג אימון: ${workout.type}\nתאריך: ${workoutDateReversed} בשעה ${workout.time}`;
       // שימוש ישיר ב-location מונע חסימת פופ-אפ בדפדפן
@@ -949,6 +980,25 @@ const UserView = ({
         </div>
       )}
 
+      {isRegistered && isApproved && myRegisteredWorkoutIds.length > 0 && (
+        <div 
+          onClick={() => setActiveTab('my_workouts')}
+          className="bg-emerald-100 border border-emerald-300 px-4 py-3 rounded-2xl cursor-pointer hover:bg-emerald-200 transition shadow-sm mb-4 text-center sm:text-right"
+        >
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-2">
+            <h3 className="font-bold text-emerald-900 text-sm">✨ היי {currentUser.full_name.split(' ')[0]}! הנך רשומה לאימונים קרובים. לחיצה כאן תוביל אותך אליהם.</h3>
+          </div>
+          <p className="text-[11px] text-emerald-800 mt-1 font-medium">* שימי לב: ניתן לבטל הרשמה ולקבל זיכוי לארנק עד 12 שעות לפני תחילת האימון.</p>
+        </div>
+      )}
+
+      {isRegistered && isApproved && currentUser?.credit_balance > 0 && (
+        <div className="bg-teal-50 border border-teal-200 px-4 py-3 rounded-2xl flex items-center text-xs font-bold shadow-sm mb-4 gap-2 text-teal-900">
+          <DollarSign size={18} className="text-teal-600" />
+          <span>ארנק דיגיטלי: עומדים לרשותך {currentUser.credit_balance} ₪ למימוש אוטומטי באימון הבא!</span>
+        </div>
+      )}
+
       {isRegistered && !isApproved && (
         <div className="bg-amber-50 border border-amber-200 p-4 rounded-3xl flex flex-col sm:flex-row items-center justify-between gap-4 shadow-sm animate-fadeIn">
           <div className="flex items-center gap-3">
@@ -1124,10 +1174,10 @@ const UserView = ({
                     
                     <div className="text-left">
                       <span className={`text-xs px-3 py-1 rounded-full font-bold flex items-center justify-center gap-1 ${
-                        reg.payment_status === 'paid' ? 'bg-emerald-100 text-emerald-800' :
+                        reg.payment_status === 'paid' || reg.payment_status === 'wallet_credit' ? 'bg-emerald-100 text-emerald-800' :
                         reg.payment_status === 'punch_card' ? 'bg-blue-100 text-blue-800' : 'bg-red-100 text-red-800'
                       }`}>
-                        {reg.payment_status === 'paid' ? 'שולם' : reg.payment_status === 'punch_card' ? 'כרטיסייה' : 'טרם שולם'}
+                        {reg.payment_status === 'paid' ? 'שולם' : reg.payment_status === 'punch_card' ? 'כרטיסייה' : reg.payment_status === 'wallet_credit' ? 'שולם (ארנק)' : 'טרם שולם'}
                         <span className="text-[10px] font-black opacity-75">| {reg.paid_amount !== undefined ? reg.paid_amount : workout.price} ₪</span>
                       </span>
                     </div>
@@ -2638,10 +2688,10 @@ const AdminDashboard = ({
                     if (!trainee) return null;
 
                     if (reg.is_punch_card_purchase) {
-                      return (
-                        <tr key={reg.id} className="hover:bg-gray-50/50 bg-indigo-50/40">
-                          <td className="p-3 font-bold text-gray-900">{trainee.full_name}</td>
-                          <td className="p-3 font-bold text-indigo-700">כרטיסייה {reg.purchased_entries ? `(${reg.purchased_entries} ניקובים)` : ''}</td>
+          return (
+            <tr key={reg.id} className="hover:bg-gray-50/50 bg-indigo-50/40">
+              <td className="p-3 font-bold text-gray-900">{trainee.full_name}</td>
+              <td className="p-3 font-bold text-indigo-700">{reg.custom_title || `כרטיסייה ${reg.purchased_entries ? `(${reg.purchased_entries} ניקובים)` : ''}`}</td>
                           <td className="p-3 text-gray-400">---</td>
                           <td className="p-3 font-semibold text-emerald-700">{reg.payment_date ? reg.payment_date.substring(0,10).split('-').reverse().join('/') : '---'}</td>
                           <td className="p-3 font-extrabold text-gray-900">{reg.paid_amount} ₪</td>
@@ -3400,7 +3450,7 @@ const Footer = () => {
           <p>ברוכות הבאות לאתר של תהל בן משה. השימוש באתר ובשירותים כפוף לתנאים הבאים:</p>
           <ul className="list-disc pr-5 space-y-1">
             <li><strong>הצהרת בריאות:</strong> כל מתאמנת חייבת למלא הצהרת בריאות כדין לפני אימון ראשון. באחריות המתאמנת לעדכן את מאמנת הכושר על כל שינוי במצבה הרפואי.</li>
-            <li><strong>מדיניות ביטולים:</strong> ביטול השתתפות באימון יתאפשר עד 12 שעות לפני תחילת האימון. ביטול לאחר פרק זמן זה יחויב בתשלום מלא על האימון.</li>
+            <li><strong>מדיניות ביטולים וזיכויים:</strong> ביטול השתתפות באימון יתאפשר באופן עצמאי דרך האתר אך ורק עד 12 שעות לפני תחילת האימון. במקרה כזה, במידה וכבר שילמת על האימון, תקבלי אוטומטית זיכוי מלא ל"ארנק דיגיטלי" באתר לשימוש חופשי באימונים הבאים.<br/>ביטול בהתרעה של פחות מ-12 שעות אינו אפשרי באתר אלא באישור טלפוני מתהל בלבד, וכרוך בחיוב מלא.</li>
             <li><strong>רשימת המתנה:</strong> הרישום לאימונים מבוסס על מקום פנוי. שיבוץ מרשימת ההמתנה תלוי בביטולים של מתאמנות אחרות ואינו מובטח.</li>
             <li><strong>הגבלת אחריות:</strong> האימונים מבוצעים באחריות המתאמנת. הסטודיו והמאמנת לא יישאו באחריות לכל נזק גופני שייגרם כתוצאה מאי דיווח רפואי מדויק או הסתרת מידע על ידי המתאמנת.</li>
           </ul>
