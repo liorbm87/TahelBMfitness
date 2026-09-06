@@ -433,6 +433,20 @@ const UserView = ({
   const hasActivePunchCard = currentUser?.punch_card?.entries > 0 && new Date(currentUser.punch_card.expires_at) >= new Date();
   const [isBannerDismissed, setIsBannerDismissed] = useState(() => localStorage.getItem('tahel_punch_banner_hidden') === 'true');
 
+  // התראת קופצת (פעם אחת בסשן) אם יתרת הארנק עומדת לפוג ב-7 הימים הקרובים
+  useEffect(() => {
+    if (currentUser && currentUser.credit_balance > 0 && currentUser.credit_expires_at) {
+      const expDate = new Date(currentUser.credit_expires_at);
+      const daysLeft = Math.ceil((expDate - new Date()) / (1000 * 60 * 60 * 24));
+      const hasSeenAlert = sessionStorage.getItem(`wallet_alert_${currentUser.id}`);
+      
+      if (daysLeft > 0 && daysLeft <= 7 && !hasSeenAlert) {
+        alert(`היי ${currentUser.full_name.split(' ')[0]}! 👋\nנותרו לך רק ${daysLeft} ימים לנצל את הזיכוי בארנק הדיגיטלי (בסך ${currentUser.credit_balance} ₪).\nאל תשכחי להירשם לאימון לפני שהתוקף יפוג!`);
+        sessionStorage.setItem(`wallet_alert_${currentUser.id}`, 'true');
+      }
+    }
+  }, [currentUser]);
+
   // האזנה לקישור דינמי של אימון מהוואטסאפ וגלילה אליו
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -566,7 +580,7 @@ const UserView = ({
       setTrainees(prev => prev.map(t => t.id === currentUser.id ? updatedUser : t));
       setCurrentUser(updatedUser);
       alert(`נרשמת בהצלחה לאימון ${workout.type}!\nההרשמה חויבה אוטומטית מהכרטיסייה (נותרו ${updatedUser.punch_card.entries} כניסות).`);
-    } else if (currentUser.credit_balance >= workout.price) {
+    } else if (currentUser.credit_balance >= workout.price && (!currentUser.credit_expires_at || new Date(currentUser.credit_expires_at) >= new Date())) {
       appliedPaymentStatus = 'wallet_credit';
       finalPaidAmount = workout.price;
       updatedUser.credit_balance -= workout.price;
@@ -618,10 +632,20 @@ const UserView = ({
 
       } else if (regToCancel?.payment_status === 'paid' || regToCancel?.payment_status === 'wallet_credit') {
         const refundAmount = regToCancel.paid_amount !== undefined ? regToCancel.paid_amount : workout.price;
-        const updatedUser = { ...currentUser, credit_balance: (currentUser.credit_balance || 0) + refundAmount };
+        
+        // יצירת תאריך תפוגה לזיכוי - 30 יום קדימה
+        const expirationDate = new Date();
+        expirationDate.setDate(expirationDate.getDate() + 30);
+        
+        const updatedUser = { 
+          ...currentUser, 
+          credit_balance: (currentUser.credit_balance || 0) + refundAmount,
+          credit_expires_at: expirationDate.toISOString()
+        };
+        
         setTrainees(prev => prev.map(t => t.id === currentUser.id ? updatedUser : t));
         setCurrentUser(updatedUser);
-        alert(`האימון בוטל בהצלחה!\nמכיוון ששילמת עליו, נוסף לך זיכוי של ${refundAmount} ₪ לארנק הדיגיטלי באתר לשימוש באימון הבא.`);
+        alert(`האימון בוטל בהצלחה!\nמכיוון ששילמת עליו, הועבר זיכוי של ${refundAmount} ₪ לארנק הדיגיטלי שלך.\nשימי לב: הזיכוי תקף ל-30 יום בדיוק (עד ${expirationDate.toLocaleDateString('he-IL')}) וינוצל אוטומטית באימון הבא שתירשמי אליו.`);
         
         if (regToCancel.payment_status === 'paid') {
           // שילמה בכסף אמיתי? מייצרים הכנסת-דמה כדי לא לאבד את התיעוד לדוח רו"ח
@@ -980,22 +1004,15 @@ const UserView = ({
         </div>
       )}
 
-      {isRegistered && isApproved && myRegisteredWorkoutIds.length > 0 && (
-        <div 
-          onClick={() => setActiveTab('my_workouts')}
-          className="bg-emerald-100 border border-emerald-300 px-4 py-3 rounded-2xl cursor-pointer hover:bg-emerald-200 transition shadow-sm mb-4 text-center sm:text-right"
-        >
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-2">
-            <h3 className="font-bold text-emerald-900 text-sm">✨ היי {currentUser.full_name.split(' ')[0]}! הנך רשומה לאימונים קרובים. לחיצה כאן תוביל אותך אליהם.</h3>
+      {isRegistered && isApproved && currentUser?.credit_balance > 0 && (!currentUser?.credit_expires_at || new Date(currentUser.credit_expires_at) >= new Date()) && (
+        <div className="bg-gradient-to-r from-teal-50 to-emerald-50 border border-teal-200 px-4 py-3 rounded-2xl flex flex-col sm:flex-row justify-between items-center text-xs font-bold shadow-sm mb-4 gap-3 text-teal-900">
+          <div className="flex items-center gap-2">
+            <DollarSign size={18} className="text-teal-600" />
+            <span>ארנק דיגיטלי: עומדים לרשותך {currentUser.credit_balance} ₪ למימוש אוטומטי באימון הבא!</span>
           </div>
-          <p className="text-[11px] text-emerald-800 mt-1 font-medium">* שימי לב: ניתן לבטל הרשמה ולקבל זיכוי לארנק עד 12 שעות לפני תחילת האימון.</p>
-        </div>
-      )}
-
-      {isRegistered && isApproved && currentUser?.credit_balance > 0 && (
-        <div className="bg-teal-50 border border-teal-200 px-4 py-3 rounded-2xl flex items-center text-xs font-bold shadow-sm mb-4 gap-2 text-teal-900">
-          <DollarSign size={18} className="text-teal-600" />
-          <span>ארנק דיגיטלי: עומדים לרשותך {currentUser.credit_balance} ₪ למימוש אוטומטי באימון הבא!</span>
+          <span className="bg-white/80 text-teal-800 px-3 py-1 rounded-full text-[11px] shadow-sm border border-teal-200 whitespace-nowrap font-black">
+            ⏳ תוקף זיכוי: עוד {Math.max(0, Math.ceil((new Date(currentUser.credit_expires_at) - new Date()) / (1000 * 60 * 60 * 24)))} ימים
+          </span>
         </div>
       )}
 
@@ -1154,31 +1171,54 @@ const UserView = ({
       {activeTab === 'my_workouts' && (
         <div className="space-y-6">
           
-          {/* אימונים מאושרים */}
+          {/* אימונים קרובים */}
           <div className="space-y-3">
-            <h3 className="font-extrabold text-gray-900 text-base">אימונים שאליהם הרשמתי</h3>
-            {myRegistrations.length === 0 ? (
-              <p className="text-xs text-gray-500 bg-white/80 p-4 rounded-2xl">עדיין לא נרשמת לאף אימון. כנסי ללוח האימונים והרשמי!</p>
+            <h3 className="font-extrabold text-gray-900 text-base">אימונים קרובים שאליהם נרשמתי</h3>
+            {myRegistrations.filter(reg => workouts.find(w => w.id === reg.workout_id) && new Date(`${workouts.find(w => w.id === reg.workout_id).date}T${workouts.find(w => w.id === reg.workout_id).time}`) >= now).length === 0 ? (
+              <p className="text-xs text-gray-500 bg-white/80 p-4 rounded-2xl">אין אימונים עתידיים. כנסי ללוח האימונים והרשמי!</p>
             ) : (
-              myRegistrations.map(reg => {
+              myRegistrations.filter(reg => workouts.find(w => w.id === reg.workout_id) && new Date(`${workouts.find(w => w.id === reg.workout_id).date}T${workouts.find(w => w.id === reg.workout_id).time}`) >= now)
+              .sort((a, b) => new Date(`${workouts.find(w => w.id === a.workout_id).date}T${workouts.find(w => w.id === a.workout_id).time}`) - new Date(`${workouts.find(w => w.id === b.workout_id).date}T${workouts.find(w => w.id === b.workout_id).time}`))
+              .map(reg => {
                 const workout = workouts.find(w => w.id === reg.workout_id);
-                if (!workout) return null;
-
                 return (
-                  <div key={reg.id} className="bg-white/95 p-5 rounded-3xl shadow-md border border-gray-100 flex justify-between items-center">
+                  <div key={reg.id} className="bg-white/95 p-5 rounded-3xl shadow-md border border-emerald-100 flex justify-between items-center">
                     <div>
                       <h4 className="font-bold text-gray-900">{workout.type}</h4>
                       <p className="text-xs text-gray-500">{workout.date.split('-').reverse().join('/')} | {workout.time} | {workout.location}</p>
                       <p className="text-xs font-bold text-amber-800 mt-1">מחיר: {workout.price} ₪</p>
                     </div>
-                    
                     <div className="text-left">
-                      <span className={`text-xs px-3 py-1 rounded-full font-bold flex items-center justify-center gap-1 ${
-                        reg.payment_status === 'paid' || reg.payment_status === 'wallet_credit' ? 'bg-emerald-100 text-emerald-800' :
-                        reg.payment_status === 'punch_card' ? 'bg-blue-100 text-blue-800' : 'bg-red-100 text-red-800'
-                      }`}>
+                      <span className={`text-xs px-3 py-1 rounded-full font-bold flex items-center justify-center gap-1 ${reg.payment_status === 'paid' || reg.payment_status === 'wallet_credit' ? 'bg-emerald-100 text-emerald-800' : reg.payment_status === 'punch_card' ? 'bg-blue-100 text-blue-800' : 'bg-red-100 text-red-800'}`}>
                         {reg.payment_status === 'paid' ? 'שולם' : reg.payment_status === 'punch_card' ? 'כרטיסייה' : reg.payment_status === 'wallet_credit' ? 'שולם (ארנק)' : 'טרם שולם'}
                         <span className="text-[10px] font-black opacity-75">| {reg.paid_amount !== undefined ? reg.paid_amount : workout.price} ₪</span>
+                      </span>
+                    </div>
+                  </div>
+                );
+              })
+            )}
+          </div>
+
+          {/* היסטוריית אימונים שחלפו */}
+          <div className="space-y-3 pt-4">
+            <h3 className="font-extrabold text-gray-700 text-base">אימונים שחלפו (היסטוריה)</h3>
+            {myRegistrations.filter(reg => workouts.find(w => w.id === reg.workout_id) && new Date(`${workouts.find(w => w.id === reg.workout_id).date}T${workouts.find(w => w.id === reg.workout_id).time}`) < now).length === 0 ? (
+              <p className="text-xs text-gray-500">אין היסטוריית אימונים.</p>
+            ) : (
+              myRegistrations.filter(reg => workouts.find(w => w.id === reg.workout_id) && new Date(`${workouts.find(w => w.id === reg.workout_id).date}T${workouts.find(w => w.id === reg.workout_id).time}`) < now)
+              .sort((a, b) => new Date(`${workouts.find(w => w.id === b.workout_id).date}T${workouts.find(w => w.id === b.workout_id).time}`) - new Date(`${workouts.find(w => w.id === a.workout_id).date}T${workouts.find(w => w.id === a.workout_id).time}`))
+              .map(reg => {
+                const workout = workouts.find(w => w.id === reg.workout_id);
+                return (
+                  <div key={reg.id} className="bg-gray-50/80 p-4 rounded-3xl shadow-sm border border-gray-200 flex justify-between items-center opacity-80 hover:opacity-100 transition">
+                    <div>
+                      <h4 className="font-bold text-gray-700 line-through">{workout.type}</h4>
+                      <p className="text-[11px] text-gray-500">{workout.date.split('-').reverse().join('/')} | {workout.time} | {workout.location}</p>
+                    </div>
+                    <div className="text-left">
+                      <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold flex items-center justify-center gap-1 ${reg.payment_status === 'paid' || reg.payment_status === 'wallet_credit' ? 'bg-emerald-100 text-emerald-800' : reg.payment_status === 'punch_card' ? 'bg-blue-100 text-blue-800' : 'bg-gray-200 text-gray-800'}`}>
+                        {reg.payment_status === 'paid' ? 'שולם' : reg.payment_status === 'punch_card' ? 'כרטיסייה' : reg.payment_status === 'wallet_credit' ? 'שולם (ארנק)' : 'לא שולם'}
                       </span>
                     </div>
                   </div>
@@ -3450,7 +3490,7 @@ const Footer = () => {
           <p>ברוכות הבאות לאתר של תהל בן משה. השימוש באתר ובשירותים כפוף לתנאים הבאים:</p>
           <ul className="list-disc pr-5 space-y-1">
             <li><strong>הצהרת בריאות:</strong> כל מתאמנת חייבת למלא הצהרת בריאות כדין לפני אימון ראשון. באחריות המתאמנת לעדכן את מאמנת הכושר על כל שינוי במצבה הרפואי.</li>
-            <li><strong>מדיניות ביטולים וזיכויים:</strong> ביטול השתתפות באימון יתאפשר באופן עצמאי דרך האתר אך ורק עד 12 שעות לפני תחילת האימון. במקרה כזה, במידה וכבר שילמת על האימון, תקבלי אוטומטית זיכוי מלא ל"ארנק דיגיטלי" באתר לשימוש חופשי באימונים הבאים.<br/>ביטול בהתרעה של פחות מ-12 שעות אינו אפשרי באתר אלא באישור טלפוני מתהל בלבד, וכרוך בחיוב מלא.</li>
+            <li><strong>מדיניות ביטולים וזיכויים:</strong> ביטול השתתפות באימון יתאפשר באופן עצמאי דרך האתר אך ורק עד 12 שעות לפני תחילת האימון. במקרה כזה, במידה וכבר שילמת על האימון, תקבלי אוטומטית זיכוי מלא לארנק הדיגיטלי באתר. <strong>הזיכוי בארנק תקף ל-30 ימים בדיוק ממועד הביטול</strong>. לאחר מועד זה, יתרת הזיכוי תפקע ולא ניתן יהיה לנצלה. ביטול בהתרעה של פחות מ-12 שעות אינו אפשרי באתר, ייחשב כמימוש האימון, וכרוך בחיוב מלא.</li>
             <li><strong>רשימת המתנה:</strong> הרישום לאימונים מבוסס על מקום פנוי. שיבוץ מרשימת ההמתנה תלוי בביטולים של מתאמנות אחרות ואינו מובטח.</li>
             <li><strong>הגבלת אחריות:</strong> האימונים מבוצעים באחריות המתאמנת. הסטודיו והמאמנת לא יישאו באחריות לכל נזק גופני שייגרם כתוצאה מאי דיווח רפואי מדויק או הסתרת מידע על ידי המתאמנת.</li>
           </ul>
