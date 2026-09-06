@@ -2149,16 +2149,9 @@ const AdminDashboard = ({
                                   }
                                 } else {
                                   const currentPrice = r.paid_amount !== undefined ? r.paid_amount : workout.price;
-                                  const doDiscount = window.confirm(`האם הסכום לתשלום הוא ${currentPrice} ₪ (אישור) או שתרצי להזין מחיר ידני (ביטול)?`);
-                                  let finalPrice = currentPrice;
-                                  if (!doDiscount) {
-                                    const customAmount = window.prompt('הזיני את הסכום (₪):', currentPrice);
-                                    if (customAmount === null) return;
-                                    finalPrice = Number(customAmount) || currentPrice;
-                                  }
                                   const isPaidNow = window.confirm('האם התשלום התקבל בפועל (שולם)?\nאישור = שולם, ביטול = טרם שולם');
                                   handleUpdatePaymentStatus(r.id, isPaidNow ? 'paid' : 'unpaid');
-                                  setRegistrations(prev => prev.map(reg => reg.id === r.id ? { ...reg, paid_amount: finalPrice } : reg));
+                                  setRegistrations(prev => prev.map(reg => reg.id === r.id ? { ...reg, paid_amount: currentPrice } : reg));
                                 }
                               }}
                               className="cursor-pointer hover:bg-gray-200 transition bg-gray-100 text-gray-800 text-[11px] px-2.5 py-1 rounded-xl font-medium flex items-center gap-1"
@@ -2550,17 +2543,10 @@ const AdminDashboard = ({
                                       }
                                     }
                                   } else {
-                                    const currentPrice = r.paid_amount !== undefined ? r.paid_amount : workout.price;
-                                    const doDiscount = window.confirm(`האם הסכום לתשלום הוא ${currentPrice} ₪ (אישור) או שתרצי להזין מחיר ידני (ביטול)?`);
-                                    let finalPrice = currentPrice;
-                                    if (!doDiscount) {
-                                      const customAmount = window.prompt('הזיני את הסכום (₪):', currentPrice);
-                                      if (customAmount === null) return;
-                                      finalPrice = Number(customAmount) || currentPrice;
-                                    }
-                                    const isPaidNow = window.confirm('האם התשלום התקבל בפועל (שולם)?\nאישור = שולם, ביטול = טרם שולם');
-                                    handleUpdatePaymentStatus(r.id, isPaidNow ? 'paid' : 'unpaid');
-                                    setRegistrations(prev => prev.map(reg => reg.id === r.id ? { ...reg, paid_amount: finalPrice } : reg));
+                                   const currentPrice = r.paid_amount !== undefined ? r.paid_amount : workout.price;
+                                  const isPaidNow = window.confirm('האם התשלום התקבל בפועל (שולם)?\nאישור = שולם, ביטול = טרם שולם');
+                                  handleUpdatePaymentStatus(r.id, isPaidNow ? 'paid' : 'unpaid');
+                                  setRegistrations(prev => prev.map(reg => reg.id === r.id ? { ...reg, paid_amount: currentPrice } : reg));
                                   }
                                 }}
                                 className="cursor-pointer hover:bg-gray-300 transition bg-gray-200 text-gray-800 text-[11px] px-2.5 py-1 rounded-xl font-medium flex items-center gap-1"
@@ -2878,7 +2864,7 @@ const AdminDashboard = ({
                 ))}
                 <button 
                   type="button" 
-                  onClick={() => setMessageText('היי [שם פרטי], מה נשמע?\nראיתי שנרשמת לאימון [שם האימון] ב-[תאריך], איזה כיף! בבקשה תעבירי בהקדם את התשלום בביט או פייבוקס🩷')} 
+                  onClick={() => setMessageText('היי [שם פרטי], מה נשמע?\nראיתי שנרשמת לאימון [שם האימון] ב-[תאריך], איזה כיף! בבקשה תסדירי את התשלום בביט או פייבוקס🩷')} 
                   className="bg-pink-100 hover:bg-pink-200 text-pink-800 text-[10px] px-3 py-1 rounded-lg border border-pink-300 font-bold transition cursor-pointer mr-auto"
                 >
                   הוספת תבנית תשלום מהירה
