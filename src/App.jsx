@@ -3458,14 +3458,37 @@ const AdminDashboard = ({
                                     return tr;
                                   }));
                                   alert('הכניסה הוחזרה אוטומטית למלאי הכרטיסייה של המתאמנת!');
+                                  setRegistrations(prev => prev.filter(reg => reg.id !== r.id));
+                                } else if (r.payment_status === 'paid' || r.payment_status === 'wallet_credit') {
+                                  const refundAmount = r.paid_amount !== undefined ? r.paid_amount : editWorkoutData.price;
+                                  const expirationDate = new Date();
+                                  expirationDate.setDate(expirationDate.getDate() + 30);
+                                  
+                                  setTrainees(prev => prev.map(tr => tr.id === u.id ? { 
+                                    ...tr, 
+                                    credit_balance: (tr.credit_balance || 0) + refundAmount,
+                                    credit_expires_at: expirationDate.toISOString()
+                                  } : tr));
+                                  
+                                  alert(`המתאמנת הוסרה מהאימון בהצלחה.\nמכיוון שהיא שילמה עליו, הועבר לה אוטומטית זיכוי של ${refundAmount} ₪ לארנק הדיגיטלי (בתוקף ל-30 יום).`);
+                                  
+                                  if (r.payment_status === 'paid') {
+                                    setRegistrations(prev => [
+                                      ...prev.filter(reg => reg.id !== r.id),
+                                      { id: 'wallet_refund_admin_' + Date.now(), user_id: u.id, is_punch_card_purchase: true, custom_title: `הכנסה מאימון שבוטל ע"י תהל והומר לזיכוי (${editWorkoutData.type})`, payment_status: 'paid', paid_amount: refundAmount, payment_date: r.payment_date || new Date().toISOString() }
+                                    ]);
+                                  } else {
+                                    setRegistrations(prev => prev.filter(reg => reg.id !== r.id));
+                                  }
+                                } else {
+                                  setRegistrations(prev => prev.filter(reg => reg.id !== r.id));
                                 }
-                                setRegistrations(prev => prev.filter(reg => reg.id !== r.id));
                               }
                             }
                           }}
                           className="bg-red-50 text-red-600 hover:bg-red-100 px-3 py-1.5 rounded-lg font-bold transition"
                         >
-                          {r.payment_status === 'punch_card' ? 'הסרה + החזר כרטיסייה' : 'הסרה'}
+                          {(r.payment_status === 'paid' || r.payment_status === 'wallet_credit') ? 'הסרה + זיכוי לארנק' : r.payment_status === 'punch_card' ? 'הסרה + החזר כרטיסייה' : 'הסרה'}
                         </button>
                       </div>
                     </div>
