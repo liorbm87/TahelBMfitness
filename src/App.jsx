@@ -507,9 +507,11 @@ const UserView = ({
       const updatedUser = { ...currentUser, health_declaration: healthDecl, needs_renewal: false, is_approved: false };
       setTrainees(prev => prev.map(t => t.id === currentUser.id ? updatedUser : t));
       setCurrentUser(updatedUser);
-      alert('הצהרת הבריאות עודכנה בהצלחה!');
-      openWhatsApp('0545222008', `היי תהל! מילאתי מחדש את הצהרת הבריאות. שמי ${currentUser.full_name}, אשמח לאישור!`);
       setAuthMode('landing');
+      setTimeout(() => {
+        alert('הצהרת הבריאות עודכנה בהצלחה! לחצי אישור למעבר לוואטסאפ.');
+        openWhatsApp('0545222008', `היי תהל! מילאתי מחדש את הצהרת הבריאות. שמי ${currentUser.full_name}, אשמח לאישור!`);
+      }, 500);
     } else {
       // מצב מתאמנת חדשה לגמרי
       const newTrainee = {
@@ -521,6 +523,7 @@ const UserView = ({
         email: formData.email,
         is_approved: false,
         is_admin: false,
+        is_archived: false,
         created_at: new Date().toISOString(),
         health_declaration: healthDecl
       };
@@ -528,7 +531,10 @@ const UserView = ({
       setTrainees(prev => [...prev, newTrainee]);
       setCurrentUser(newTrainee);
       triggerMakeWebhook(settings.makeWebhookUrl, 'new_trainee_registered', newTrainee);
-      openWhatsApp('0545222008', `היי תהל! נרשמתי לאתר שמי ${formData.first_name} ${formData.last_name} אני אשמח לאישור שלך!`);
+      setTimeout(() => {
+        alert('נרשמת בהצלחה! לחצי אישור למעבר לוואטסאפ לשליחת הודעה לתהל.');
+        openWhatsApp('0545222008', `היי תהל! נרשמתי לאתר שמי ${formData.first_name} ${formData.last_name} אני אשמח לאישור שלך!`);
+      }, 500);
     }
   };
 
@@ -664,8 +670,10 @@ const UserView = ({
 
       const workoutDateReversed = workout.date.split('-').reverse().join('/');
       const msg = `היי תהל, ביטלתי את האימון!\nשם: ${currentUser.full_name}\nסוג אימון: ${workout.type}\nתאריך: ${workoutDateReversed} בשעה ${workout.time}`;
-      // שימוש ישיר ב-location מונע חסימת פופ-אפ בדפדפן
-      window.location.href = `https://wa.me/972545222008?text=${encodeURIComponent(msg)}`;
+      // דיליי קטן מונע את קריסת השמירה במסד הנתונים לפני עזיבת האתר
+      setTimeout(() => {
+        window.location.href = `https://wa.me/972545222008?text=${encodeURIComponent(msg)}`;
+      }, 800);
     }
   };
 
@@ -1587,7 +1595,7 @@ const AdminDashboard = ({
     setTrainees(prev => prev.map(t => t.id === trainee.id ? { ...t, is_approved: true } : t));
     const currentSiteUrl = window.location.origin;
     const msg = `היי ${trainee.full_name}! 👋 אושרת בהצלחה באתר שלי! אפשר עכשיו להירשם לאימונים כאן: ${currentSiteUrl}`;
-    openWhatsApp(trainee.phone, msg);
+    setTimeout(() => openWhatsApp(trainee.phone, msg), 500);
   };
 
   const handleRejectTrainee = (traineeId) => {
@@ -1645,7 +1653,7 @@ const AdminDashboard = ({
 
     // 3. שליחת הודעת וואטסאפ מאשרת
     const msg = `היי ${trainee.full_name}! 👋 שמחה לעדכן אותך שנרשמת בהצלחה לאימון ${workout.type} בתאריך ${workout.date.split('-').reverse().join('/')} בשעה ${workout.time}! נתראה!`;
-    openWhatsApp(trainee.phone, msg);
+    setTimeout(() => openWhatsApp(trainee.phone, msg), 500);
   };
 
   const handleUpdatePaymentStatus = (regId, newStatus) => {
