@@ -135,7 +135,7 @@ const MainHeader = ({ settings, isAdmin, onOpenAdminLogin, onLogout, currentUser
   };
 
   return (
-    <div className="flex flex-col items-center justify-center pt-8 pb-4 space-y-6">
+    <div className="flex flex-col items-center justify-center pt-20 sm:pt-8 pb-4 space-y-6">
       {/* לוגו מרכזי גדול */}
       <div
         onDoubleClick={onOpenAdminLogin}
