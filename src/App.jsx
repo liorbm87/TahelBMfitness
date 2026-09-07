@@ -421,6 +421,8 @@ const UserView = ({
     terms_accepted: false
   });
   const [activeTab, setActiveTab] = useState('schedule');
+  const [isMultiSelectMode, setIsMultiSelectMode] = useState(false);
+  const [selectedWorkoutsForCart, setSelectedWorkoutsForCart] = useState([]);
   const sigCanvasRef = useRef({});
   const parentSigCanvasRef = useRef({}); // חתימת הורה לקטין
 
@@ -534,6 +536,158 @@ const UserView = ({
       setTimeout(() => {
         alert('נרשמת בהצלחה! לחצי אישור למעבר לוואטסאפ לשליחת הודעה לתהל.');
         openWhatsApp('0545222008', `היי תהל! נרשמתי לאתר שמי ${formData.first_name} ${formData.last_name} אני אשמח לאישור שלך!`);
+      }, 500);
+    }
+  };
+
+  const handleMultiSelectCheckout = () => {
+    if (!currentUser) {
+      setIsMultiSelectMode(false);
+      setSelectedWorkoutsForCart([]);
+      setAuthMode('landing');
+      return;
+    }
+    if (isRenewalNeeded) {
+      alert('עליך לחדש את הצהרת הבריאות שלך לפני שתוכלי להירשם לאימונים.');
+      return;
+    }
+    if (!currentUser.is_approved) {
+      alert('החשבון שלך ממתין לאישור תהל. עליך להמתין לאישור לפני הרשמה לאימונים!');
+      return;
+    }
+
+    const selectedWorkouts = workouts.filter(w => selectedWorkoutsForCart.includes(w.id));
+    const availableWorkouts = [];
+    const waitlistWorkouts = [];
+
+    // פיצול האימונים לפנויים ומלאים
+    selectedWorkouts.forEach(w => {
+      const currentRegsCount = registrations.filter(r => r.workout_id === w.id).length;
+      if (currentRegsCount >= w.max_participants) {
+        waitlistWorkouts.push(w);
+      } else {
+        availableWorkouts.push(w);
+      }
+    });
+
+    let availablePunchEntries = currentUser.punch_card && new Date(currentUser.punch_card.expires_at) >= new Date() ? currentUser.punch_card.entries : 0;
+    let availableWallet = currentUser.credit_balance && (!currentUser.credit_expires_at || new Date(currentUser.credit_expires_at) >= new Date()) ? currentUser.credit_balance : 0;
+    
+    let punchesUsed = 0;
+    let walletUsed = 0;
+    let cashToPay = 0;
+    
+    let summaryText = `סיכום הרשמה ל-${selectedWorkouts.length} אימונים:\n`;
+
+    if (availableWorkouts.length > 0) {
+      summaryText += `\n✅ אימונים שיירשמו באופן מיידי:\n`;
+      availableWorkouts.forEach(w => {
+        summaryText += `- ${w.type} (${w.date.split('-').reverse().join('/')} בשעה ${w.time})\n`;
+        if (availablePunchEntries > 0) {
+          availablePunchEntries--;
+          punchesUsed++;
+        } else if (availableWallet >= w.price) {
+          availableWallet -= w.price;
+          walletUsed += w.price;
+        } else {
+          cashToPay += w.price;
+        }
+      });
+    }
+
+    if (waitlistWorkouts.length > 0) {
+      summaryText += `\n⏳ אימונים מלאים (הרשמה לרשימת המתנה, ללא חיוב כרגע):\n`;
+      waitlistWorkouts.forEach(w => {
+        summaryText += `- ${w.type} (${w.date.split('-').reverse().join('/')} בשעה ${w.time})\n`;
+      });
+    }
+
+    summaryText += `\nאופן חיוב (לאימונים הפנויים בלבד):\n`;
+    if (punchesUsed > 0) summaryText += `* ינוצלו ${punchesUsed} כניסות מהכרטיסייה.\n`;
+    if (walletUsed > 0) summaryText += `* יקוזזו ${walletUsed} ₪ מהארנק הדיגיטלי.\n`;
+    if (cashToPay > 0) summaryText += `* נדרש תשלום בביט/פייבוקס: ${cashToPay} ₪.\n`;
+    if (punchesUsed === 0 && walletUsed === 0 && cashToPay === 0) summaryText += `* לא נדרש חיוב כרגע.\n`;
+    
+    summaryText += `\nהאם לאשר את ההרשמה ולשלוח הודעה לתהל?`;
+
+    if (window.confirm(summaryText)) {
+      let updatedUser = { ...currentUser };
+      if (punchesUsed > 0) {
+        updatedUser.punch_card.entries -= punchesUsed;
+      }
+      if (walletUsed > 0) {
+        updatedUser.credit_balance -= walletUsed;
+      }
+
+      setTrainees(prev => prev.map(t => t.id === updatedUser.id ? updatedUser : t));
+      setCurrentUser(updatedUser);
+
+      const newRegs = [];
+      const newWaitlists = [];
+      let currentPunch = punchesUsed;
+      let currentWallet = walletUsed;
+
+      availableWorkouts.forEach(w => {
+        let appliedStatus = 'unpaid';
+        let finalAmount = w.price;
+
+        if (currentPunch > 0) {
+          appliedStatus = 'punch_card';
+          finalAmount = 0;
+          currentPunch--;
+        } else if (currentWallet >= w.price) {
+          appliedStatus = 'wallet_credit';
+          finalAmount = w.price;
+          currentWallet -= w.price;
+        }
+
+        newRegs.push({
+          id: 'r_' + Date.now() + Math.random().toString(36).substring(7),
+          workout_id: w.id,
+          user_id: updatedUser.id,
+          payment_status: appliedStatus,
+          paid_amount: finalAmount,
+          created_at: new Date().toISOString()
+        });
+      });
+
+      waitlistWorkouts.forEach(w => {
+        newWaitlists.push({
+          id: 'w_' + Date.now() + Math.random().toString(36).substring(7),
+          workout_id: w.id,
+          user_id: updatedUser.id,
+          created_at: new Date().toISOString()
+        });
+      });
+
+      if (newRegs.length > 0) setRegistrations(prev => [...prev, ...newRegs]);
+      if (newWaitlists.length > 0) setWaitlist(prev => [...prev, ...newWaitlists]);
+      
+      setIsMultiSelectMode(false);
+      setSelectedWorkoutsForCart([]);
+      
+      let whatsappMsg = `היי תהל! נרשמתי ל-${selectedWorkouts.length} אימונים השבוע:\n`;
+      if (availableWorkouts.length > 0) {
+        whatsappMsg += `\n✅ אימונים פעילים:\n`;
+        availableWorkouts.forEach(w => {
+          whatsappMsg += `💪 ${w.type} - ${w.date.split('-').reverse().join('/')} בשעה ${w.time}\n`;
+        });
+      }
+      if (waitlistWorkouts.length > 0) {
+        whatsappMsg += `\n⏳ רשימת המתנה:\n`;
+        waitlistWorkouts.forEach(w => {
+          whatsappMsg += `🙏 ${w.type} - ${w.date.split('-').reverse().join('/')} בשעה ${w.time}\n`;
+        });
+      }
+
+      whatsappMsg += `\n`;
+      if (punchesUsed > 0) whatsappMsg += `${punchesUsed} ירדו לי מהכרטיסייה.\n`;
+      if (walletUsed > 0) whatsappMsg += `שילמתי ${walletUsed} ₪ מהארנק באתר.\n`;
+      if (cashToPay > 0) whatsappMsg += `אעביר לך בביט ${cashToPay} ₪!\n`;
+      whatsappMsg += `נתראה!`;
+
+      setTimeout(() => {
+        openWhatsApp('0545222008', whatsappMsg);
       }, 500);
     }
   };
@@ -1062,12 +1216,39 @@ const UserView = ({
 
       {activeTab === 'schedule' && (
         <div className="space-y-4">
-          <h3 className="font-extrabold text-gray-900 text-lg flex items-center gap-2">
-            <span>אימונים קרובים</span>
-            <span className="text-xs font-semibold bg-amber-100 text-amber-800 px-2.5 py-0.5 rounded-full">
-              {upcomingWorkouts.length} זמינים
-            </span>
-          </h3>
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-2">
+            <h3 className="font-extrabold text-gray-900 text-lg flex items-center gap-2">
+              <span>אימונים קרובים</span>
+              <span className="text-xs font-semibold bg-amber-100 text-amber-800 px-2.5 py-0.5 rounded-full">
+                {upcomingWorkouts.length} זמינים
+              </span>
+            </h3>
+            
+            <div className="flex items-center gap-2 self-start sm:self-auto">
+              {!isMultiSelectMode ? (
+                <button 
+                  onClick={() => setIsMultiSelectMode(true)}
+                  className="bg-white hover:bg-gray-50 text-gray-800 text-xs font-bold px-3 py-1.5 rounded-xl border border-gray-300 transition flex items-center gap-1.5 shadow-sm"
+                >
+                  <CheckSquare size={14} /> בחירה מרובה
+                </button>
+              ) : selectedWorkoutsForCart.length === 0 ? (
+                <button 
+                  onClick={() => setIsMultiSelectMode(false)}
+                  className="bg-gray-100 hover:bg-gray-200 text-gray-500 text-xs font-bold px-3 py-1.5 rounded-xl border border-gray-200 transition flex items-center gap-1.5"
+                >
+                  <X size={14} /> ביטול בחירה
+                </button>
+              ) : (
+                <button 
+                  onClick={handleMultiSelectCheckout}
+                  className="bg-amber-500 hover:bg-amber-600 text-white text-xs font-bold px-4 py-1.5 rounded-xl shadow-md transition flex items-center gap-1.5 animate-fadeIn"
+                >
+                  <Check size={14} /> הרשמי ל-{selectedWorkoutsForCart.length} האימונים שסומנו
+                </button>
+              )}
+            </div>
+          </div>
 
           {upcomingWorkouts.length === 0 ? (
             <div className="bg-white/90 p-8 rounded-3xl text-center text-gray-500 font-bold">
@@ -1128,38 +1309,54 @@ const UserView = ({
                     </div>
 
                     <div className="flex items-center gap-2">
-                      {isUserRegistered ? (
-                        <button 
-                          onClick={() => handleCancelRegistration(workout.id)}
-                          className="w-full sm:w-auto bg-red-50 hover:bg-red-100 text-red-600 text-xs font-bold px-4 py-2.5 rounded-2xl border border-red-200 transition"
-                        >
-                          ביטול הרשמה
-                        </button>
-                      ) : isFull ? (
-                        <button 
-                          onClick={() => handleWorkoutRegister(workout.id)}
-                          disabled={isUserInWaitlist}
-                          className={`w-full sm:w-auto text-xs font-bold px-4 py-2.5 rounded-2xl transition ${
-                            isUserInWaitlist 
-                              ? 'bg-gray-200 text-gray-500 cursor-not-allowed'
-                              : 'bg-amber-500 hover:bg-amber-600 text-white shadow-md'
-                          }`}
-                        >
-                          {isUserInWaitlist ? 'ברשימת המתנה' : 'הרשמה להמתנה'}
-                        </button>
+                      {isMultiSelectMode ? (
+                        isUserRegistered ? (
+                           <span className="text-xs font-bold text-gray-400 bg-gray-100 px-4 py-2.5 rounded-2xl w-full sm:w-auto text-center">כבר רשומה</span>
+                        ) : isFull ? (
+                           <span className="text-xs font-bold text-gray-400 bg-gray-100 px-4 py-2.5 rounded-2xl w-full sm:w-auto text-center">אימון מלא</span>
+                        ) : selectedWorkoutsForCart.includes(workout.id) ? (
+                           <button onClick={() => setSelectedWorkoutsForCart(prev => prev.filter(id => id !== workout.id))} className="w-full sm:w-auto bg-emerald-50 text-emerald-700 text-xs font-bold px-5 py-2.5 rounded-2xl border border-emerald-200 transition flex items-center justify-center gap-1.5 shadow-sm">
+                             <CheckCircle2 size={16} /> נבחר
+                           </button>
+                        ) : (
+                           <button onClick={() => setSelectedWorkoutsForCart(prev => [...prev, workout.id])} className="w-full sm:w-auto bg-white hover:bg-gray-50 text-gray-700 text-xs font-bold px-5 py-2.5 rounded-2xl border border-gray-300 transition flex items-center justify-center gap-1.5 shadow-sm">
+                             <Plus size={16} /> הוספה לסימון
+                           </button>
+                        )
                       ) : (
-                        <button 
-                          onClick={() => {
-                            if (!currentUser) {
-                              setAuthMode('landing'); // החזרה למסך התחברות/הרשמה
-                            } else {
-                              handleWorkoutRegister(workout.id);
-                            }
-                          }}
-                          className="w-full sm:w-auto bg-gray-900 hover:bg-amber-600 text-white text-xs font-bold px-5 py-2.5 rounded-2xl shadow-md transition"
-                        >
-                          הרשמי לאימון
-                        </button>
+                        isUserRegistered ? (
+                          <button 
+                            onClick={() => handleCancelRegistration(workout.id)}
+                            className="w-full sm:w-auto bg-red-50 hover:bg-red-100 text-red-600 text-xs font-bold px-4 py-2.5 rounded-2xl border border-red-200 transition"
+                          >
+                            ביטול הרשמה
+                          </button>
+                        ) : isFull ? (
+                          <button 
+                            onClick={() => handleWorkoutRegister(workout.id)}
+                            disabled={isUserInWaitlist}
+                            className={`w-full sm:w-auto text-xs font-bold px-4 py-2.5 rounded-2xl transition ${
+                              isUserInWaitlist 
+                                ? 'bg-gray-200 text-gray-500 cursor-not-allowed'
+                                : 'bg-amber-500 hover:bg-amber-600 text-white shadow-md'
+                            }`}
+                          >
+                            {isUserInWaitlist ? 'ברשימת המתנה' : 'הרשמה להמתנה'}
+                          </button>
+                        ) : (
+                          <button 
+                            onClick={() => {
+                              if (!currentUser) {
+                                setAuthMode('landing'); // החזרה למסך התחברות/הרשמה
+                              } else {
+                                handleWorkoutRegister(workout.id);
+                              }
+                            }}
+                            className="w-full sm:w-auto bg-gray-900 hover:bg-amber-600 text-white text-xs font-bold px-5 py-2.5 rounded-2xl shadow-md transition"
+                          >
+                            הרשמי לאימון
+                          </button>
+                        )
                       )}
                     </div>
                   </div>
@@ -1651,8 +1848,13 @@ const AdminDashboard = ({
 
     alert(`${trainee.full_name} הועברה מרשימת ההמתנה לאימון! ${appliedPaymentStatus === 'punch_card' ? '(חויב אוטומטית מכרטיסייה)' : ''}`);
 
-    // 3. שליחת הודעת וואטסאפ מאשרת
-    const msg = `היי ${trainee.full_name}! 👋 שמחה לעדכן אותך שנרשמת בהצלחה לאימון ${workout.type} בתאריך ${workout.date.split('-').reverse().join('/')} בשעה ${workout.time}! נתראה!`;
+    // 3. שליחת הודעת וואטסאפ מאשרת מותאמת תשלום
+    let msg = `היי ${trainee.full_name}! 👋 שמחה לעדכן אותך שהתפנה מקום ונכנסת בהצלחה לאימון ${workout.type} בתאריך ${workout.date.split('-').reverse().join('/')} בשעה ${workout.time}!\n`;
+    if (appliedPaymentStatus === 'punch_card') {
+      msg += `החיוב ירד אוטומטית מהכרטיסייה שלך. נתראה! 🩷`;
+    } else {
+      msg += `אשמח אם תסדירי את התשלום (${workout.price} ₪) בביט או פייבוקס. נתראה! 🩷`;
+    }
     setTimeout(() => openWhatsApp(trainee.phone, msg), 500);
   };
 
