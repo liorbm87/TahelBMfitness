@@ -7,7 +7,7 @@ import {
   Calendar, Users, Settings, LogOut, Check, X, CreditCard, MessageCircle, 
   Download, Upload, Plus, Trash2, AlertCircle, CheckCircle2, Clock, 
   DollarSign, Edit, Search, Send, FileText, ChevronRight, Filter, Eye, 
-  Lock, RefreshCw, Award, ChevronDown, CheckSquare, Square, Phone, ShieldAlert, Archive, UserPlus, LogIn, ListOrdered, Facebook, Instagram
+  Lock, RefreshCw, Award, ChevronDown, CheckSquare, Square, Phone, ShieldAlert, Archive, UserPlus, LogIn, ListOrdered
 } from 'lucide-react';
 
 // ============================================================================
@@ -3795,10 +3795,10 @@ export default function App() {
           {/* כפתורי רשתות חברתיות */}
           <div className="absolute top-4 right-4 z-50 flex items-center gap-2">
             <a href="https://www.facebook.com/tahel.harari/" target="_blank" rel="noreferrer" className="bg-[#1877F2] text-white p-2 rounded-full shadow-md hover:scale-110 transition-transform flex items-center justify-center w-9 h-9" title="פייסבוק">
-              <Facebook size={18} />
+              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/></svg>
             </a>
             <a href="https://www.instagram.com/tahelbenmoshe?stkn=MTBqMTltZjNmN2h5cQ==" target="_blank" rel="noreferrer" className="bg-gradient-to-tr from-[#f09433] via-[#dc2743] to-[#bc1888] text-white p-2 rounded-full shadow-md hover:scale-110 transition-transform flex items-center justify-center w-9 h-9" title="אינסטגרם">
-              <Instagram size={18} />
+              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="20" height="20" x="2" y="2" rx="5" ry="5"/><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"/><line x1="17.5" x2="17.51" y1="6.5" y2="6.5"/></svg>
             </a>
             <a href="https://chat.whatsapp.com/FVExMM0V6xtIzCGTQBkfjW?s=cl&p=a&mlu=4&ilr=4" target="_blank" rel="noreferrer" className="bg-[#25D366] text-white px-3 py-2 rounded-full shadow-md hover:scale-110 transition-transform flex items-center gap-1.5 h-9" title="קבוצת העדכונים בוואטסאפ">
               <MessageCircle size={18} />
