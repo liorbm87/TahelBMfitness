@@ -4050,7 +4050,9 @@ export default function App() {
     }
     
     const saveGlobalState = async () => {
-      const stateToSave = { settings, workouts, trainees, registrations, waitlist, externalWorkouts };
+      const sortedWorkouts = [...workouts].sort((a, b) => new Date(`${a.date}T${a.time}`) - new Date(`${b.date}T${b.time}`));
+      const sortedExternal = [...externalWorkouts].sort((a, b) => new Date(`${a.date}T${a.time}`) - new Date(`${b.date}T${b.time}`));
+      const stateToSave = { settings, workouts: sortedWorkouts, trainees, registrations, waitlist, externalWorkouts: sortedExternal };
       await supabase.from('global_app_state').upsert({ id: 1, state_data: stateToSave });
     };
     
