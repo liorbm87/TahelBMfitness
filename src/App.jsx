@@ -1236,28 +1236,33 @@ const UserView = ({
             </div>
           </div>
 
-          {/* סרגל צף של סיום הרשמה במצב בחירה מרובה */}
+          {/* כפתורים צפים בצד שמאל - בחירה מרובה */}
           {isMultiSelectMode && (
-            <div className="fixed bottom-0 left-0 right-0 p-4 bg-white/95 backdrop-blur-md shadow-[0_-10px_20px_rgba(0,0,0,0.1)] border-t border-gray-200 z-[90] flex items-center justify-between sm:justify-center sm:gap-6 animate-fadeIn">
+            <div className="fixed bottom-24 left-5 z-[100] flex flex-col gap-3 animate-fadeIn">
+              <button 
+                onClick={handleMultiSelectCheckout}
+                disabled={selectedWorkoutsForCart.length === 0}
+                className={`flex flex-col items-center justify-center p-2 rounded-2xl shadow-[0_10px_25px_rgba(0,0,0,0.2)] transition-all ${
+                  selectedWorkoutsForCart.length === 0 
+                  ? 'bg-gray-300 text-gray-500 cursor-not-allowed scale-95 opacity-80' 
+                  : 'bg-amber-500 hover:bg-amber-600 text-white scale-100 hover:scale-105'
+                }`}
+                style={{ width: '75px', height: '75px' }}
+              >
+                <Check size={26} className="mb-1" />
+                <span className="text-[11px] font-black text-center leading-tight">הרשמי<br/>({selectedWorkoutsForCart.length})</span>
+              </button>
+              
               <button 
                 onClick={() => {
                   setIsMultiSelectMode(false);
                   setSelectedWorkoutsForCart([]);
                 }}
-                className="bg-red-50 hover:bg-red-100 text-red-600 text-sm font-bold px-5 py-3 rounded-2xl border border-red-200 transition flex items-center gap-2"
+                className="bg-red-500 hover:bg-red-600 text-white flex flex-col items-center justify-center p-2 rounded-2xl shadow-lg transition-all hover:scale-105"
+                style={{ width: '75px', height: '55px' }}
               >
-                <X size={18} /> בטל הכל
-              </button>
-              <button 
-                onClick={handleMultiSelectCheckout}
-                disabled={selectedWorkoutsForCart.length === 0}
-                className={`text-sm font-bold px-6 py-3 rounded-2xl transition shadow-md flex items-center gap-2 ${
-                  selectedWorkoutsForCart.length === 0 
-                  ? 'bg-gray-300 text-gray-500 cursor-not-allowed' 
-                  : 'bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white'
-                }`}
-              >
-                <Check size={18} /> הרשמי ל-{selectedWorkoutsForCart.length} אימונים
+                <X size={18} /> 
+                <span className="text-[10px] font-bold mt-1">בטלי הכל</span>
               </button>
             </div>
           )}
@@ -4005,8 +4010,10 @@ export default function App() {
         .show-on-pdf { display: none; }
       `}</style>
       <div dir="rtl" className="text-gray-900 antialiased selection:bg-amber-200 relative min-h-screen">
-        <div className="fixed inset-0 z-[-1] bg-cover bg-top h-screen w-screen bg-no-repeat" style={{ backgroundImage: `url(${settings.backgroundUrl})` }}></div>
-        <div className="min-h-screen bg-gradient-to-b from-white/80 via-white/70 to-white/85 backdrop-blur-[3px] pb-12 relative z-10">
+        <div className="fixed inset-0 z-[-2] bg-cover bg-top h-screen w-screen bg-no-repeat" style={{ backgroundImage: `url(${settings.backgroundUrl})` }}></div>
+        <div className="fixed inset-0 z-[-1] bg-gradient-to-b from-white/80 via-white/70 to-white/85 backdrop-blur-[3px]"></div>
+        
+        <div className="min-h-screen pb-12 relative z-10">
           
           {/* כפתורי רשתות חברתיות */}
           <div className="absolute top-4 right-4 z-50 flex items-center gap-2">
