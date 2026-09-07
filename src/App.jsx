@@ -7,7 +7,7 @@ import {
   Calendar, Users, Settings, LogOut, Check, X, CreditCard, MessageCircle, 
   Download, Upload, Plus, Trash2, AlertCircle, CheckCircle2, Clock, 
   DollarSign, Edit, Search, Send, FileText, ChevronRight, Filter, Eye, 
-  Lock, RefreshCw, Award, ChevronDown, CheckSquare, Square, Phone, ShieldAlert, Archive, UserPlus, LogIn, ListOrdered
+  Lock, RefreshCw, Award, ChevronDown, CheckSquare, Square, Phone, ShieldAlert, Archive, UserPlus, LogIn, ListOrdered, Facebook, Instagram
 } from 'lucide-react';
 
 // ============================================================================
@@ -3791,6 +3791,21 @@ export default function App() {
       <div dir="rtl" className="text-gray-900 antialiased selection:bg-amber-200 relative min-h-screen">
         <div className="fixed inset-0 z-[-1] bg-cover bg-top h-screen w-screen bg-no-repeat" style={{ backgroundImage: `url(${settings.backgroundUrl})` }}></div>
         <div className="min-h-screen bg-gradient-to-b from-white/80 via-white/70 to-white/85 backdrop-blur-[3px] pb-12 relative z-10">
+          
+          {/* כפתורי רשתות חברתיות */}
+          <div className="absolute top-4 right-4 z-50 flex items-center gap-2">
+            <a href="https://www.facebook.com/tahel.harari/" target="_blank" rel="noreferrer" className="bg-[#1877F2] text-white p-2 rounded-full shadow-md hover:scale-110 transition-transform flex items-center justify-center w-9 h-9" title="פייסבוק">
+              <Facebook size={18} />
+            </a>
+            <a href="https://www.instagram.com/tahelbenmoshe?stkn=MTBqMTltZjNmN2h5cQ==" target="_blank" rel="noreferrer" className="bg-gradient-to-tr from-[#f09433] via-[#dc2743] to-[#bc1888] text-white p-2 rounded-full shadow-md hover:scale-110 transition-transform flex items-center justify-center w-9 h-9" title="אינסטגרם">
+              <Instagram size={18} />
+            </a>
+            <a href="https://chat.whatsapp.com/FVExMM0V6xtIzCGTQBkfjW?s=cl&p=a&mlu=4&ilr=4" target="_blank" rel="noreferrer" className="bg-[#25D366] text-white px-3 py-2 rounded-full shadow-md hover:scale-110 transition-transform flex items-center gap-1.5 h-9" title="קבוצת העדכונים בוואטסאפ">
+              <MessageCircle size={18} />
+              <span className="text-xs font-bold whitespace-nowrap">קבוצת העדכונים</span>
+            </a>
+          </div>
+
           <Routes>
             <Route path="/admin" element={
               <>
