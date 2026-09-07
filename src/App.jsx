@@ -34,6 +34,7 @@ const INITIAL_TRAINEES = [];
 const INITIAL_REGISTRATIONS = [];
 
 const INITIAL_WAITLIST = [];
+const INITIAL_EXTERNAL_WORKOUTS = []; // אימונים פרטיים של תהל
 
 // ============================================================================
 // 3. פונקציות עזר (WHATSAPP, CLOUDINARY, MAKE.COM, PDF)
@@ -1507,6 +1508,7 @@ const AdminDashboard = ({
   trainees = [], setTrainees, 
   registrations = [], setRegistrations, 
   waitlist = [], setWaitlist,
+  externalWorkouts = [], setExternalWorkouts,
   settings, setSettings, onRefresh 
 }) => {
   const [activeTab, setActiveTab] = useState(() => sessionStorage.getItem('tahel_admin_tab') || 'overview');
@@ -1525,6 +1527,13 @@ const AdminDashboard = ({
     price: '',
     max_participants: '',
     notes: ''
+  });
+
+  const [newExternalWorkout, setNewExternalWorkout] = useState({
+    type: '',
+    date: new Date().toISOString().split('T')[0],
+    time: '',
+    location: ''
   });
 
   const [additionalDates, setAdditionalDates] = useState([]);
@@ -2109,6 +2118,7 @@ const AdminDashboard = ({
           { id: 'trainees', label: `מתאמנים (${stats.pendingTraineesCount ? `! ${stats.pendingTraineesCount}` : stats.totalTraineesCount})`, icon: Users },
           { id: 'finance', label: `כספים ורו"ח ${stats.unpaidDebtsList.length ? '⚠️' : ''}`, icon: CreditCard },
           { id: 'settings', label: 'הגדרות ומיתוג', icon: Settings },
+          { id: 'my_schedule', label: 'הלו"ז שלי', icon: Calendar },
           { id: 'archive', label: 'ארכיון מתאמנים', icon: Archive },
           { id: 'archive_workouts', label: 'ארכיון אימונים', icon: Archive }
        ].map(tab => {
@@ -2199,6 +2209,72 @@ const AdminDashboard = ({
               </div>
             </div>
           )}
+        </div>
+      )}
+
+      {activeTab === 'my_schedule' && (
+        <div className="space-y-6">
+          <div className="bg-white/95 p-6 rounded-3xl shadow-md border border-gray-100">
+            <h3 className="font-extrabold text-gray-900 text-base border-b pb-3 mb-4">הלו"ז האישי שלי (לעינייך בלבד)</h3>
+            
+            <form onSubmit={(e) => {
+              e.preventDefault();
+              setExternalWorkouts(prev => [...prev, { id: 'ext_' + Date.now(), ...newExternalWorkout }]);
+              setNewExternalWorkout({ type: '', date: new Date().toISOString().split('T')[0], time: '', location: '' });
+              alert('האימון החיצוני נוסף ללו"ז בהצלחה!');
+            }} className="grid grid-cols-1 sm:grid-cols-4 gap-4 text-xs mb-6">
+              <div>
+                <label className="block font-bold text-gray-700 mb-1">שם/סוג האימון</label>
+                <input required type="text" value={newExternalWorkout.type} onChange={(e) => setNewExternalWorkout({...newExternalWorkout, type: e.target.value})} className="w-full p-2.5 bg-gray-50 border rounded-xl outline-none" placeholder="למשל: אימון אישי בפארק" />
+              </div>
+              <div>
+                <label className="block font-bold text-gray-700 mb-1">תאריך</label>
+                <input required type="date" value={newExternalWorkout.date} onChange={(e) => setNewExternalWorkout({...newExternalWorkout, date: e.target.value})} className="w-full p-2.5 bg-gray-50 border rounded-xl outline-none" />
+              </div>
+              <div>
+                <label className="block font-bold text-gray-700 mb-1">שעה</label>
+                <input required type="time" value={newExternalWorkout.time} onChange={(e) => setNewExternalWorkout({...newExternalWorkout, time: e.target.value})} className="w-full p-2.5 bg-gray-50 border rounded-xl outline-none" />
+              </div>
+              <div>
+                <label className="block font-bold text-gray-700 mb-1">מיקום (כתובת מדויקת לניווט)</label>
+                <input required type="text" value={newExternalWorkout.location} onChange={(e) => setNewExternalWorkout({...newExternalWorkout, location: e.target.value})} className="w-full p-2.5 bg-gray-50 border rounded-xl outline-none" placeholder="למשל: הירקון 10, תל אביב" />
+              </div>
+              <div className="sm:col-span-4">
+                <button type="submit" className="w-full bg-gray-900 text-white font-bold py-2.5 rounded-xl hover:bg-gray-800 transition">הוספי אימון פרטי ללו"ז</button>
+              </div>
+            </form>
+
+            <div className="space-y-3 mt-4">
+              <h4 className="font-bold text-sm text-gray-800">כל האימונים הקרובים (כולל אימוני סטודיו ופרטיים):</h4>
+              {[...workouts.map(w => ({ ...w, isStudio: true })), ...externalWorkouts.map(w => ({ ...w, isStudio: false }))]
+                .filter(w => new Date(`${w.date}T${w.time}`) >= new Date())
+                .sort((a, b) => new Date(`${a.date}T${a.time}`) - new Date(`${b.date}T${b.time}`))
+                .map(w => {
+                  const navLink = `https://waze.com/ul?q=${encodeURIComponent(w.location)}`;
+                  return (
+                    <div key={w.id} className={`p-4 rounded-2xl flex flex-col sm:flex-row justify-between sm:items-center gap-3 border ${w.isStudio ? 'bg-amber-50 border-amber-100' : 'bg-blue-50 border-blue-100'}`}>
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <span className="font-bold text-gray-900 text-sm">{w.type}</span>
+                          <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${w.isStudio ? 'bg-amber-200 text-amber-800' : 'bg-blue-200 text-blue-800'}`}>{w.isStudio ? 'סטודיו (לקוחות)' : 'פרטי / חיצוני'}</span>
+                        </div>
+                        <p className="text-xs text-gray-600 mt-1">{w.date.split('-').reverse().join('/')} בשעה {w.time} | {w.location}</p>
+                      </div>
+                      <div className="flex gap-2">
+                        <a href={navLink} target="_blank" rel="noreferrer" className="bg-white hover:bg-gray-100 border text-gray-700 text-[11px] px-3 py-2 rounded-lg font-bold transition flex items-center justify-center gap-1 shadow-sm">
+                          🚗 ניווט
+                        </a>
+                        {!w.isStudio && (
+                          <button onClick={() => setExternalWorkouts(prev => prev.filter(ext => ext.id !== w.id))} className="text-red-500 hover:bg-red-50 border border-transparent hover:border-red-100 px-2 py-1.5 rounded-lg transition" title="מחיקת אימון אישי">
+                            <Trash2 size={16}/>
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  )
+              })}
+            </div>
+          </div>
         </div>
       )}
 
@@ -3873,6 +3949,7 @@ export default function App() {
   const [trainees, setTrainees] = useState(INITIAL_TRAINEES);
   const [registrations, setRegistrations] = useState(INITIAL_REGISTRATIONS);
   const [waitlist, setWaitlist] = useState(INITIAL_WAITLIST);
+  const [externalWorkouts, setExternalWorkouts] = useState(INITIAL_EXTERNAL_WORKOUTS);
   
   const [isAdminLoggedIn, setIsAdminLoggedIn] = useState(false);
   const [isAdminLoginModalOpen, setIsAdminLoginModalOpen] = useState(() => window.location.search.includes('admin'));
@@ -3949,6 +4026,7 @@ export default function App() {
         setTrainees(data.state_data.trainees || INITIAL_TRAINEES);
         setRegistrations(data.state_data.registrations || INITIAL_REGISTRATIONS);
         setWaitlist(data.state_data.waitlist || INITIAL_WAITLIST);
+        setExternalWorkouts(data.state_data.externalWorkouts || INITIAL_EXTERNAL_WORKOUTS);
       }
     } catch (err) {
       console.error("Error loading from Supabase:", err);
@@ -3972,12 +4050,12 @@ export default function App() {
     }
     
     const saveGlobalState = async () => {
-      const stateToSave = { settings, workouts, trainees, registrations, waitlist };
+      const stateToSave = { settings, workouts, trainees, registrations, waitlist, externalWorkouts };
       await supabase.from('global_app_state').upsert({ id: 1, state_data: stateToSave });
     };
     
     saveGlobalState();
-  }, [settings, workouts, trainees, registrations, waitlist, isDataLoaded]);
+  }, [settings, workouts, trainees, registrations, waitlist, externalWorkouts, isDataLoaded]);
 
   const [appReady, setAppReady] = useState(false);
   useEffect(() => {
@@ -4046,7 +4124,7 @@ export default function App() {
                 />
                 <main className="px-4">
                   {isAdminLoggedIn ? (
-                    <AdminDashboard workouts={workouts} setWorkouts={setWorkouts} trainees={trainees} setTrainees={setTrainees} registrations={registrations} setRegistrations={setRegistrations} waitlist={waitlist} setWaitlist={setWaitlist} settings={settings} setSettings={setSettings} onRefresh={loadGlobalState} />
+                    <AdminDashboard workouts={workouts} setWorkouts={setWorkouts} trainees={trainees} setTrainees={setTrainees} registrations={registrations} setRegistrations={setRegistrations} waitlist={waitlist} setWaitlist={setWaitlist} externalWorkouts={externalWorkouts} setExternalWorkouts={setExternalWorkouts} settings={settings} setSettings={setSettings} onRefresh={loadGlobalState} />
                   ) : (
                     <div className="text-center py-20">אנא התחברי למערכת...</div>
                   )}
@@ -4074,7 +4152,7 @@ export default function App() {
                 <MainHeader settings={settings} isAdmin={isAdminLoggedIn} onOpenAdminLogin={() => setIsAdminLoginModalOpen(true)} onLogout={() => { setIsAdminLoggedIn(false); window.history.pushState(null, '', '/'); }} currentUser={currentUser} setCurrentUser={setCurrentUser} setTrainees={setTrainees} onRefresh={loadGlobalState} workouts={workouts} registrations={registrations} />
                 <main className="px-4">
                   {isAdminLoggedIn ? (
-                    <AdminDashboard workouts={workouts} setWorkouts={setWorkouts} trainees={trainees} setTrainees={setTrainees} registrations={registrations} setRegistrations={setRegistrations} waitlist={waitlist} setWaitlist={setWaitlist} settings={settings} setSettings={setSettings} onRefresh={loadGlobalState} />
+                    <AdminDashboard workouts={workouts} setWorkouts={setWorkouts} trainees={trainees} setTrainees={setTrainees} registrations={registrations} setRegistrations={setRegistrations} waitlist={waitlist} setWaitlist={setWaitlist} externalWorkouts={externalWorkouts} setExternalWorkouts={setExternalWorkouts} settings={settings} setSettings={setSettings} onRefresh={loadGlobalState} />
                   ) : (
                     <UserView trainees={trainees} setTrainees={setTrainees} workouts={workouts} registrations={registrations} setRegistrations={setRegistrations} waitlist={waitlist} setWaitlist={setWaitlist} currentUser={currentUser} setCurrentUser={setCurrentUser} settings={settings} />
                   )}
