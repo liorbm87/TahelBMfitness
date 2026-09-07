@@ -1225,30 +1225,42 @@ const UserView = ({
             </h3>
             
             <div className="flex items-center gap-2 self-start sm:self-auto">
-              {!isMultiSelectMode ? (
+              {!isMultiSelectMode && (
                 <button 
                   onClick={() => setIsMultiSelectMode(true)}
                   className="bg-white hover:bg-gray-50 text-gray-800 text-xs font-bold px-3 py-1.5 rounded-xl border border-gray-300 transition flex items-center gap-1.5 shadow-sm"
                 >
                   <CheckSquare size={14} /> בחירה מרובה
                 </button>
-              ) : selectedWorkoutsForCart.length === 0 ? (
-                <button 
-                  onClick={() => setIsMultiSelectMode(false)}
-                  className="bg-gray-100 hover:bg-gray-200 text-gray-500 text-xs font-bold px-3 py-1.5 rounded-xl border border-gray-200 transition flex items-center gap-1.5"
-                >
-                  <X size={14} /> ביטול בחירה
-                </button>
-              ) : (
-                <button 
-                  onClick={handleMultiSelectCheckout}
-                  className="bg-amber-500 hover:bg-amber-600 text-white text-xs font-bold px-4 py-1.5 rounded-xl shadow-md transition flex items-center gap-1.5 animate-fadeIn"
-                >
-                  <Check size={14} /> הרשמי ל-{selectedWorkoutsForCart.length} האימונים שסומנו
-                </button>
               )}
             </div>
           </div>
+
+          {/* סרגל צף של סיום הרשמה במצב בחירה מרובה */}
+          {isMultiSelectMode && (
+            <div className="fixed bottom-0 left-0 right-0 p-4 bg-white/95 backdrop-blur-md shadow-[0_-10px_20px_rgba(0,0,0,0.1)] border-t border-gray-200 z-[90] flex items-center justify-between sm:justify-center sm:gap-6 animate-fadeIn">
+              <button 
+                onClick={() => {
+                  setIsMultiSelectMode(false);
+                  setSelectedWorkoutsForCart([]);
+                }}
+                className="bg-red-50 hover:bg-red-100 text-red-600 text-sm font-bold px-5 py-3 rounded-2xl border border-red-200 transition flex items-center gap-2"
+              >
+                <X size={18} /> בטל הכל
+              </button>
+              <button 
+                onClick={handleMultiSelectCheckout}
+                disabled={selectedWorkoutsForCart.length === 0}
+                className={`text-sm font-bold px-6 py-3 rounded-2xl transition shadow-md flex items-center gap-2 ${
+                  selectedWorkoutsForCart.length === 0 
+                  ? 'bg-gray-300 text-gray-500 cursor-not-allowed' 
+                  : 'bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white'
+                }`}
+              >
+                <Check size={18} /> הרשמי ל-{selectedWorkoutsForCart.length} אימונים
+              </button>
+            </div>
+          )}
 
           {upcomingWorkouts.length === 0 ? (
             <div className="bg-white/90 p-8 rounded-3xl text-center text-gray-500 font-bold">
@@ -1312,11 +1324,13 @@ const UserView = ({
                       {isMultiSelectMode ? (
                         isUserRegistered ? (
                            <span className="text-xs font-bold text-gray-400 bg-gray-100 px-4 py-2.5 rounded-2xl w-full sm:w-auto text-center">כבר רשומה</span>
-                        ) : isFull ? (
-                           <span className="text-xs font-bold text-gray-400 bg-gray-100 px-4 py-2.5 rounded-2xl w-full sm:w-auto text-center">אימון מלא</span>
                         ) : selectedWorkoutsForCart.includes(workout.id) ? (
                            <button onClick={() => setSelectedWorkoutsForCart(prev => prev.filter(id => id !== workout.id))} className="w-full sm:w-auto bg-emerald-50 text-emerald-700 text-xs font-bold px-5 py-2.5 rounded-2xl border border-emerald-200 transition flex items-center justify-center gap-1.5 shadow-sm">
                              <CheckCircle2 size={16} /> נבחר
+                           </button>
+                        ) : isFull ? (
+                           <button onClick={() => setSelectedWorkoutsForCart(prev => [...prev, workout.id])} className="w-full sm:w-auto bg-amber-50 hover:bg-amber-100 text-amber-700 text-xs font-bold px-5 py-2.5 rounded-2xl border border-amber-300 transition flex items-center justify-center gap-1.5 shadow-sm">
+                             <Plus size={16} /> הוספה להמתנה
                            </button>
                         ) : (
                            <button onClick={() => setSelectedWorkoutsForCart(prev => [...prev, workout.id])} className="w-full sm:w-auto bg-white hover:bg-gray-50 text-gray-700 text-xs font-bold px-5 py-2.5 rounded-2xl border border-gray-300 transition flex items-center justify-center gap-1.5 shadow-sm">
