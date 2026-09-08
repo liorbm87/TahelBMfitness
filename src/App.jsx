@@ -51,7 +51,11 @@ const formatPhoneForWhatsApp = (phone) => {
 const openWhatsApp = (phone, message) => {
   const formatted = formatPhoneForWhatsApp(phone);
   const url = `https://wa.me/${formatted}?text=${encodeURIComponent(message)}`;
-  window.open(url, '_blank');
+  if (/iPad|iPhone|iPod/.test(navigator.userAgent)) {
+    window.location.href = url; // מניעת חסימת חלונות קופצים באייפון
+  } else {
+    window.open(url, '_blank');
+  }
 };
 
 const triggerMakeWebhook = async (webhookUrl, eventType, data) => {
@@ -533,11 +537,13 @@ const UserView = ({
 
       setTrainees(prev => [...prev, newTrainee]);
       setCurrentUser(newTrainee);
+      setAuthMode('landing'); // תיקון: העלמת טופס הצהרת הבריאות לאחר ההרשמה
       triggerMakeWebhook(settings.makeWebhookUrl, 'new_trainee_registered', newTrainee);
       setTimeout(() => {
-        alert('נרשמת בהצלחה! לחצי אישור למעבר לוואטסאפ לשליחת הודעה לתהל.');
-        openWhatsApp('0545222008', `היי תהל! נרשמתי לאתר שמי ${formData.first_name} ${formData.last_name} אני אשמח לאישור שלך!`);
-      }, 500);
+        if (window.confirm('נרשמת בהצלחה! הנתונים נשמרו במערכת.\nלחצי "אישור" למעבר לוואטסאפ ושליחת הודעה לתהל.')) {
+          openWhatsApp('0545222008', `היי תהל! נרשמתי לאתר שמי ${formData.first_name} ${formData.last_name} אני אשמח לאישור שלך!`);
+        }
+      }, 1500); // השהייה ארוכה יותר מאפשרת למסד הנתונים לשמור הכל בשרת לפני העזיבה לוואטסאפ
     }
   };
 
@@ -1602,6 +1608,7 @@ const AdminDashboard = ({
 
   const [selectedAdminMonth, setSelectedAdminMonth] = useState(() => new Date().toISOString().substring(0, 7)); // הוספת הסטייט החסר
   const [editWorkoutData, setEditWorkoutData] = useState(null); // סטייט לעריכת אימון
+  const [showWeeklyDist, setShowWeeklyDist] = useState(false); // סטייט להתפלגות השבועית בדשבורד
   
   const [searchTraineeQuery, setSearchTraineeQuery] = useState('');
   const [searchWorkoutQuery, setSearchWorkoutQuery] = useState('');
@@ -1667,6 +1674,30 @@ const AdminDashboard = ({
       }
     });
 
+    const now = new Date();
+    const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const startOfWeek = new Date(startOfDay);
+    startOfWeek.setDate(startOfWeek.getDate() - startOfWeek.getDay());
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+
+    let dailyEntries = 0; let weeklyEntries = 0; let monthlyEntries = 0;
+    const weeklyDistribution = { 'ראשון': 0, 'שני': 0, 'שלישי': 0, 'רביעי': 0, 'חמישי': 0, 'שישי': 0, 'שבת': 0 };
+    const daysHe = ['ראשון', 'שני', 'שלישי', 'רביעי', 'חמישי', 'שישי', 'שבת'];
+
+    registrations.forEach(reg => {
+      if (reg.is_punch_card_purchase) return;
+      const w = workouts.find(wo => wo.id === reg.workout_id);
+      if (w) {
+        const wDate = new Date(`${w.date}T${w.time}`);
+        if (wDate >= startOfDay && wDate < new Date(startOfDay.getTime() + 86400000)) dailyEntries++;
+        if (wDate >= startOfWeek && wDate < new Date(startOfWeek.getTime() + 7 * 86400000)) {
+          weeklyEntries++;
+          weeklyDistribution[daysHe[wDate.getDay()]]++;
+        }
+        if (wDate >= startOfMonth && wDate < new Date(now.getFullYear(), now.getMonth() + 1, 1)) monthlyEntries++;
+      }
+    });
+
     return {
       endingSeries,
       totalTraineesCount,
@@ -1674,7 +1705,11 @@ const AdminDashboard = ({
       totalRevenue,
       unpaidAmount,
       unpaidDebtsList,
-      occupancyRate
+      occupancyRate,
+      dailyEntries,
+      weeklyEntries,
+      monthlyEntries,
+      weeklyDistribution
     };
   }, [trainees, workouts, registrations]);
 
@@ -2176,6 +2211,35 @@ const AdminDashboard = ({
             <div className="bg-white/90 p-5 rounded-3xl shadow-sm border border-gray-100">
               <p className="text-xs text-gray-500 font-bold">תפוסת אימונים ממוצעת</p>
               <h3 className="text-2xl font-black text-amber-600 mt-1">{stats.occupancyRate}%</h3>
+            </div>
+            
+            {/* קוביית כניסות מתאמנים - יומית, שבועית, חודשית */}
+            <div className="bg-white/90 p-5 rounded-3xl shadow-sm border border-gray-100 col-span-2 md:col-span-4">
+              <h4 className="font-bold text-gray-800 text-sm mb-3">כניסות מתאמנים (הרשמות לאימונים)</h4>
+              <div className="grid grid-cols-3 gap-4 text-center">
+                <div className="bg-blue-50 p-3 rounded-2xl">
+                  <p className="text-[11px] text-blue-600 font-bold">היום</p>
+                  <p className="text-xl font-black text-blue-900">{stats.dailyEntries}</p>
+                </div>
+                <div className="bg-indigo-50 p-3 rounded-2xl cursor-pointer hover:bg-indigo-100 transition shadow-sm border border-indigo-100" onClick={() => setShowWeeklyDist(!showWeeklyDist)}>
+                  <p className="text-[11px] text-indigo-600 font-bold">השבוע (לחצי לפירוט)</p>
+                  <p className="text-xl font-black text-indigo-900">{stats.weeklyEntries}</p>
+                </div>
+                <div className="bg-purple-50 p-3 rounded-2xl">
+                  <p className="text-[11px] text-purple-600 font-bold">החודש</p>
+                  <p className="text-xl font-black text-purple-900">{stats.monthlyEntries}</p>
+                </div>
+              </div>
+              {showWeeklyDist && (
+                <div className="mt-4 pt-4 border-t border-gray-100 grid grid-cols-7 gap-2 text-center animate-fadeIn">
+                  {Object.entries(stats.weeklyDistribution).map(([day, count]) => (
+                    <div key={day} className="bg-white border border-indigo-100 py-2 rounded-xl shadow-sm">
+                      <p className="text-[10px] text-gray-500 font-bold">{day}</p>
+                      <p className="text-sm font-black text-indigo-700">{count}</p>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
 
@@ -3271,11 +3335,22 @@ const AdminDashboard = ({
                               type="number" 
                               className="w-16 bg-gray-50 border border-gray-200 rounded p-1 text-center font-bold outline-none" 
                               value={reg.paid_amount !== undefined ? reg.paid_amount : workout.price} 
-                              onChange={(e) => setRegistrations(prev => prev.map(r => r.id === reg.id ? { ...r, paid_amount: Number(e.target.value) } : r))}
+                              onChange={(e) => {
+                                const newAmount = Number(e.target.value);
+                                let note = reg.discount_note || '';
+                                if (newAmount < workout.price) {
+                                  note = window.prompt('הוזן מחיר נמוך ממחיר האימון. נא להזין סיבה להנחה (עבור דוח רו"ח):', note) || note;
+                                } else {
+                                  note = ''; // איפוס הערה אם חזר למחיר רגיל
+                                }
+                                setRegistrations(prev => prev.map(r => r.id === reg.id ? { ...r, paid_amount: newAmount, discount_note: note } : r));
+                              }}
                             /> ₪
+                            {reg.discount_note && <div className="text-[10px] text-amber-600 font-bold mt-1 max-w-[100px] leading-tight break-words">{reg.discount_note}</div>}
                           </span>
-                          <span className="show-on-pdf">
-                            {reg.paid_amount !== undefined ? reg.paid_amount : workout.price} ₪
+                          <span className="show-on-pdf flex flex-col items-end">
+                            <span>{reg.paid_amount !== undefined ? reg.paid_amount : workout.price} ₪</span>
+                            {reg.discount_note && <span className="text-[9px] text-amber-700">הערת הנחה: {reg.discount_note}</span>}
                           </span>
                         </td>
                         <td className="p-3">
@@ -3598,9 +3673,13 @@ const AdminDashboard = ({
                                 if (customAmount === null) return; 
                                 finalPrice = Number(customAmount) || currentPrice;
                               }
+                              let note = r.discount_note || '';
+                              if (finalPrice < w.price) {
+                                note = window.prompt('סיבה להנחה (לדוח רו"ח):', note) || note;
+                              } else { note = ''; }
                               const isPaidNow = window.confirm('האם התשלום התקבל בפועל (שולם)?\nאישור = שולם, ביטול = טרם שולם');
                               handleUpdatePaymentStatus(r.id, isPaidNow ? 'paid' : 'unpaid');
-                              setRegistrations(prev => prev.map(reg => reg.id === r.id ? { ...reg, paid_amount: finalPrice } : reg));
+                              setRegistrations(prev => prev.map(reg => reg.id === r.id ? { ...reg, paid_amount: finalPrice, discount_note: note } : reg));
                             }
                           }}
                           className="text-[10px] text-blue-600 underline font-semibold cursor-pointer hover:text-blue-800"
@@ -3914,9 +3993,13 @@ const AdminDashboard = ({
                                 if (customAmount === null) return; 
                                 finalPrice = Number(customAmount) || currentPrice;
                               }
+                              let note = r.discount_note || '';
+                              if (finalPrice < w.price) {
+                                note = window.prompt('סיבה להנחה (לדוח רו"ח):', note) || note;
+                              } else { note = ''; }
                               const isPaidNow = window.confirm('האם התשלום התקבל בפועל (שולם)?\nאישור = שולם, ביטול = טרם שולם');
                               handleUpdatePaymentStatus(r.id, isPaidNow ? 'paid' : 'unpaid');
-                              setRegistrations(prev => prev.map(reg => reg.id === r.id ? { ...reg, paid_amount: finalPrice } : reg));
+                              setRegistrations(prev => prev.map(reg => reg.id === r.id ? { ...reg, paid_amount: finalPrice, discount_note: note } : reg));
                             }
                           }}
                           className={`px-3 py-1.5 rounded-lg font-bold transition ${r.payment_status === 'paid' ? 'bg-emerald-100 text-emerald-700' : r.payment_status === 'punch_card' ? 'bg-indigo-100 text-indigo-700' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}`}
