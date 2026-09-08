@@ -1359,6 +1359,7 @@ const UserView = ({
               const isFull = registeredCount >= workout.max_participants;
               const isUserRegistered = myRegisteredWorkoutIds.includes(workout.id);
               const isUserInWaitlist = waitlist.some(w => w.workout_id === workout.id && w.user_id === currentUser.id);
+              const workoutWaitlist = waitlist.filter(w => w.workout_id === workout.id);
 
               return (
                 <div 
