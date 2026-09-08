@@ -411,6 +411,7 @@ const UserView = ({
     return false;
   }, [currentUser]);
 
+  const [pendingWhatsApp, setPendingWhatsApp] = useState(null);
   const [formData, setFormData] = useState({
     first_name: '',
     last_name: '',
@@ -514,11 +515,7 @@ const UserView = ({
       const updatedUser = { ...currentUser, health_declaration: healthDecl, needs_renewal: false, is_approved: false };
       setTrainees(prev => prev.map(t => t.id === currentUser.id ? updatedUser : t));
       setCurrentUser(updatedUser);
-      setAuthMode('landing');
-      setTimeout(() => {
-        alert('הצהרת הבריאות עודכנה בהצלחה! לחצי אישור למעבר לוואטסאפ.');
-        openWhatsApp('0545222008', `היי תהל! מילאתי מחדש את הצהרת הבריאות. שמי ${currentUser.full_name}, אשמח לאישור!`);
-      }, 500);
+      setPendingWhatsApp(`היי תהל! מילאתי מחדש את הצהרת הבריאות. שמי ${updatedUser.full_name}, אשמח לאישור!`);
     } else {
       // מצב מתאמנת חדשה לגמרי
       const newTrainee = {
@@ -537,13 +534,8 @@ const UserView = ({
 
       setTrainees(prev => [...prev, newTrainee]);
       setCurrentUser(newTrainee);
-      setAuthMode('landing'); // תיקון: העלמת טופס הצהרת הבריאות לאחר ההרשמה
       triggerMakeWebhook(settings.makeWebhookUrl, 'new_trainee_registered', newTrainee);
-      setTimeout(() => {
-        if (window.confirm('נרשמת בהצלחה! הנתונים נשמרו במערכת.\nלחצי "אישור" למעבר לוואטסאפ ושליחת הודעה לתהל.')) {
-          openWhatsApp('0545222008', `היי תהל! נרשמתי לאתר שמי ${formData.first_name} ${formData.last_name} אני אשמח לאישור שלך!`);
-        }
-      }, 1500); // השהייה ארוכה יותר מאפשרת למסד הנתונים לשמור הכל בשרת לפני העזיבה לוואטסאפ
+      setPendingWhatsApp(`היי תהל! נרשמתי לאתר שמי ${formData.first_name} ${formData.last_name} אני אשמח לאישור שלך!`);
     }
   };
 
@@ -845,6 +837,30 @@ const UserView = ({
       alert('הוסרת מרשימת ההמתנה.');
     }
   };
+
+  if (pendingWhatsApp) {
+    const url = `https://wa.me/972545222008?text=${encodeURIComponent(pendingWhatsApp)}`;
+    return (
+      <div className="max-w-md mx-auto bg-white/95 backdrop-blur-md p-8 rounded-3xl shadow-xl border border-emerald-100 mt-6 text-center animate-fadeIn">
+        <div className="w-16 h-16 bg-emerald-100 rounded-full flex items-center justify-center mx-auto mb-4">
+          <Check size={32} className="text-emerald-500" />
+        </div>
+        <h2 className="text-2xl font-black text-gray-900 mb-2">הנתונים נשמרו במערכת!</h2>
+        <p className="text-gray-600 text-sm mb-6">כעת, לחצי על הכפתור כדי לשלוח לתהל הודעת וואטסאפ שתאשר אותך.</p>
+        <a 
+          href={url} 
+          target="_blank"
+          onClick={() => {
+            setPendingWhatsApp(null);
+            setAuthMode('landing');
+          }} 
+          className="w-full bg-emerald-500 hover:bg-emerald-600 text-white font-bold py-3.5 rounded-2xl shadow-lg transition flex items-center justify-center gap-2"
+        >
+          <MessageCircle size={20} /> שלחי הודעה לאישור
+        </a>
+      </div>
+    );
+  }
 
   if (!isRegistered && authMode !== 'guest' && authMode !== 'register') {
     return (
