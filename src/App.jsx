@@ -35,6 +35,8 @@ const INITIAL_REGISTRATIONS = [];
 
 const INITIAL_WAITLIST = [];
 const INITIAL_EXTERNAL_WORKOUTS = []; // אימונים פרטיים של תהל
+const INITIAL_GALLERY = [];
+const INITIAL_SITE_VISITS = [];
 
 // ============================================================================
 // 3. פונקציות עזר (WHATSAPP, CLOUDINARY, MAKE.COM, PDF)
@@ -86,7 +88,8 @@ const uploadToCloudinary = async (file, cloudName, uploadPreset) => {
   formData.append('file', file);
   formData.append('upload_preset', uploadPreset);
 
-  const response = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/image/upload`, {
+  // שימוש ב-auto במקום image כדי לתמוך בוידאו ותמונות יחד
+  const response = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/auto/upload`, {
     method: 'POST',
     body: formData
   });
@@ -526,18 +529,22 @@ const UserView = ({
       signed_at: `${new Date().getDate().toString().padStart(2, '0')}/${(new Date().getMonth() + 1).toString().padStart(2, '0')}/${new Date().getFullYear()} | ${new Date().getHours().toString().padStart(2, '0')}:${new Date().getMinutes().toString().padStart(2, '0')}`
     };
 
+    const autoApprove = !formData.has_medical_condition; // סיפוק מיידי: אוטומטי אם אין בעיה
+
     if (currentUser) {
-      // מצב חידוש מתאמנת קיימת - מעדכן את האובייקט הקיים ולא משכפל!
-      const updatedUser = { ...currentUser, health_declaration: healthDecl, needs_renewal: false, is_approved: false };
+      // מצב חידוש מתאמנת קיימת
+      const updatedUser = { ...currentUser, health_declaration: healthDecl, needs_renewal: false, is_approved: autoApprove };
       setTrainees(prev => prev.map(t => t.id === currentUser.id ? updatedUser : t));
       setCurrentUser(updatedUser);
       
       setTimeout(() => {
         setIsSaving(false);
-        setPendingWhatsApp(`היי תהל! מילאתי מחדש את הצהרת הבריאות. שמי ${updatedUser.full_name}, אשמח לאישור!`);
-      }, 2500); // 2.5 שניות חסימה לטובת השמירה במסד הנתונים
+        setPendingWhatsApp(autoApprove 
+          ? `היי תהל! מילאתי מחדש את הצהרת הבריאות. שמי ${updatedUser.full_name}, והמערכת אישרה אותי אוטומטית כי ההצהרה שלי תקינה. נתראה באימונים! 💪` 
+          : `היי תהל! מילאתי מחדש את הצהרת הבריאות. שמי ${updatedUser.full_name}, סימנתי "כן" באחת השאלות אז אני ממתינה לאישור הידני שלך!`);
+      }, 2500); 
     } else {
-      // מצב מתאמנת חדשה לגמרי
+      // מצב מתאמנת חדשה
       const newTrainee = {
         id: 'u_' + Date.now(),
         full_name: `${formData.first_name} ${formData.last_name}`,
@@ -545,7 +552,7 @@ const UserView = ({
         dob: formData.dob,
         phone: formData.phone,
         email: formData.email,
-        is_approved: false,
+        is_approved: autoApprove,
         is_admin: false,
         is_archived: false,
         created_at: new Date().toISOString(),
@@ -564,8 +571,10 @@ const UserView = ({
       
       setTimeout(() => {
         setIsSaving(false);
-        setPendingWhatsApp(`היי תהל! נרשמתי לאתר שמי ${formData.first_name} ${formData.last_name} אני אשמח לאישור שלך!`);
-      }, 2500); // 2.5 שניות חסימה לטובת השמירה במסד הנתונים
+        setPendingWhatsApp(autoApprove 
+          ? `היי תהל! איזה כיף, נרשמתי לאתר ואושרתי אוטומטית ע"י הצהרת הבריאות! שמי ${formData.first_name} ${formData.last_name}. נתראה באימונים! 🩷` 
+          : `היי תהל! נרשמתי לאתר. שמי ${formData.first_name} ${formData.last_name}. בגלל שסימנתי "כן" באחת השאלות בהצהרה הרפואית, אני צריכה את האישור הידני שלך באפליקציה!`);
+      }, 2500);
     }
   };
 
@@ -1581,6 +1590,8 @@ const AdminDashboard = ({
   registrations = [], setRegistrations, 
   waitlist = [], setWaitlist,
   externalWorkouts = [], setExternalWorkouts,
+  gallery = [], setGallery,
+  siteVisits = [],
   settings, setSettings, onRefresh 
 }) => {
   const [activeTab, setActiveTab] = useState(() => sessionStorage.getItem('tahel_admin_tab') || 'overview');
@@ -1641,6 +1652,8 @@ const AdminDashboard = ({
     .replace(/\[פרטי האימון\]/g, workoutDetails)
     .replace(/\[שם האימון\]/g, workout.type)
     .replace(/\[תאריך\]/g, workout.date.split('-').reverse().join('/'))
+    .replace(/\[שעה\]/g, workout.time)
+    .replace(/\[מיקום\]/g, workout.location)
     .replace(/\[מחיר\]/g, workout.price + ' ₪')
     .replace(/\[כתובת האתר\]/g, window.location.origin)
     .replace(/\[קישור האימון\]/g, workoutLink);
@@ -1750,18 +1763,15 @@ const AdminDashboard = ({
     const weeklyDistribution = { 'ראשון': 0, 'שני': 0, 'שלישי': 0, 'רביעי': 0, 'חמישי': 0, 'שישי': 0, 'שבת': 0 };
     const daysHe = ['ראשון', 'שני', 'שלישי', 'רביעי', 'חמישי', 'שישי', 'שבת'];
 
-    registrations.forEach(reg => {
-      if (reg.is_punch_card_purchase) return;
-      const w = workouts.find(wo => wo.id === reg.workout_id);
-      if (w) {
-        const wDate = new Date(`${w.date}T${w.time}`);
-        if (wDate >= startOfDay && wDate < new Date(startOfDay.getTime() + 86400000)) dailyEntries++;
-        if (wDate >= startOfWeek && wDate < new Date(startOfWeek.getTime() + 7 * 86400000)) {
-          weeklyEntries++;
-          weeklyDistribution[daysHe[wDate.getDay()]]++;
-        }
-        if (wDate >= startOfMonth && wDate < new Date(now.getFullYear(), now.getMonth() + 1, 1)) monthlyEntries++;
+    // מעבר על כניסות פיזיות לאתר (מתוך מערך siteVisits שנשמר גלובלית) במקום הרשמות לאימונים
+    (siteVisits || []).forEach(visitStr => {
+      const vDate = new Date(visitStr);
+      if (vDate >= startOfDay && vDate < new Date(startOfDay.getTime() + 86400000)) dailyEntries++;
+      if (vDate >= startOfWeek && vDate < new Date(startOfWeek.getTime() + 7 * 86400000)) {
+        weeklyEntries++;
+        weeklyDistribution[daysHe[vDate.getDay()]]++;
       }
+      if (vDate >= startOfMonth && vDate < new Date(now.getFullYear(), now.getMonth() + 1, 1)) monthlyEntries++;
     });
 
     return {
@@ -2253,6 +2263,17 @@ const AdminDashboard = ({
 
       {activeTab === 'overview' && (
         <div className="space-y-6">
+          <div className="flex justify-between items-center bg-white p-4 rounded-3xl shadow-sm border border-gray-100">
+            <div>
+              <h3 className="font-extrabold text-gray-900 text-lg">סיכום נתונים</h3>
+            </div>
+            <button 
+              onClick={() => setActiveTab('manage_gallery')} 
+              className="bg-gradient-to-r from-purple-500 to-pink-500 hover:opacity-90 text-white px-4 py-2 rounded-xl text-sm font-bold flex items-center gap-2 shadow-md transition"
+            >
+              <Eye size={18} /> נהלי גלריית מדיה
+            </button>
+          </div>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <div className="bg-white/90 p-5 rounded-3xl shadow-sm border border-gray-100">
               <p className="text-xs text-gray-500 font-bold">סה"כ מתאמנים</p>
@@ -2281,7 +2302,7 @@ const AdminDashboard = ({
             
             {/* קוביית כניסות מתאמנים - יומית, שבועית, חודשית */}
             <div className="bg-white/90 p-5 rounded-3xl shadow-sm border border-gray-100 col-span-2 md:col-span-4">
-              <h4 className="font-bold text-gray-800 text-sm mb-3">כניסות מתאמנים (הרשמות לאימונים)</h4>
+              <h4 className="font-bold text-gray-800 text-sm mb-3">כניסות פיזיות לאתר (ביקורים)</h4>
               <div className="grid grid-cols-3 gap-4 text-center">
                 <div className="bg-blue-50 p-3 rounded-2xl">
                   <p className="text-[11px] text-blue-600 font-bold">היום</p>
@@ -3166,6 +3187,17 @@ const AdminDashboard = ({
                         </p>
                       </div>
                       <div className="flex gap-2">
+                        <button 
+                          onClick={() => {
+                            setMessageModal({ workout, type: 'broadcast' });
+                            setMessageText('היי [שם פרטי], רציתי לשאול איך היה לך האימון [שם האימון] ב-[תאריך] בשעה [שעה] ב-[מיקום]?');
+                            setSentMessageUserIds([]);
+                          }}
+                          className="p-2 text-emerald-500 hover:bg-emerald-50 rounded-xl transition" 
+                          title="שליחת הודעת ברודקאסט למשתתפי אימון עבר זה"
+                        >
+                          <MessageCircle size={18} />
+                        </button>
                         <button onClick={() => setEditWorkoutData(workout)} className="p-2 text-blue-500 hover:bg-blue-50 rounded-xl transition" title="עריכת אימון עבר וניהול משתתפים">
                           <Edit size={18} />
                         </button>
@@ -3285,6 +3317,62 @@ const AdminDashboard = ({
               </div>
             </div>
           )}
+        </div>
+      )}
+
+      {activeTab === 'manage_gallery' && (
+        <div className="space-y-6 animate-fadeIn">
+          <div className="bg-white p-6 rounded-3xl shadow-sm border border-gray-100 space-y-4">
+            <h3 className="font-extrabold text-gray-900 text-lg border-b pb-3">ניהול גלריה - תמונות ווידאו</h3>
+            <p className="text-xs text-gray-600">כל מה שתעלי כאן יוצג למתאמנות ולאורחות בכפתור "גלריה" הראשי באתר. מומלץ להעלות קבצים יפים שמציגים את האימונים!</p>
+            
+            <div className="bg-purple-50 p-4 rounded-2xl border border-purple-100 flex items-center justify-between gap-4">
+              <label className="bg-purple-600 hover:bg-purple-700 text-white font-bold py-2.5 px-6 rounded-xl cursor-pointer shadow-md transition flex items-center gap-2 text-sm">
+                <Upload size={18} /> העלי תמונה או סרטון
+                <input 
+                  type="file" 
+                  accept="image/*,video/mp4,video/webm" 
+                  className="hidden" 
+                  onChange={async (e) => {
+                    const file = e.target.files[0];
+                    if (!file) return;
+                    alert('מעלה קובץ... אנא המתיני (סרטוני וידאו יכולים לקחת עד חצי דקה).');
+                    try {
+                      const formData = new FormData();
+                      formData.append('file', file);
+                      formData.append('upload_preset', settings.cloudinaryPreset);
+                      const res = await fetch(`https://api.cloudinary.com/v1_1/${settings.cloudinaryCloudName}/auto/upload`, { method: 'POST', body: formData });
+                      const data = await res.json();
+                      if (data.secure_url) {
+                        setGallery(prev => [{ id: 'gal_' + Date.now(), url: data.secure_url, created_at: new Date().toISOString() }, ...prev]);
+                        alert('הקובץ הועלה ונוסף לגלריה בהצלחה!');
+                      } else { alert('שגיאה בהעלאה.'); }
+                    } catch (err) { alert('שגיאה בתקשורת מול ענן הקבצים.'); }
+                  }}
+                />
+              </label>
+              <span className="text-xs font-bold text-purple-800">{gallery.length} פריטים בגלריה</span>
+            </div>
+
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-4">
+              {gallery.map(item => (
+                <div key={item.id} className="relative rounded-xl overflow-hidden shadow-sm border border-gray-200 aspect-square group bg-gray-100">
+                  {item.url.match(/\.(mp4|webm|ogg)$/i) ? (
+                    <video src={item.url} controls className="w-full h-full object-cover" />
+                  ) : (
+                    <img src={item.url} alt="גלריה" className="w-full h-full object-cover" />
+                  )}
+                  <button 
+                    onClick={() => { if(window.confirm('למחוק פריט זה מהגלריה?')) setGallery(prev => prev.filter(g => g.id !== item.id)); }}
+                    className="absolute top-2 right-2 bg-red-500 hover:bg-red-600 text-white p-2 rounded-lg opacity-0 group-hover:opacity-100 transition shadow-md"
+                  >
+                    <Trash2 size={16} />
+                  </button>
+                </div>
+              ))}
+              {gallery.length === 0 && <p className="text-gray-400 text-sm font-bold col-span-2">הגלריה ריקה, העלי משהו כדי שהכפתור יופיע ללקוחות.</p>}
+            </div>
+          </div>
         </div>
       )}
 
@@ -4282,10 +4370,13 @@ export default function App() {
   const [registrations, setRegistrations] = useState(INITIAL_REGISTRATIONS);
   const [waitlist, setWaitlist] = useState(INITIAL_WAITLIST);
   const [externalWorkouts, setExternalWorkouts] = useState(INITIAL_EXTERNAL_WORKOUTS);
+  const [gallery, setGallery] = useState(INITIAL_GALLERY);
+  const [siteVisits, setSiteVisits] = useState(INITIAL_SITE_VISITS);
   
   const [isAdminLoggedIn, setIsAdminLoggedIn] = useState(false);
   const [isAdminLoginModalOpen, setIsAdminLoginModalOpen] = useState(() => window.location.search.includes('admin'));
   const [showCookieBanner, setShowCookieBanner] = useState(() => localStorage.getItem('tahel_cookie_consent') !== 'true');
+  const [isPublicGalleryOpen, setIsPublicGalleryOpen] = useState(false);
   
   // מתאמן חדש יתחיל כ-null (יצטרך להירשם), אבל האתר יזכור אותו לפי המכשיר שלו
   const [currentUser, setCurrentUser] = useState(() => {
@@ -4300,6 +4391,14 @@ export default function App() {
       localStorage.removeItem('tahel_current_user');
     }
   }, [currentUser]);
+
+  // מעקב כניסות פיזיות לאתר (ביקור נספר פעם אחת בלבד לאותו סשן/גולש)
+  useEffect(() => {
+    if (isDataLoaded && !sessionStorage.getItem('tahel_visit_logged')) {
+      sessionStorage.setItem('tahel_visit_logged', 'true');
+      setSiteVisits(prev => [...prev, new Date().toISOString()]);
+    }
+  }, [isDataLoaded]);
 
   // סנכרון המשתמש המקומי (לוקאל) עם הנתונים העדכניים שנמשכו מ-Supabase
   useEffect(() => {
@@ -4365,6 +4464,8 @@ export default function App() {
         setRegistrations(data.state_data.registrations || INITIAL_REGISTRATIONS);
         setWaitlist(data.state_data.waitlist || INITIAL_WAITLIST);
         setExternalWorkouts(data.state_data.externalWorkouts || INITIAL_EXTERNAL_WORKOUTS);
+        setGallery(data.state_data.gallery || INITIAL_GALLERY);
+        setSiteVisits(data.state_data.siteVisits || INITIAL_SITE_VISITS);
       }
     } catch (err) {
       console.error("Error loading from Supabase:", err);
@@ -4390,7 +4491,7 @@ export default function App() {
     const saveGlobalState = async () => {
       const sortedWorkouts = [...workouts].sort((a, b) => new Date(`${a.date}T${a.time}`) - new Date(`${b.date}T${b.time}`));
       const sortedExternal = [...externalWorkouts].sort((a, b) => new Date(`${a.date}T${a.time}`) - new Date(`${b.date}T${b.time}`));
-      const stateToSave = { settings, workouts: sortedWorkouts, trainees, registrations, waitlist, externalWorkouts: sortedExternal };
+      const stateToSave = { settings, workouts: sortedWorkouts, trainees, registrations, waitlist, externalWorkouts: sortedExternal, gallery, siteVisits };
       await supabase.from('global_app_state').upsert({ id: 1, state_data: stateToSave });
     };
     
@@ -4446,7 +4547,33 @@ export default function App() {
               <MessageCircle size={18} />
               <span className="text-xs font-bold whitespace-nowrap">קבוצת העדכונים</span>
             </a>
+            {gallery && gallery.length > 0 && (
+              <button onClick={() => setIsPublicGalleryOpen(true)} className="bg-gradient-to-r from-purple-500 to-pink-500 text-white px-4 py-2 rounded-full shadow-md hover:scale-110 transition-transform flex items-center gap-1.5 h-9 border border-pink-300/50" title="גלריית מתאמנות">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
+                <span className="text-xs font-black whitespace-nowrap">גלריה</span>
+              </button>
+            )}
           </div>
+
+          {isPublicGalleryOpen && (
+            <div className="fixed inset-0 bg-black/90 backdrop-blur-md flex items-center justify-center p-4 z-[9999] animate-fadeIn">
+              <div className="bg-white/10 p-5 rounded-3xl max-w-4xl w-full max-h-[90vh] overflow-y-auto relative">
+                <button onClick={() => setIsPublicGalleryOpen(false)} className="absolute top-2 left-2 bg-white/20 hover:bg-white/40 text-white p-2 rounded-full transition"><X size={24}/></button>
+                <h3 className="text-white font-black text-2xl mb-6 text-center tracking-wide">גלריית מתאמנות 📸</h3>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+                  {gallery.map(item => (
+                    <div key={item.id} className="rounded-xl overflow-hidden shadow-2xl border border-white/20 aspect-square">
+                      {item.url.match(/\.(mp4|webm|ogg)$/i) ? (
+                        <video src={item.url} controls className="w-full h-full object-cover" />
+                      ) : (
+                        <img src={item.url} alt="גלריה" className="w-full h-full object-cover" />
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
 
           <Routes>
             <Route path="/admin" element={
@@ -4465,7 +4592,7 @@ export default function App() {
                 />
                 <main className="px-4">
                   {isAdminLoggedIn ? (
-                    <AdminDashboard workouts={workouts} setWorkouts={setWorkouts} trainees={trainees} setTrainees={setTrainees} registrations={registrations} setRegistrations={setRegistrations} waitlist={waitlist} setWaitlist={setWaitlist} externalWorkouts={externalWorkouts} setExternalWorkouts={setExternalWorkouts} settings={settings} setSettings={setSettings} onRefresh={loadGlobalState} />
+                    <AdminDashboard workouts={workouts} setWorkouts={setWorkouts} trainees={trainees} setTrainees={setTrainees} registrations={registrations} setRegistrations={setRegistrations} waitlist={waitlist} setWaitlist={setWaitlist} externalWorkouts={externalWorkouts} setExternalWorkouts={setExternalWorkouts} gallery={gallery} setGallery={setGallery} siteVisits={siteVisits} settings={settings} setSettings={setSettings} onRefresh={loadGlobalState} />
                   ) : (
                     <div className="text-center py-20">אנא התחברי למערכת...</div>
                   )}
@@ -4493,7 +4620,7 @@ export default function App() {
                 <MainHeader settings={settings} isAdmin={isAdminLoggedIn} onOpenAdminLogin={() => setIsAdminLoginModalOpen(true)} onLogout={() => { setIsAdminLoggedIn(false); window.history.pushState(null, '', '/'); }} currentUser={currentUser} setCurrentUser={setCurrentUser} setTrainees={setTrainees} onRefresh={loadGlobalState} workouts={workouts} registrations={registrations} />
                 <main className="px-4">
                   {isAdminLoggedIn ? (
-                    <AdminDashboard workouts={workouts} setWorkouts={setWorkouts} trainees={trainees} setTrainees={setTrainees} registrations={registrations} setRegistrations={setRegistrations} waitlist={waitlist} setWaitlist={setWaitlist} externalWorkouts={externalWorkouts} setExternalWorkouts={setExternalWorkouts} settings={settings} setSettings={setSettings} onRefresh={loadGlobalState} />
+                    <AdminDashboard workouts={workouts} setWorkouts={setWorkouts} trainees={trainees} setTrainees={setTrainees} registrations={registrations} setRegistrations={setRegistrations} waitlist={waitlist} setWaitlist={setWaitlist} externalWorkouts={externalWorkouts} setExternalWorkouts={setExternalWorkouts} gallery={gallery} setGallery={setGallery} siteVisits={siteVisits} settings={settings} setSettings={setSettings} onRefresh={loadGlobalState} />
                   ) : (
                     <UserView trainees={trainees} setTrainees={setTrainees} workouts={workouts} registrations={registrations} setRegistrations={setRegistrations} waitlist={waitlist} setWaitlist={setWaitlist} currentUser={currentUser} setCurrentUser={setCurrentUser} settings={settings} />
                   )}
