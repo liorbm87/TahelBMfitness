@@ -1533,8 +1533,19 @@ const AdminDashboard = ({
     type: '',
     date: new Date().toISOString().split('T')[0],
     time: '',
+    duration: '',
     location: ''
   });
+
+  const [editExternalWorkoutData, setEditExternalWorkoutData] = useState(null);
+  const [archiveWorkoutTab, setArchiveWorkoutTab] = useState('studio'); // 'studio' | 'external'
+  const [archiveExternalStudioFilter, setArchiveExternalStudioFilter] = useState('');
+
+  // יצירת רשימה ייחודית של שמות סטודיו להשלמה אוטומטית (Datalist)
+  const uniqueStudios = useMemo(() => {
+    const studios = externalWorkouts.map(w => w.type).filter(Boolean);
+    return [...new Set(studios)];
+  }, [externalWorkouts]);
 
   const [additionalDates, setAdditionalDates] = useState([]);
   const [recurringWeeks, setRecurringWeeks] = useState(0);
@@ -2217,32 +2228,59 @@ const AdminDashboard = ({
           <div className="bg-white/95 p-6 rounded-3xl shadow-md border border-gray-100">
             <h3 className="font-extrabold text-gray-900 text-base border-b pb-3 mb-4">הלו"ז האישי שלי (לעינייך בלבד)</h3>
             
-            <form onSubmit={(e) => {
-              e.preventDefault();
-              setExternalWorkouts(prev => [...prev, { id: 'ext_' + Date.now(), ...newExternalWorkout }]);
-              setNewExternalWorkout({ type: '', date: new Date().toISOString().split('T')[0], time: '', location: '' });
-              alert('האימון החיצוני נוסף ללו"ז בהצלחה!');
-            }} className="grid grid-cols-1 sm:grid-cols-4 gap-4 text-xs mb-6">
-              <div>
-                <label className="block font-bold text-gray-700 mb-1">שם/סוג האימון</label>
-                <input required type="text" value={newExternalWorkout.type} onChange={(e) => setNewExternalWorkout({...newExternalWorkout, type: e.target.value})} className="w-full p-2.5 bg-gray-50 border rounded-xl outline-none" placeholder="למשל: אימון אישי בפארק" />
-              </div>
-              <div>
-                <label className="block font-bold text-gray-700 mb-1">תאריך</label>
-                <input required type="date" value={newExternalWorkout.date} onChange={(e) => setNewExternalWorkout({...newExternalWorkout, date: e.target.value})} className="w-full p-2.5 bg-gray-50 border rounded-xl outline-none" />
-              </div>
-              <div>
-                <label className="block font-bold text-gray-700 mb-1">שעה</label>
-                <input required type="time" value={newExternalWorkout.time} onChange={(e) => setNewExternalWorkout({...newExternalWorkout, time: e.target.value})} className="w-full p-2.5 bg-gray-50 border rounded-xl outline-none" />
-              </div>
-              <div>
-                <label className="block font-bold text-gray-700 mb-1">מיקום (כתובת מדויקת לניווט)</label>
-                <input required type="text" value={newExternalWorkout.location} onChange={(e) => setNewExternalWorkout({...newExternalWorkout, location: e.target.value})} className="w-full p-2.5 bg-gray-50 border rounded-xl outline-none" placeholder="למשל: הירקון 10, תל אביב" />
-              </div>
-              <div className="sm:col-span-4">
-                <button type="submit" className="w-full bg-gray-900 text-white font-bold py-2.5 rounded-xl hover:bg-gray-800 transition">הוספי אימון פרטי ללו"ז</button>
-              </div>
-            </form>
+            <details className="group mb-6 bg-blue-50/50 border border-blue-200 p-4 rounded-2xl">
+              <summary className="font-extrabold text-blue-900 text-sm flex items-center justify-between cursor-pointer list-none outline-none">
+                <div className="flex items-center gap-2">
+                  <Plus size={18} className="text-blue-600" /> 
+                  הוספת אימון חיצוני / פרטי חדש
+                </div>
+                <ChevronDown size={20} className="text-blue-400 group-open:rotate-180 transition-transform" />
+              </summary>
+              
+              <datalist id="studio-list">
+                {uniqueStudios.map((studio, idx) => <option key={idx} value={studio} />)}
+              </datalist>
+
+              <form onSubmit={(e) => {
+                e.preventDefault();
+                const isPast = new Date(`${newExternalWorkout.date}T${newExternalWorkout.time}`) < new Date();
+                if (isPast) {
+                  const confirmPast = window.confirm('⚠️ שימי לב: הזנת תאריך עבר! האם לאשר?\n(האימון יועבר ישירות לארכיון)');
+                  if (!confirmPast) return;
+                }
+                setExternalWorkouts(prev => [...prev, { id: 'ext_' + Date.now(), ...newExternalWorkout }]);
+                setNewExternalWorkout({ type: '', date: new Date().toISOString().split('T')[0], time: '', duration: '', location: '' });
+                if (isPast) {
+                  alert('תאריך עבר נקלט: האימון החיצוני נוצר והועבר אוטומטית לארכיון!');
+                } else {
+                  alert('האימון החיצוני נוסף ללו"ז בהצלחה!');
+                }
+              }} className="grid grid-cols-1 sm:grid-cols-5 gap-4 text-xs mt-4 pt-4 border-t border-blue-200">
+                <div>
+                  <label className="block font-bold text-gray-700 mb-1">שם הסטודיו (או שם אימון)</label>
+                  <input required list="studio-list" type="text" value={newExternalWorkout.type} onChange={(e) => setNewExternalWorkout({...newExternalWorkout, type: e.target.value})} className="w-full p-2.5 bg-white border rounded-xl outline-none" placeholder="התחילי להקליד..." />
+                </div>
+                <div>
+                  <label className="block font-bold text-gray-700 mb-1">תאריך</label>
+                  <input required type="date" value={newExternalWorkout.date} onChange={(e) => setNewExternalWorkout({...newExternalWorkout, date: e.target.value})} className="w-full p-2.5 bg-white border rounded-xl outline-none" />
+                </div>
+                <div>
+                  <label className="block font-bold text-gray-700 mb-1">שעה</label>
+                  <input required type="time" value={newExternalWorkout.time} onChange={(e) => setNewExternalWorkout({...newExternalWorkout, time: e.target.value})} className="w-full p-2.5 bg-white border rounded-xl outline-none" />
+                </div>
+                <div>
+                  <label className="block font-bold text-gray-700 mb-1">כמות שעות</label>
+                  <input required type="number" step="0.5" value={newExternalWorkout.duration} onChange={(e) => setNewExternalWorkout({...newExternalWorkout, duration: e.target.value})} className="w-full p-2.5 bg-white border rounded-xl outline-none" placeholder="למשל: 1.5" />
+                </div>
+                <div>
+                  <label className="block font-bold text-gray-700 mb-1">מיקום (לניווט)</label>
+                  <input required type="text" value={newExternalWorkout.location} onChange={(e) => setNewExternalWorkout({...newExternalWorkout, location: e.target.value})} className="w-full p-2.5 bg-white border rounded-xl outline-none" placeholder="למשל: הירקון 10" />
+                </div>
+                <div className="sm:col-span-5">
+                  <button type="submit" className="w-full bg-blue-600 text-white font-bold py-2.5 rounded-xl hover:bg-blue-700 transition shadow-sm">שמרי אימון חיצוני</button>
+                </div>
+              </form>
+            </details>
 
             <div className="space-y-3 mt-4">
               <h4 className="font-bold text-sm text-gray-800">כל האימונים הקרובים (כולל אימוני סטודיו ופרטיים):</h4>
@@ -2265,9 +2303,14 @@ const AdminDashboard = ({
                           🚗 ניווט
                         </a>
                         {!w.isStudio && (
-                          <button onClick={() => setExternalWorkouts(prev => prev.filter(ext => ext.id !== w.id))} className="text-red-500 hover:bg-red-50 border border-transparent hover:border-red-100 px-2 py-1.5 rounded-lg transition" title="מחיקת אימון אישי">
-                            <Trash2 size={16}/>
-                          </button>
+                          <>
+                            <button onClick={() => setEditExternalWorkoutData(w)} className="text-blue-500 hover:bg-blue-50 border border-transparent hover:border-blue-100 px-2 py-1.5 rounded-lg transition" title="עריכת אימון חיצוני">
+                              <Edit size={16}/>
+                            </button>
+                            <button onClick={() => setExternalWorkouts(prev => prev.filter(ext => ext.id !== w.id))} className="text-red-500 hover:bg-red-50 border border-transparent hover:border-red-100 px-2 py-1.5 rounded-lg transition" title="מחיקת אימון אישי">
+                              <Trash2 size={16}/>
+                            </button>
+                          </>
                         )}
                       </div>
                     </div>
@@ -2275,6 +2318,48 @@ const AdminDashboard = ({
               })}
             </div>
           </div>
+
+          {/* מודאל עריכת אימון חיצוני */}
+          {editExternalWorkoutData && (
+            <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+              <div className="bg-white rounded-3xl p-6 max-w-lg w-full shadow-2xl">
+                <div className="flex justify-between items-center border-b pb-3 mb-4">
+                  <h3 className="font-bold text-base text-gray-900">עריכת אימון חיצוני: {editExternalWorkoutData.type}</h3>
+                  <button onClick={() => setEditExternalWorkoutData(null)} className="text-gray-400 hover:text-gray-600"><X size={20} /></button>
+                </div>
+                <form onSubmit={(e) => {
+                  e.preventDefault();
+                  setExternalWorkouts(prev => prev.map(w => w.id === editExternalWorkoutData.id ? editExternalWorkoutData : w));
+                  setEditExternalWorkoutData(null);
+                  alert('האימון החיצוני עודכן בהצלחה!');
+                }} className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
+                  <div>
+                    <label className="block font-bold text-gray-700 mb-1">שם הסטודיו</label>
+                    <input required list="studio-list" type="text" value={editExternalWorkoutData.type} onChange={(e) => setEditExternalWorkoutData({...editExternalWorkoutData, type: e.target.value})} className="w-full p-2.5 bg-gray-50 border rounded-xl outline-none" />
+                  </div>
+                  <div>
+                    <label className="block font-bold text-gray-700 mb-1">תאריך</label>
+                    <input required type="date" value={editExternalWorkoutData.date} onChange={(e) => setEditExternalWorkoutData({...editExternalWorkoutData, date: e.target.value})} className="w-full p-2.5 bg-gray-50 border rounded-xl outline-none" />
+                  </div>
+                  <div>
+                    <label className="block font-bold text-gray-700 mb-1">שעה</label>
+                    <input required type="time" value={editExternalWorkoutData.time} onChange={(e) => setEditExternalWorkoutData({...editExternalWorkoutData, time: e.target.value})} className="w-full p-2.5 bg-gray-50 border rounded-xl outline-none" />
+                  </div>
+                  <div>
+                    <label className="block font-bold text-gray-700 mb-1">כמות שעות</label>
+                    <input required type="number" step="0.5" value={editExternalWorkoutData.duration || ''} onChange={(e) => setEditExternalWorkoutData({...editExternalWorkoutData, duration: e.target.value})} className="w-full p-2.5 bg-gray-50 border rounded-xl outline-none" />
+                  </div>
+                  <div className="sm:col-span-2">
+                    <label className="block font-bold text-gray-700 mb-1">מיקום</label>
+                    <input required type="text" value={editExternalWorkoutData.location} onChange={(e) => setEditExternalWorkoutData({...editExternalWorkoutData, location: e.target.value})} className="w-full p-2.5 bg-gray-50 border rounded-xl outline-none" />
+                  </div>
+                  <div className="sm:col-span-2 mt-2">
+                    <button type="submit" className="w-full bg-blue-600 text-white font-bold py-3 rounded-xl hover:bg-blue-700 transition shadow-sm">שמירת שינויים</button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          )}
         </div>
       )}
 
@@ -2892,11 +2977,22 @@ const AdminDashboard = ({
 
       {activeTab === 'archive_workouts' && (
         <div className="space-y-6">
-          <div className="bg-gray-100 border border-gray-300 p-5 rounded-3xl space-y-4">
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-gray-200 pb-3">
-              <h3 className="font-extrabold text-gray-900 text-sm flex items-center gap-2">
-                <Archive size={18} className="text-gray-600" /> היסטוריית אימונים שעברו ({workouts.filter(w => new Date(`${w.date}T${w.time}`) < new Date()).length})
-              </h3>
+          {/* כפתורי ניווט פנימיים בארכיון */}
+          <div className="flex gap-2">
+            <button onClick={() => setArchiveWorkoutTab('studio')} className={`px-4 py-2 rounded-xl font-bold text-sm transition ${archiveWorkoutTab === 'studio' ? 'bg-gray-900 text-white shadow-md' : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-50'}`}>
+              ארכיון אימוני סטודיו
+            </button>
+            <button onClick={() => setArchiveWorkoutTab('external')} className={`px-4 py-2 rounded-xl font-bold text-sm transition ${archiveWorkoutTab === 'external' ? 'bg-blue-600 text-white shadow-md' : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-50'}`}>
+              ארכיון אימונים חיצוניים
+            </button>
+          </div>
+
+          {archiveWorkoutTab === 'studio' ? (
+            <div className="bg-gray-100 border border-gray-300 p-5 rounded-3xl space-y-4 animate-fadeIn">
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-gray-200 pb-3">
+                <h3 className="font-extrabold text-gray-900 text-sm flex items-center gap-2">
+                  <Archive size={18} className="text-gray-600" /> היסטוריית אימוני סטודיו ({workouts.filter(w => new Date(`${w.date}T${w.time}`) < new Date()).length})
+                </h3>
               <div className="relative">
                 <Search size={16} className="absolute right-3 top-2.5 text-gray-400" />
                 <input type="text" placeholder="חיפוש בארכיון אימונים..." value={searchWorkoutQuery} onChange={(e) => setSearchWorkoutQuery(e.target.value)} className="w-full md:w-72 pl-4 pr-9 py-2 bg-white border border-gray-300 rounded-xl text-xs outline-none focus:border-amber-400 shadow-sm" />
@@ -2971,7 +3067,67 @@ const AdminDashboard = ({
                 <p className="text-xs text-gray-500 font-bold">אין אימוני עבר בארכיון.</p>
               )}
             </div>
-          </div>
+            </div>
+          ) : (
+            <div className="bg-blue-50/50 border border-blue-200 p-5 rounded-3xl space-y-4 animate-fadeIn">
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-blue-200 pb-3">
+                <h3 className="font-extrabold text-blue-900 text-sm flex items-center gap-2">
+                  <Archive size={18} className="text-blue-600" /> ארכיון אימונים חיצוניים ({externalWorkouts.filter(w => new Date(`${w.date}T${w.time}`) < new Date()).length})
+                </h3>
+                <div className="flex flex-col sm:flex-row gap-2">
+                  <select 
+                    value={archiveExternalStudioFilter} 
+                    onChange={e => setArchiveExternalStudioFilter(e.target.value)}
+                    className="p-2 border border-blue-200 rounded-xl text-xs outline-none bg-white font-semibold text-blue-900 shadow-sm"
+                  >
+                    <option value="">כל הסטודיואים</option>
+                    {uniqueStudios.map((s, idx) => <option key={idx} value={s}>{s}</option>)}
+                  </select>
+                  <div className="relative">
+                    <Search size={16} className="absolute right-3 top-2.5 text-gray-400" />
+                    <input type="text" placeholder="חיפוש בארכיון החיצוני..." value={searchWorkoutQuery} onChange={(e) => setSearchWorkoutQuery(e.target.value)} className="w-full md:w-64 pl-4 pr-9 py-2 bg-white border border-blue-200 rounded-xl text-xs outline-none focus:border-blue-400 shadow-sm" />
+                  </div>
+                </div>
+              </div>
+
+              <div className="space-y-3">
+                {externalWorkouts
+                  .filter(w => new Date(`${w.date}T${w.time}`) < new Date())
+                  .filter(w => archiveExternalStudioFilter === '' || w.type === archiveExternalStudioFilter)
+                  .filter(w => {
+                    if (!searchWorkoutQuery) return true;
+                    const q = searchWorkoutQuery.toLowerCase();
+                    return w.type.toLowerCase().includes(q) || w.location.toLowerCase().includes(q) || w.date.includes(q);
+                  })
+                  .sort((a, b) => new Date(`${b.date}T${b.time}`) - new Date(`${a.date}T${a.time}`))
+                  .map(w => (
+                    <div key={w.id} className="bg-white p-4 rounded-2xl flex flex-col sm:flex-row justify-between sm:items-center gap-3 border border-blue-100 shadow-sm opacity-90 hover:opacity-100 transition">
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <span className="font-bold text-gray-900 text-sm line-through decoration-gray-400">{w.type}</span>
+                          <span className="bg-blue-100 text-blue-800 text-[10px] px-2 py-0.5 rounded-md font-bold">הושלם (חיצוני)</span>
+                        </div>
+                        <p className="text-xs text-gray-600 mt-1">
+                          {w.date.split('-').reverse().join('/')} בשעה {w.time} {w.duration ? `(${w.duration} שעות)` : ''} | {w.location}
+                        </p>
+                      </div>
+                      <div className="flex gap-2">
+                        <button onClick={() => setEditExternalWorkoutData(w)} className="text-blue-500 hover:bg-blue-50 border border-transparent hover:border-blue-100 px-2 py-1.5 rounded-lg transition" title="עריכת אימון עבר חיצוני">
+                          <Edit size={16}/>
+                        </button>
+                        <button onClick={() => setExternalWorkouts(prev => prev.filter(ext => ext.id !== w.id))} className="text-red-500 hover:bg-red-50 border border-transparent hover:border-red-100 px-2 py-1.5 rounded-lg transition" title="מחיקת אימון אישי לצמיתות">
+                          <Trash2 size={16}/>
+                        </button>
+                      </div>
+                    </div>
+                  ))
+                }
+                {externalWorkouts.filter(w => new Date(`${w.date}T${w.time}`) < new Date()).length === 0 && (
+                  <p className="text-xs text-gray-500 font-bold">אין אימונים חיצוניים בארכיון.</p>
+                )}
+              </div>
+            </div>
+          )}
         </div>
       )}
 
