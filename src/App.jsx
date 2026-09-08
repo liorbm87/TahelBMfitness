@@ -4267,9 +4267,15 @@ export default function App() {
   useEffect(() => {
     if (currentUser && trainees.length > 0) {
       const updatedUser = trainees.find(t => t.id === currentUser.id);
-      // מעדכן את המשתמש הנוכחי רק אם יש שינוי בנתונים (כמו קבלת אישור מנהלת)
-      if (updatedUser && JSON.stringify(updatedUser) !== JSON.stringify(currentUser)) {
-        setCurrentUser(updatedUser);
+      if (updatedUser) {
+        if (updatedUser.is_archived) {
+          setCurrentUser(null);
+          return;
+        }
+        // מעדכן את המשתמש הנוכחי רק אם יש שינוי בנתונים (כמו קבלת אישור מנהלת)
+        if (JSON.stringify(updatedUser) !== JSON.stringify(currentUser)) {
+          setCurrentUser(updatedUser);
+        }
       }
     }
   }, [trainees]);
