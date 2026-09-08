@@ -2362,7 +2362,18 @@ const AdminDashboard = ({
               }} className="grid grid-cols-1 sm:grid-cols-5 gap-4 text-xs mt-4 pt-4 border-t border-blue-200">
                 <div>
                   <label className="block font-bold text-gray-700 mb-1">שם הסטודיו (או שם אימון)</label>
-                  <input required list="studio-list" type="text" value={newExternalWorkout.type} onChange={(e) => setNewExternalWorkout({...newExternalWorkout, type: e.target.value})} className="w-full p-2.5 bg-white border rounded-xl outline-none" placeholder="התחילי להקליד..." />
+                  <input required list="studio-list" type="text" value={newExternalWorkout.type} onChange={(e) => {
+                    const selectedType = e.target.value;
+                    // מחפש את הפעם האחרונה שהסטודיו הזה הוזן במערכת (הופך את המערך כדי למצוא את הכי חדש)
+                    const lastWorkoutOfThisType = [...externalWorkouts].reverse().find(w => w.type === selectedType);
+                    
+                    setNewExternalWorkout({
+                      ...newExternalWorkout, 
+                      type: selectedType,
+                      // אם מצא אימון קודם, שם את המיקום שלו. אחרת משאיר מה שיש עכשיו.
+                      location: lastWorkoutOfThisType ? lastWorkoutOfThisType.location : newExternalWorkout.location
+                    });
+                  }} className="w-full p-2.5 bg-white border rounded-xl outline-none" placeholder="התחילי להקליד..." />
                 </div>
                 <div>
                   <label className="block font-bold text-gray-700 mb-1">תאריך</label>
