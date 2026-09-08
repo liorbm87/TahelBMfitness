@@ -4496,7 +4496,7 @@ export default function App() {
     };
     
     saveGlobalState();
-  }, [settings, workouts, trainees, registrations, waitlist, externalWorkouts, isDataLoaded]);
+  }, [settings, workouts, trainees, registrations, waitlist, externalWorkouts, gallery, siteVisits, isDataLoaded]);
 
   const [appReady, setAppReady] = useState(false);
   useEffect(() => {
