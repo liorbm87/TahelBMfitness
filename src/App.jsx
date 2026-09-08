@@ -1750,16 +1750,18 @@ const AdminDashboard = ({
     const weeklyDistribution = { 'ראשון': 0, 'שני': 0, 'שלישי': 0, 'רביעי': 0, 'חמישי': 0, 'שישי': 0, 'שבת': 0 };
     const daysHe = ['ראשון', 'שני', 'שלישי', 'רביעי', 'חמישי', 'שישי', 'שבת'];
 
-    // שליפת כניסות פיזיות לאתר מהזיכרון המקומי
-    const siteVisits = JSON.parse(localStorage.getItem('tahel_site_visits') || '[]');
-    siteVisits.forEach(visit => {
-      const vDate = new Date(visit.timestamp);
-      if (vDate >= startOfDay && vDate < new Date(startOfDay.getTime() + 86400000)) dailyEntries++;
-      if (vDate >= startOfWeek && vDate < new Date(startOfWeek.getTime() + 7 * 86400000)) {
-        weeklyEntries++;
-        weeklyDistribution[daysHe[vDate.getDay()]]++;
+    registrations.forEach(reg => {
+      if (reg.is_punch_card_purchase) return;
+      const w = workouts.find(wo => wo.id === reg.workout_id);
+      if (w) {
+        const wDate = new Date(`${w.date}T${w.time}`);
+        if (wDate >= startOfDay && wDate < new Date(startOfDay.getTime() + 86400000)) dailyEntries++;
+        if (wDate >= startOfWeek && wDate < new Date(startOfWeek.getTime() + 7 * 86400000)) {
+          weeklyEntries++;
+          weeklyDistribution[daysHe[wDate.getDay()]]++;
+        }
+        if (wDate >= startOfMonth && wDate < new Date(now.getFullYear(), now.getMonth() + 1, 1)) monthlyEntries++;
       }
-      if (vDate >= startOfMonth && vDate < new Date(now.getFullYear(), now.getMonth() + 1, 1)) monthlyEntries++;
     });
 
     return {
@@ -2277,9 +2279,9 @@ const AdminDashboard = ({
               <h3 className="text-2xl font-black text-amber-600 mt-1">{stats.occupancyRate}%</h3>
             </div>
             
-            {/* קוביית כניסות פיזיות לאתר - יומית, שבועית, חודשית */}
+            {/* קוביית כניסות מתאמנים - יומית, שבועית, חודשית */}
             <div className="bg-white/90 p-5 rounded-3xl shadow-sm border border-gray-100 col-span-2 md:col-span-4">
-              <h4 className="font-bold text-gray-800 text-sm mb-3">כניסות פיזיות לאתר (צפיות מבקרים)</h4>
+              <h4 className="font-bold text-gray-800 text-sm mb-3">כניסות מתאמנים (הרשמות לאימונים)</h4>
               <div className="grid grid-cols-3 gap-4 text-center">
                 <div className="bg-blue-50 p-3 rounded-2xl">
                   <p className="text-[11px] text-blue-600 font-bold">היום</p>
@@ -4374,12 +4376,6 @@ export default function App() {
   // טעינת הנתונים מ-Supabase בפתיחת האתר (סנכרון גלובלי)
   useEffect(() => {
     loadGlobalState();
-    
-    // רישום כניסה פיזית לאתר (Page View / Visitor Count)
-    const visits = JSON.parse(localStorage.getItem('tahel_site_visits') || '[]');
-    const todayStr = new Date().toISOString().substring(0, 10);
-    visits.push({ timestamp: new Date().toISOString(), date: todayStr });
-    localStorage.setItem('tahel_site_visits', JSON.stringify(visits));
   }, []);
 
   // שמירת הנתונים ל-Supabase אוטומטית בכל שינוי
