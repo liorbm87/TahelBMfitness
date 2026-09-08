@@ -412,6 +412,7 @@ const UserView = ({
   }, [currentUser]);
 
   const [pendingWhatsApp, setPendingWhatsApp] = useState(null);
+  const [isSaving, setIsSaving] = useState(false);
   const [formData, setFormData] = useState({
     first_name: '',
     last_name: '',
@@ -496,6 +497,8 @@ const UserView = ({
       return;
     }
 
+    setIsSaving(true); // חוסמים את המסך ונותנים לשרת לעבוד
+
     const signatureData = sigCanvasRef.current.toDataURL();
     const parentSignatureData = isMinor ? parentSigCanvasRef.current.toDataURL() : null;
 
@@ -515,7 +518,11 @@ const UserView = ({
       const updatedUser = { ...currentUser, health_declaration: healthDecl, needs_renewal: false, is_approved: false };
       setTrainees(prev => prev.map(t => t.id === currentUser.id ? updatedUser : t));
       setCurrentUser(updatedUser);
-      setPendingWhatsApp(`היי תהל! מילאתי מחדש את הצהרת הבריאות. שמי ${updatedUser.full_name}, אשמח לאישור!`);
+      
+      setTimeout(() => {
+        setIsSaving(false);
+        setPendingWhatsApp(`היי תהל! מילאתי מחדש את הצהרת הבריאות. שמי ${updatedUser.full_name}, אשמח לאישור!`);
+      }, 2500); // 2.5 שניות חסימה לטובת השמירה במסד הנתונים
     } else {
       // מצב מתאמנת חדשה לגמרי
       const newTrainee = {
@@ -535,7 +542,11 @@ const UserView = ({
       setTrainees(prev => [...prev, newTrainee]);
       setCurrentUser(newTrainee);
       triggerMakeWebhook(settings.makeWebhookUrl, 'new_trainee_registered', newTrainee);
-      setPendingWhatsApp(`היי תהל! נרשמתי לאתר שמי ${formData.first_name} ${formData.last_name} אני אשמח לאישור שלך!`);
+      
+      setTimeout(() => {
+        setIsSaving(false);
+        setPendingWhatsApp(`היי תהל! נרשמתי לאתר שמי ${formData.first_name} ${formData.last_name} אני אשמח לאישור שלך!`);
+      }, 2500); // 2.5 שניות חסימה לטובת השמירה במסד הנתונים
     }
   };
 
@@ -837,6 +848,16 @@ const UserView = ({
       alert('הוסרת מרשימת ההמתנה.');
     }
   };
+
+  if (isSaving) {
+    return (
+      <div className="max-w-md mx-auto bg-white/95 backdrop-blur-md p-10 rounded-3xl shadow-xl border border-amber-100 mt-6 text-center animate-pulse">
+        <div className="w-16 h-16 border-4 border-amber-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+        <h2 className="text-xl font-black text-gray-900">שומר נתונים במערכת...</h2>
+        <p className="text-gray-500 text-sm mt-2">אנא המתיני מספר שניות מבלי לסגור או לרענן את העמוד.</p>
+      </div>
+    );
+  }
 
   if (pendingWhatsApp) {
     const url = `https://wa.me/972545222008?text=${encodeURIComponent(pendingWhatsApp)}`;
