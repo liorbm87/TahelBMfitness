@@ -1788,7 +1788,7 @@ const AdminDashboard = ({
       monthlyEntries,
       weeklyDistribution
     };
-  }, [trainees, workouts, registrations]);
+  }, [trainees, workouts, registrations, siteVisits]);
 
   const handleAddWorkoutSubmit = (e) => {
     e.preventDefault();
