@@ -510,7 +510,7 @@ const UserView = ({
       parent_name: isMinor ? formData.parent_name : null,
       parent_id: isMinor ? formData.parent_id : null,
       parent_signature_url: parentSignatureData,
-      signed_at: `${new Date().toLocaleDateString('he-IL')} | ${new Date().toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' })}`
+      signed_at: `${new Date().getDate().toString().padStart(2, '0')}/${(new Date().getMonth() + 1).toString().padStart(2, '0')}/${new Date().getFullYear()} | ${new Date().getHours().toString().padStart(2, '0')}:${new Date().getMinutes().toString().padStart(2, '0')}`
     };
 
     if (currentUser) {
@@ -849,40 +849,6 @@ const UserView = ({
     }
   };
 
-  if (isSaving) {
-    return (
-      <div className="max-w-md mx-auto bg-white/95 backdrop-blur-md p-10 rounded-3xl shadow-xl border border-amber-100 mt-6 text-center animate-pulse">
-        <div className="w-16 h-16 border-4 border-amber-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-        <h2 className="text-xl font-black text-gray-900">שומר נתונים במערכת...</h2>
-        <p className="text-gray-500 text-sm mt-2">אנא המתיני מספר שניות מבלי לסגור או לרענן את העמוד.</p>
-      </div>
-    );
-  }
-
-  if (pendingWhatsApp) {
-    const url = `https://wa.me/972545222008?text=${encodeURIComponent(pendingWhatsApp)}`;
-    return (
-      <div className="max-w-md mx-auto bg-white/95 backdrop-blur-md p-8 rounded-3xl shadow-xl border border-emerald-100 mt-6 text-center animate-fadeIn">
-        <div className="w-16 h-16 bg-emerald-100 rounded-full flex items-center justify-center mx-auto mb-4">
-          <Check size={32} className="text-emerald-500" />
-        </div>
-        <h2 className="text-2xl font-black text-gray-900 mb-2">הנתונים נשמרו במערכת!</h2>
-        <p className="text-gray-600 text-sm mb-6">כעת, לחצי על הכפתור כדי לשלוח לתהל הודעת וואטסאפ שתאשר אותך.</p>
-        <a 
-          href={url} 
-          target="_blank"
-          onClick={() => {
-            setPendingWhatsApp(null);
-            setAuthMode('landing');
-          }} 
-          className="w-full bg-emerald-500 hover:bg-emerald-600 text-white font-bold py-3.5 rounded-2xl shadow-lg transition flex items-center justify-center gap-2"
-        >
-          <MessageCircle size={20} /> שלחי הודעה לאישור
-        </a>
-      </div>
-    );
-  }
-
   if (!isRegistered && authMode !== 'guest' && authMode !== 'register') {
     return (
       <div className="max-w-md mx-auto bg-white/95 backdrop-blur-md p-8 rounded-3xl shadow-xl border border-amber-100 mt-6">
@@ -925,7 +891,43 @@ const UserView = ({
 
   if (authMode === 'register') {
     return (
-      <div className="max-w-xl mx-auto bg-white/95 backdrop-blur-md p-6 sm:p-8 rounded-3xl shadow-xl border border-amber-100">
+      <div className="max-w-xl mx-auto bg-white/95 backdrop-blur-md p-6 sm:p-8 rounded-3xl shadow-xl border border-amber-100 relative">
+        {isSaving && (
+          <div className="absolute inset-0 bg-white/90 backdrop-blur-sm flex items-center justify-center p-4 z-50 rounded-3xl">
+            <div className="text-center animate-pulse">
+              <div className="w-16 h-16 border-4 border-amber-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+              <h2 className="text-xl font-black text-gray-900">שומר נתונים במערכת...</h2>
+              <p className="text-gray-500 text-xs mt-2 font-bold">אנא המתיני מספר שניות מבלי לסגור או לרענן את העמוד.</p>
+            </div>
+          </div>
+        )}
+        {pendingWhatsApp && (
+          <div className="absolute inset-0 bg-white/95 backdrop-blur-sm flex items-center justify-center p-4 z-50 rounded-3xl animate-fadeIn">
+            <div className="text-center">
+              <div className="w-20 h-20 bg-emerald-100 rounded-full flex items-center justify-center mx-auto mb-5 shadow-inner">
+                <Check size={40} className="text-emerald-500" />
+              </div>
+              <h2 className="text-2xl font-black text-gray-900 mb-2">הנתונים נשמרו במערכת!</h2>
+              <p className="text-gray-600 text-sm mb-6 font-medium">כעת, לחצי על הכפתור כדי לשלוח לתהל הודעת וואטסאפ שתאשר אותך באפליקציה.</p>
+              <button 
+                onClick={() => {
+                  const formattedMsg = encodeURIComponent(pendingWhatsApp);
+                  const url = `https://wa.me/972545222008?text=${formattedMsg}`;
+                  setPendingWhatsApp(null);
+                  setAuthMode('landing');
+                  if (/iPad|iPhone|iPod/.test(navigator.userAgent)) {
+                    window.location.href = url;
+                  } else {
+                    window.open(url, '_blank');
+                  }
+                }} 
+                className="w-full bg-emerald-500 hover:bg-emerald-600 text-white font-bold py-4 rounded-2xl shadow-xl transition flex items-center justify-center gap-2 text-lg"
+              >
+                <MessageCircle size={24} /> שלחי הודעה לאישור
+              </button>
+            </div>
+          </div>
+        )}
         <div className="flex justify-between items-center text-center mb-6">
           <div>
             <h2 className="text-2xl font-black text-gray-900">הרשמה והצהרת בריאות</h2>
