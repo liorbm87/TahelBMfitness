@@ -2248,7 +2248,8 @@ const AdminDashboard = ({
                   const confirmPast = window.confirm('⚠️ שימי לב: הזנת תאריך עבר! האם לאשר?\n(האימון יועבר ישירות לארכיון)');
                   if (!confirmPast) return;
                 }
-                setExternalWorkouts(prev => [...prev, { id: 'ext_' + Date.now(), ...newExternalWorkout }]);
+                const trimmedType = newExternalWorkout.type.trim();
+                setExternalWorkouts(prev => [...prev, { id: 'ext_' + Date.now(), ...newExternalWorkout, type: trimmedType }]);
                 setNewExternalWorkout({ type: '', date: new Date().toISOString().split('T')[0], time: '', duration: '', location: '' });
                 if (isPast) {
                   alert('תאריך עבר נקלט: האימון החיצוני נוצר והועבר אוטומטית לארכיון!');
@@ -2329,7 +2330,8 @@ const AdminDashboard = ({
                 </div>
                 <form onSubmit={(e) => {
                   e.preventDefault();
-                  setExternalWorkouts(prev => prev.map(w => w.id === editExternalWorkoutData.id ? editExternalWorkoutData : w));
+                  const updatedData = { ...editExternalWorkoutData, type: editExternalWorkoutData.type.trim() };
+                  setExternalWorkouts(prev => prev.map(w => w.id === updatedData.id ? updatedData : w));
                   setEditExternalWorkoutData(null);
                   alert('האימון החיצוני עודכן בהצלחה!');
                 }} className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
@@ -3077,7 +3079,16 @@ const AdminDashboard = ({
             <div className="bg-blue-50/50 border border-blue-200 p-5 rounded-3xl space-y-4 animate-fadeIn">
               <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-blue-200 pb-3">
                 <h3 className="font-extrabold text-blue-900 text-sm flex items-center gap-2">
-                  <Archive size={18} className="text-blue-600" /> ארכיון אימונים חיצוניים ({externalWorkouts.filter(w => new Date(`${w.date}T${w.time}`) < new Date()).length})
+                  <Archive size={18} className="text-blue-600" /> {archiveExternalStudioFilter ? `ארכיון חיצוני (${archiveExternalStudioFilter})` : 'ארכיון אימונים חיצוניים'} ({
+                    externalWorkouts
+                      .filter(w => new Date(`${w.date}T${w.time}`) < new Date())
+                      .filter(w => archiveExternalStudioFilter === '' || w.type === archiveExternalStudioFilter)
+                      .filter(w => {
+                        if (!searchWorkoutQuery) return true;
+                        const q = searchWorkoutQuery.toLowerCase();
+                        return w.type.toLowerCase().includes(q) || w.location.toLowerCase().includes(q) || w.date.includes(q);
+                      }).length
+                  })
                 </h3>
                 <div className="flex flex-col sm:flex-row gap-2">
                   <select 
