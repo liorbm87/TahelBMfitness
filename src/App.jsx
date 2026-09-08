@@ -2389,7 +2389,7 @@ const AdminDashboard = ({
             <div className="space-y-3 mt-4">
               <h4 className="font-bold text-sm text-gray-800">כל האימונים הקרובים (כולל אימוני סטודיו ופרטיים):</h4>
               {[...workouts.map(w => ({ ...w, isStudio: true })), ...externalWorkouts.map(w => ({ ...w, isStudio: false }))]
-                .filter(w => new Date(`${w.date}T${w.time}`) >= new Date())
+                .filter(w => new Date(`${w.date}T${w.time}`) >= new Date() && !w.is_archived)
                 .sort((a, b) => new Date(`${a.date}T${a.time}`) - new Date(`${b.date}T${b.time}`))
                 .map(w => {
                   const navLink = `https://waze.com/ul?q=${encodeURIComponent(w.location)}`;
@@ -2411,7 +2411,7 @@ const AdminDashboard = ({
                             <button onClick={() => setEditExternalWorkoutData(w)} className="text-blue-500 hover:bg-blue-50 border border-transparent hover:border-blue-100 px-2 py-1.5 rounded-lg transition" title="עריכת אימון חיצוני">
                               <Edit size={16}/>
                             </button>
-                            <button onClick={() => { if(window.confirm('האם באמת למחוק אימון חיצוני זה?')) setExternalWorkouts(prev => prev.filter(ext => ext.id !== w.id)); }} className="text-red-500 hover:bg-red-50 border border-transparent hover:border-red-100 px-2 py-1.5 rounded-lg transition" title="מחיקת אימון אישי">
+                            <button onClick={() => { if(window.confirm('האם להעביר אימון חיצוני זה לארכיון?')) setExternalWorkouts(prev => prev.map(ext => ext.id === w.id ? { ...ext, is_archived: true } : ext)); }} className="text-red-500 hover:bg-red-50 border border-transparent hover:border-red-100 px-2 py-1.5 rounded-lg transition" title="העברה לארכיון">
                           <Trash2 size={16}/>
                         </button>
                           </>
@@ -3184,7 +3184,7 @@ const AdminDashboard = ({
                 <h3 className="font-extrabold text-blue-900 text-sm flex items-center gap-2">
                   <Archive size={18} className="text-blue-600" /> {archiveExternalStudioFilter ? `ארכיון חיצוני (${archiveExternalStudioFilter})` : 'ארכיון אימונים חיצוניים'} ({
                     externalWorkouts
-                      .filter(w => new Date(`${w.date}T${w.time}`) < new Date())
+                      .filter(w => new Date(`${w.date}T${w.time}`) < new Date() || w.is_archived)
                       .filter(w => archiveExternalStudioFilter === '' || w.type === archiveExternalStudioFilter)
                       .filter(w => {
                         if (!searchWorkoutQuery) return true;
@@ -3211,7 +3211,7 @@ const AdminDashboard = ({
 
               <div className="space-y-3">
                 {externalWorkouts
-                  .filter(w => new Date(`${w.date}T${w.time}`) < new Date())
+                  .filter(w => new Date(`${w.date}T${w.time}`) < new Date() || w.is_archived)
                   .filter(w => archiveExternalStudioFilter === '' || w.type === archiveExternalStudioFilter)
                   .filter(w => {
                     if (!searchWorkoutQuery) return true;
@@ -3241,7 +3241,7 @@ const AdminDashboard = ({
                     </div>
                   ))
                 }
-                {externalWorkouts.filter(w => new Date(`${w.date}T${w.time}`) < new Date()).length === 0 && (
+                {externalWorkouts.filter(w => new Date(`${w.date}T${w.time}`) < new Date() || w.is_archived).length === 0 && (
                   <p className="text-xs text-gray-500 font-bold">אין אימונים חיצוניים בארכיון.</p>
                 )}
               </div>
