@@ -2307,9 +2307,9 @@ const AdminDashboard = ({
                             <button onClick={() => setEditExternalWorkoutData(w)} className="text-blue-500 hover:bg-blue-50 border border-transparent hover:border-blue-100 px-2 py-1.5 rounded-lg transition" title="עריכת אימון חיצוני">
                               <Edit size={16}/>
                             </button>
-                            <button onClick={() => setExternalWorkouts(prev => prev.filter(ext => ext.id !== w.id))} className="text-red-500 hover:bg-red-50 border border-transparent hover:border-red-100 px-2 py-1.5 rounded-lg transition" title="מחיקת אימון אישי">
-                              <Trash2 size={16}/>
-                            </button>
+                            <button onClick={() => { if(window.confirm('האם באמת למחוק אימון חיצוני זה?')) setExternalWorkouts(prev => prev.filter(ext => ext.id !== w.id)); }} className="text-red-500 hover:bg-red-50 border border-transparent hover:border-red-100 px-2 py-1.5 rounded-lg transition" title="מחיקת אימון אישי">
+                          <Trash2 size={16}/>
+                        </button>
                           </>
                         )}
                       </div>
@@ -3115,7 +3115,7 @@ const AdminDashboard = ({
                         <button onClick={() => setEditExternalWorkoutData(w)} className="text-blue-500 hover:bg-blue-50 border border-transparent hover:border-blue-100 px-2 py-1.5 rounded-lg transition" title="עריכת אימון עבר חיצוני">
                           <Edit size={16}/>
                         </button>
-                        <button onClick={() => setExternalWorkouts(prev => prev.filter(ext => ext.id !== w.id))} className="text-red-500 hover:bg-red-50 border border-transparent hover:border-red-100 px-2 py-1.5 rounded-lg transition" title="מחיקת אימון אישי לצמיתות">
+                        <button onClick={() => { if(window.confirm('האם באמת למחוק אימון חיצוני זה מהארכיון לצמיתות?')) setExternalWorkouts(prev => prev.filter(ext => ext.id !== w.id)); }} className="text-red-500 hover:bg-red-50 border border-transparent hover:border-red-100 px-2 py-1.5 rounded-lg transition" title="מחיקת אימון אישי לצמיתות">
                           <Trash2 size={16}/>
                         </button>
                       </div>
