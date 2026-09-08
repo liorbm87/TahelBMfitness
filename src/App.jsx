@@ -4377,6 +4377,7 @@ export default function App() {
   const [isAdminLoginModalOpen, setIsAdminLoginModalOpen] = useState(() => window.location.search.includes('admin'));
   const [showCookieBanner, setShowCookieBanner] = useState(() => localStorage.getItem('tahel_cookie_consent') !== 'true');
   const [isPublicGalleryOpen, setIsPublicGalleryOpen] = useState(false);
+  const [isDataLoaded, setIsDataLoaded] = useState(false);
   
   // מתאמן חדש יתחיל כ-null (יצטרך להירשם), אבל האתר יזכור אותו לפי המכשיר שלו
   const [currentUser, setCurrentUser] = useState(() => {
@@ -4416,8 +4417,6 @@ export default function App() {
       }
     }
   }, [trainees]);
-
-  const [isDataLoaded, setIsDataLoaded] = useState(false);
 
   // עדכון כותרת הדפדפן, הלוגו הקטן ותגיות השיתוף (Open Graph) לפייסבוק/וואטסאפ
   useEffect(() => {
