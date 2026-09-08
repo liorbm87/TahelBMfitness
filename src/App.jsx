@@ -115,6 +115,14 @@ const exportToPdf = (elementId, filename, margin = 0) => {
   });
 };
 
+// פונקציית עזר לשליחת אירועים לפייסבוק וגוגל
+const trackConversion = (eventName, payload = {}) => {
+  if (typeof window !== 'undefined') {
+    if (window.fbq) window.fbq('track', eventName, payload);
+    if (window.gtag) window.gtag('event', eventName, payload);
+  }
+};
+
 // ============================================================================
 // 4. כותרת, לוגו מרכזי ואזור אישי (MAIN HEADER)
 // ============================================================================
@@ -468,6 +476,11 @@ const UserView = ({
     }
   }, [workouts]);
 
+  // מעקב צפיות בעמוד (Analytics + Pixel)
+  useEffect(() => {
+    trackConversion('PageView', { page_path: `/${activeTab}` });
+  }, [activeTab, authMode]);
+
   const handleLoginSubmit = (e) => {
     e.preventDefault();
     const user = trainees.find(t => t.id_number === loginIdNumber && t.phone === loginPassword);
@@ -541,6 +554,12 @@ const UserView = ({
 
       setTrainees(prev => [...prev, newTrainee]);
       setCurrentUser(newTrainee);
+      
+      trackConversion('CompleteRegistration', {
+        content_name: 'Trainee Sign Up',
+        status: newTrainee.health_declaration.has_medical_condition ? 'pending_medical' : 'approved'
+      });
+      
       triggerMakeWebhook(settings.makeWebhookUrl, 'new_trainee_registered', newTrainee);
       
       setTimeout(() => {
@@ -771,6 +790,14 @@ const UserView = ({
     };
 
     setRegistrations(prev => [...prev, newReg]);
+    
+    trackConversion('Purchase', {
+      content_name: workout.type,
+      content_category: 'Workout',
+      value: workout.price,
+      currency: 'ILS'
+    });
+
     triggerMakeWebhook(settings.makeWebhookUrl, 'workout_registered', { workout, user: updatedUser });
   };
 
