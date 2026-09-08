@@ -2223,8 +2223,8 @@ const AdminDashboard = ({
         </div>
       )}
 
-      {activeTab === 'my_schedule' && (
-        <div className="space-y-6">
+      {(activeTab === 'my_schedule' || editExternalWorkoutData) && (
+        <div className={`space-y-6 ${activeTab !== 'my_schedule' ? 'hidden-tab-content' : ''}`}>
           <div className="bg-white/95 p-6 rounded-3xl shadow-md border border-gray-100">
             <h3 className="font-extrabold text-gray-900 text-base border-b pb-3 mb-4">הלו"ז האישי שלי (לעינייך בלבד)</h3>
             
@@ -2363,8 +2363,8 @@ const AdminDashboard = ({
         </div>
       )}
 
-      {activeTab === 'workouts' && (
-        <div className="space-y-6">
+      {(activeTab === 'workouts' || editWorkoutData) && (
+        <div className={`space-y-6 ${activeTab !== 'workouts' ? 'hidden-tab-content' : ''}`}>
           <details className="bg-white/95 p-5 rounded-3xl shadow-md border border-gray-100 group">
             <summary className="font-extrabold text-gray-900 text-base flex items-center justify-between cursor-pointer list-none outline-none">
               <div className="flex items-center gap-2">
@@ -3022,9 +3022,14 @@ const AdminDashboard = ({
                           משתתפים בפועל: {regList.length} / {workout.max_participants}
                         </p>
                       </div>
-                      <button onClick={() => handleDeleteWorkout(workout.id)} className="p-2 text-red-500 hover:bg-red-50 rounded-xl transition" title="מחק אימון עבר לצמיתות">
-                        <Trash2 size={18} />
-                      </button>
+                      <div className="flex gap-2">
+                        <button onClick={() => setEditWorkoutData(workout)} className="p-2 text-blue-500 hover:bg-blue-50 rounded-xl transition" title="עריכת אימון עבר וניהול משתתפים">
+                          <Edit size={18} />
+                        </button>
+                        <button onClick={() => handleDeleteWorkout(workout.id)} className="p-2 text-red-500 hover:bg-red-50 rounded-xl transition" title="מחק אימון עבר לצמיתות">
+                          <Trash2 size={18} />
+                        </button>
+                      </div>
                     </div>
 
                     {regList.length > 0 && (
@@ -4244,6 +4249,7 @@ export default function App() {
         .pdf-export-mode .hide-on-pdf { display: none !important; }
         .pdf-export-mode .show-on-pdf { display: inline-block !important; }
         .show-on-pdf { display: none; }
+        .hidden-tab-content > *:not(.fixed) { display: none !important; }
       `}</style>
       <div dir="rtl" className="text-gray-900 antialiased selection:bg-amber-200 relative min-h-screen">
         <div className="fixed inset-0 z-[-2] bg-cover bg-top h-screen w-screen bg-no-repeat" style={{ backgroundImage: `url(${settings.backgroundUrl})` }}></div>
