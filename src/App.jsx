@@ -4394,12 +4394,28 @@ export default function App() {
     }
   }, [currentUser]);
 
-  // מעקב כניסות פיזיות לאתר (ביקור נספר פעם אחת בלבד לאותו סשן/גולש)
+  // מעקב כניסות פיזיות לאתר בצורה בטוחה (מושך קודם מהשרת כדי למנוע דריסת נתונים!)
   useEffect(() => {
-    if (isDataLoaded && !sessionStorage.getItem('tahel_visit_logged')) {
-      sessionStorage.setItem('tahel_visit_logged', 'true');
-      setSiteVisits(prev => [...prev, new Date().toISOString()]);
-    }
+    const logVisit = async () => {
+      if (isDataLoaded && !sessionStorage.getItem('tahel_visit_logged')) {
+        sessionStorage.setItem('tahel_visit_logged', 'true');
+        // 1. משיכת הנתונים המעודכנים ביותר מהשרת כדי לא לדרוס מתאמנות חדשות
+        const { data } = await supabase.from('global_app_state').select('state_data').eq('id', 1).single();
+        if (data && data.state_data) {
+          const currentData = data.state_data;
+          const newVisits = [...(currentData.siteVisits || []), new Date().toISOString()];
+          
+          // 2. שמירת הנתונים המעודכנים יחד עם הביקור החדש
+          await supabase.from('global_app_state').upsert({ 
+            id: 1, 
+            state_data: { ...currentData, siteVisits: newVisits } 
+          });
+          
+          setSiteVisits(newVisits);
+        }
+      }
+    };
+    logVisit();
   }, [isDataLoaded]);
 
   // סנכרון המשתמש המקומי (לוקאל) עם הנתונים העדכניים שנמשכו מ-Supabase
@@ -4474,9 +4490,17 @@ export default function App() {
     }
   };
 
-  // טעינת הנתונים מ-Supabase בפתיחת האתר (סנכרון גלובלי)
+  // טעינת הנתונים מ-Supabase בפתיחת האתר וגם בחזרה לכרטיסייה (למניעת דריסת נתונים)
   useEffect(() => {
     loadGlobalState();
+    
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible') {
+        loadGlobalState(); // מושך נתונים חדשים בשקט כשחוזרים לאתר מדפדפן פתוח
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibility);
+    return () => document.removeEventListener('visibilitychange', handleVisibility);
   }, []);
 
   // שמירת הנתונים ל-Supabase אוטומטית בכל שינוי
@@ -4496,7 +4520,7 @@ export default function App() {
     };
     
     saveGlobalState();
-  }, [settings, workouts, trainees, registrations, waitlist, externalWorkouts, gallery, siteVisits, isDataLoaded]);
+  }, [settings, workouts, trainees, registrations, waitlist, externalWorkouts, gallery, isDataLoaded]); // siteVisits הוסר מכאן בכוונה
 
   const [appReady, setAppReady] = useState(false);
   useEffect(() => {
