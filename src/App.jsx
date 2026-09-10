@@ -2070,6 +2070,7 @@ const AdminDashboard = ({
       }
       const updatedUser = { ...trainee, punch_card: { ...trainee.punch_card, entries: trainee.punch_card.entries - 1 } };
       setTrainees(prev => prev.map(t => t.id === trainee.id ? updatedUser : t));
+      supabase.from('trainees').upsert(updatedUser).then();
       alert(`מעולה! כניסה הופחתה אוטומטית מכרטיסיית המתאמנת. נותרו: ${updatedUser.punch_card.entries} כניסות.`);
     }
 
@@ -2078,6 +2079,7 @@ const AdminDashboard = ({
       if (trainee && trainee.punch_card) {
         const updatedUser = { ...trainee, punch_card: { ...trainee.punch_card, entries: trainee.punch_card.entries + 1 } };
         setTrainees(prev => prev.map(t => t.id === trainee.id ? updatedUser : t));
+        supabase.from('trainees').upsert(updatedUser).then();
         alert('הכניסה הוחזרה בהצלחה לכרטיסיית המתאמנת!');
       }
     }
@@ -2090,6 +2092,7 @@ const AdminDashboard = ({
         } else {
           update.payment_date = null; // מחיקת תאריך התשלום אם בוטל
         }
+        supabase.from('registrations').upsert(update).then();
         return update;
       }
       return r;
@@ -3551,20 +3554,22 @@ const AdminDashboard = ({
                         <td className="p-3 font-extrabold text-gray-900">
                           <span className="hide-on-pdf">
                             <input 
-                              type="number" 
-                              className="w-16 bg-gray-50 border border-gray-200 rounded p-1 text-center font-bold outline-none" 
-                              value={reg.paid_amount !== undefined ? reg.paid_amount : workout.price} 
-                              onChange={(e) => {
-                                const newAmount = Number(e.target.value);
-                                let note = reg.discount_note || '';
-                                if (newAmount < workout.price) {
-                                  note = window.prompt('הוזן מחיר נמוך ממחיר האימון. נא להזין סיבה להנחה (עבור דוח רו"ח):', note) || note;
-                                } else {
-                                  note = ''; // איפוס הערה אם חזר למחיר רגיל
-                                }
-                                setRegistrations(prev => prev.map(r => r.id === reg.id ? { ...r, paid_amount: newAmount, discount_note: note } : r));
-                              }}
-                            /> ₪
+                          type="number" 
+                          className="w-16 bg-gray-50 border border-gray-200 rounded p-1 text-center font-bold outline-none" 
+                          value={reg.paid_amount !== undefined ? reg.paid_amount : workout.price} 
+                          onChange={(e) => {
+                            const newAmount = Number(e.target.value);
+                            let note = reg.discount_note || '';
+                            if (newAmount < workout.price) {
+                              note = window.prompt('הוזן מחיר נמוך ממחיר האימון. נא להזין סיבה להנחה (עבור דוח רו"ח):', note) || note;
+                            } else {
+                              note = ''; // איפוס הערה אם חזר למחיר רגיל
+                            }
+                            const updatedReg = { ...reg, paid_amount: newAmount, discount_note: note };
+                            setRegistrations(prev => prev.map(r => r.id === reg.id ? updatedReg : r));
+                            supabase.from('registrations').upsert(updatedReg).then();
+                          }}
+                        /> ₪
                             {reg.discount_note && <div className="text-[10px] text-amber-600 font-bold mt-1 max-w-[100px] leading-tight break-words">{reg.discount_note}</div>}
                           </span>
                           <span className="show-on-pdf flex flex-col items-end">
