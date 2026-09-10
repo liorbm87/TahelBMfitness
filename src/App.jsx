@@ -815,6 +815,7 @@ const UserView = ({
       created_at: new Date().toISOString()
     };
 
+    supabase.from('registrations').upsert(newReg).then();
     setRegistrations(prev => [...prev, newReg]);
     
     trackConversion('Purchase', {
@@ -4170,6 +4171,7 @@ const AdminDashboard = ({
                     }
 
                     const newReg = { id: 'r_' + Date.now(), workout_id: editWorkoutData.id, user_id: e.target.value, payment_status: appliedPaymentStatus, paid_amount: paidAmount, created_at: new Date().toISOString() };
+                    supabase.from('registrations').upsert(newReg).then();
                     setRegistrations(prev => [...prev, newReg]);
                     e.target.value = '';
                   }}
