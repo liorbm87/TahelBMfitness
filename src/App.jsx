@@ -2062,28 +2062,7 @@ const AdminDashboard = ({
     const reg = registrations.find(r => r.id === regId);
     if (!reg) return;
 
-    let updatedTrainee = null;
     if (newStatus === 'punch_card' && reg.payment_status !== 'punch_card') {
-      const trainee = trainees.find(t => t.id === reg.user_id);
-      if (!trainee || !trainee.punch_card || trainee.punch_card.entries <= 0 || new Date(trainee.punch_card.expires_at) < new Date()) {
-        alert('שגיאה: אי אפשר לשנות לכרטיסייה - למתאמנת זו אין כרטיסייה פעילה או שנגמרו לה הכניסות!');
-        return; // עוצרים ולא מעדכנים
-      }
-      updatedTrainee = { ...trainee, punch_card: { ...trainee.punch_card, entries: trainee.punch_card.entries - 1 } };
-      setTrainees(prev => prev.map(t => t.id === trainee.id ? updatedTrainee : t));
-      supabase.from('trainees').upsert(updatedTrainee).then();
-      alert(`מעולה! כניסה הופחתה אוטומטית מכרטיסיית המתאמנת. נותרו: ${updatedTrainee.punch_card.entries} כניסות.`);
-    }
-
-    if (reg.payment_status === 'punch_card' && newStatus !== 'punch_card') {
-      const trainee = trainees.find(t => t.id === reg.user_id);
-      if (trainee && trainee.punch_card) {
-        updatedTrainee = { ...trainee, punch_card: { ...trainee.punch_card, entries: trainee.punch_card.entries + 1 } };
-        setTrainees(prev => prev.map(t => t.id === trainee.id ? updatedTrainee : t));
-        supabase.from('trainees').upsert(updatedTrainee).then();
-        alert('הכניסה הוחזרה בהצלחה לכרטיסיית המתאמנת!');
-      }
-    }
       const trainee = trainees.find(t => t.id === reg.user_id);
       if (!trainee || !trainee.punch_card || trainee.punch_card.entries <= 0 || new Date(trainee.punch_card.expires_at) < new Date()) {
         alert('שגיאה: אי אפשר לשנות לכרטיסייה - למתאמנת זו אין כרטיסייה פעילה או שנגמרו לה הכניסות!');
@@ -2111,7 +2090,6 @@ const AdminDashboard = ({
         } else {
           update.payment_date = null; // מחיקת תאריך התשלום אם בוטל
         }
-        supabase.from('registrations').upsert(update).then();
         return update;
       }
       return r;
@@ -3584,9 +3562,7 @@ const AdminDashboard = ({
                                 } else {
                                   note = ''; // איפוס הערה אם חזר למחיר רגיל
                                 }
-                                const updatedReg = { ...reg, paid_amount: newAmount, discount_note: note };
-                                supabase.from('registrations').upsert(updatedReg).then();
-                                setRegistrations(prev => prev.map(r => r.id === reg.id ? updatedReg : r));
+                                setRegistrations(prev => prev.map(r => r.id === reg.id ? { ...r, paid_amount: newAmount, discount_note: note } : r));
                               }}
                             /> ₪
                             {reg.discount_note && <div className="text-[10px] text-amber-600 font-bold mt-1 max-w-[100px] leading-tight break-words">{reg.discount_note}</div>}
@@ -4309,7 +4285,7 @@ const AdminDashboard = ({
 
     </div>
   );
-;
+};
 
 // ============================================================================
 // 7.5 פוטר ותקנונים (FOOTER & LEGAL MODALS)
