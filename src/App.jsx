@@ -491,14 +491,16 @@ const UserView = ({
     trackConversion('PageView', { page_path: `/${activeTab}` });
   }, [activeTab, authMode]);
 
+  const [loginEmail, setLoginEmail] = useState('');
+
   const handleLoginSubmit = (e) => {
     e.preventDefault();
-    const user = trainees.find(t => t.id_number === loginIdNumber && t.phone === loginPassword);
+    const user = trainees.find(t => t.id_number === loginIdNumber && t.phone === loginPassword && t.email.toLowerCase() === loginEmail.toLowerCase());
     if (user) {
       setCurrentUser(user);
       alert('התחברת בהצלחה!');
     } else {
-      alert('אימייל או סיסמה שגויים. (סיסמה = מספר הטלפון שלך)');
+      alert('פרטי ההתחברות שגויים (וודאי ששדות האימייל, תעודת הזהות ומספר הטלפון תואמים).');
     }
   };
 
@@ -900,7 +902,7 @@ const UserView = ({
             <h2 className="text-3xl font-black text-gray-900">ברוכות הבאות לתהל פיטנס!</h2>
             <p className="text-gray-600 text-sm">אנא היכנסי לחשבונך או הרשמי כדי לצפות באזור האישי שלך ולהירשם לאימונים.</p>
             <div className="space-y-3">
-              <button onClick={() => setAuthMode('login')} className="w-full bg-gray-900 hover:bg-gray-800 text-white font-bold py-3.5 rounded-2xl shadow-lg transition flex items-center justify-center gap-2">
+              <button onClick={() => setAuthMode('login')} className="w-full bg-[#c57b6d] hover:bg-[#b06a5c] text-white font-bold py-3.5 rounded-2xl shadow-lg transition flex items-center justify-center gap-2">
                 <LogIn size={18} /> כניסה למשתמשת קיימת
               </button>
               <button onClick={() => setAuthMode('register')} className="w-full bg-amber-500 hover:bg-amber-600 text-white font-bold py-3.5 rounded-2xl shadow-lg transition flex items-center justify-center gap-2">
@@ -916,6 +918,10 @@ const UserView = ({
             <h2 className="text-2xl font-black text-gray-900 text-center mb-6">כניסה למערכת</h2>
             <form onSubmit={handleLoginSubmit} className="space-y-4">
               <div>
+                <label className="block text-xs font-bold text-gray-700 mb-1">אימייל (זיהוי)</label>
+                <input required type="email" placeholder="tahelharari@gmail.com" value={loginEmail} onChange={(e) => setLoginEmail(e.target.value)} className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl text-sm outline-none" />
+              </div>
+              <div>
                 <label className="block text-xs font-bold text-gray-700 mb-1">תעודת זהות</label>
                 <input required type="text" value={loginIdNumber} onChange={(e) => setLoginIdNumber(e.target.value)} className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl text-sm outline-none" />
               </div>
@@ -923,7 +929,7 @@ const UserView = ({
                 <label className="block text-xs font-bold text-gray-700 mb-1">(מספר טלפון ) סיסמה</label>
                 <input required type="password" value={loginPassword} onChange={(e) => setLoginPassword(e.target.value)} className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl text-sm outline-none" />
               </div>
-              <button type="submit" className="w-full bg-gray-900 text-white font-bold py-3.5 rounded-2xl shadow-lg mt-2">היכנסי</button>
+              <button type="submit" className="w-full bg-[#c57b6d] hover:bg-[#b06a5c] text-white font-bold py-3.5 rounded-2xl shadow-lg mt-2">היכנסי</button>
               <button type="button" onClick={() => setAuthMode('landing')} className="w-full text-xs text-gray-500 mt-4 underline text-center block">חזרה לתפריט</button>
             </form>
           </div>
@@ -1461,7 +1467,7 @@ const UserView = ({
                                 handleWorkoutRegister(workout.id);
                               }
                             }}
-                            className="w-full sm:w-auto bg-gray-900 hover:bg-amber-600 text-white text-xs font-bold px-5 py-2.5 rounded-2xl shadow-md transition"
+                            className="w-full sm:w-auto bg-[#c57b6d] hover:bg-[#b06a5c] text-white text-xs font-bold px-5 py-2.5 rounded-2xl shadow-md transition"
                           >
                             הרשמי לאימון
                           </button>
