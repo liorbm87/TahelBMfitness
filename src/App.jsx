@@ -197,6 +197,27 @@ const MainHeader = ({ settings, isAdmin, onOpenAdminLogin, onLogout, currentUser
           }} className="bg-purple-50 text-purple-600 hover:bg-purple-100 px-4 py-2 rounded-xl text-sm font-bold flex items-center gap-1 transition" title="הורדת מסד הנתונים">
             <Download size={16} /> גיבוי JSON
           </button>
+          <button onClick={async () => {
+            if(!window.confirm('האם להתחיל בהגירת הנתונים למסד הנתונים החדש? פעולה זו תיקח כדקה, אנא אל תסגרי את האתר!')) return;
+            try {
+              const { data } = await supabase.from('global_app_state').select('state_data').eq('id', 1).single();
+              if(!data) return alert('לא נמצאו נתונים להעברה');
+              const state = data.state_data;
+              
+              if(state.trainees?.length) await supabase.from('trainees').upsert(state.trainees);
+              if(state.workouts?.length) await supabase.from('workouts').upsert(state.workouts);
+              if(state.registrations?.length) await supabase.from('registrations').upsert(state.registrations);
+              if(state.waitlist?.length) await supabase.from('waitlist').upsert(state.waitlist);
+              if(state.externalWorkouts?.length) await supabase.from('external_workouts').upsert(state.externalWorkouts);
+              if(state.gallery?.length) await supabase.from('gallery').upsert(state.gallery);
+              
+              alert('הגירת הנתונים בוצעה בהצלחה! 🚀 אפשר להמשיך לשלב הבא.');
+            } catch (err) {
+              alert('שגיאה בהגירה: ' + err.message);
+            }
+          }} className="bg-red-500 text-white hover:bg-red-600 px-4 py-2 rounded-xl text-sm font-bold flex items-center gap-1 transition shadow-md" title="הגירה לסופה בייס">
+             הגירת נתונים 🚀
+          </button>
           <button
             onClick={onLogout}
             className="bg-red-50 text-red-600 hover:bg-red-100 px-4 py-2 rounded-xl text-sm font-bold flex items-center gap-1 transition"
@@ -344,6 +365,7 @@ const MainHeader = ({ settings, isAdmin, onOpenAdminLogin, onLogout, currentUser
 // 5. מודאל התחברות נסתרת של המנהלת (DOUBLE CLICK MODAL)
 // ============================================================================
 const AdminLoginModal = ({ isOpen, onClose, onLogin, currentPassword }) => {
+  const [emailInput, setEmailInput] = useState('');
   const [passwordInput, setPasswordInput] = useState('');
   const [error, setError] = useState('');
 
@@ -351,13 +373,14 @@ const AdminLoginModal = ({ isOpen, onClose, onLogin, currentPassword }) => {
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    if (passwordInput === currentPassword) {
+    if (emailInput.toLowerCase().trim() === 'tahelharari@gmail.com' && passwordInput === currentPassword) {
       onLogin();
+      setEmailInput('');
       setPasswordInput('');
       setError('');
       onClose();
     } else {
-      setError('סיסמה שגויה! אנא נסי שוב.');
+      setError('אימייל או סיסמה שגויים! לא ניתן להיכנס.');
     }
   };
 
@@ -379,12 +402,19 @@ const AdminLoginModal = ({ isOpen, onClose, onLogin, currentPassword }) => {
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <input 
+              type="email"
+              value={emailInput}
+              onChange={(e) => setEmailInput(e.target.value)}
+              placeholder="אימייל מנהלת"
+              className="w-full p-3 border border-gray-300 rounded-xl text-center text-lg font-bold mb-3 focus:ring-2 focus:ring-amber-500 outline-none"
+              autoFocus
+            />
+            <input 
               type="password"
               value={passwordInput}
               onChange={(e) => setPasswordInput(e.target.value)}
               placeholder="הזני סיסמה"
               className="w-full p-3 border border-gray-300 rounded-xl text-center text-lg font-bold tracking-widest focus:ring-2 focus:ring-amber-500 outline-none"
-              autoFocus
             />
             {error && <p className="text-red-500 text-xs mt-1 text-center font-semibold">{error}</p>}
           </div>
@@ -1424,7 +1454,9 @@ const UserView = ({
                              <CheckCircle2 size={16} /> נבחר
                            </button>
                         ) : isFull ? (
-                           <button onClick={() => setSelectedWorkoutsForCart(prev => [...prev, workout.id])} className="w-full sm:w-auto bg-amber-50 hover:bg-amber-100 text-amber-700 text-xs font-bold px-5 py-2.5 rounded-2xl border border-amber-300 transition flex items-center justify-center gap-1.5 shadow-sm">
+                           <button onClick={() => {
+                             if (!currentUser) { setAuthMode('landing'); } else { setSelectedWorkoutsForCart(prev => [...prev, workout.id]) }
+                           }} className="w-full sm:w-auto bg-amber-50 hover:bg-amber-100 text-amber-700 text-xs font-bold px-5 py-2.5 rounded-2xl border border-amber-300 transition flex items-center justify-center gap-1.5 shadow-sm">
                              <Plus size={16} /> הוספה להמתנה
                            </button>
                         ) : (
@@ -1441,17 +1473,27 @@ const UserView = ({
                             ביטול הרשמה
                           </button>
                         ) : isFull ? (
-                          <button 
-                            onClick={() => handleWorkoutRegister(workout.id)}
-                            disabled={isUserInWaitlist}
-                            className={`w-full sm:w-auto text-xs font-bold px-4 py-2.5 rounded-2xl transition ${
-                              isUserInWaitlist 
-                                ? 'bg-gray-200 text-gray-500 cursor-not-allowed'
-                                : 'bg-amber-500 hover:bg-amber-600 text-white shadow-md'
-                            }`}
-                          >
-                            {isUserInWaitlist ? 'ברשימת המתנה' : 'הרשמה להמתנה'}
-                          </button>
+                          isUserInWaitlist ? (
+                            <button 
+                              onClick={() => handleCancelWaitlist(workout.id)}
+                              className="w-full sm:w-auto bg-red-50 hover:bg-red-100 text-red-600 text-xs font-bold px-4 py-2.5 rounded-2xl border border-red-200 transition shadow-sm"
+                            >
+                              ביטול המתנה
+                            </button>
+                          ) : (
+                            <button 
+                              onClick={() => {
+                                if (!currentUser) {
+                                  setAuthMode('landing');
+                                } else {
+                                  handleWorkoutRegister(workout.id);
+                                }
+                              }}
+                              className="w-full sm:w-auto text-xs font-bold px-4 py-2.5 rounded-2xl transition bg-amber-500 hover:bg-amber-600 text-white shadow-md"
+                            >
+                              הרשמה להמתנה
+                            </button>
+                          )
                         ) : (
                           <button 
                             onClick={() => {
@@ -4478,6 +4520,7 @@ export default function App() {
   }, [settings.logoUrl]);
 
   const loadGlobalState = async () => {
+    window.isFetchingData = true; // חסימת שמירה עד לסיום משיכת נתונים טריים
     try {
       const { data, error } = await supabase.from('global_app_state').select('state_data').eq('id', 1).single();
       if (data && data.state_data && Object.keys(data.state_data).length > 0) {
@@ -4494,6 +4537,7 @@ export default function App() {
       console.error("Error loading from Supabase:", err);
     } finally {
       setIsDataLoaded(true);
+      window.isFetchingData = false; // שחרור החסימה לאחר סיום הטעינה
     }
   };
 
@@ -4520,6 +4564,7 @@ export default function App() {
     }
     
     const saveGlobalState = async () => {
+      if (window.isFetchingData) return; // מניעת "חזרה בזמן" - לא דורסים נתונים בזמן משיכה
       const sortedWorkouts = [...workouts].sort((a, b) => new Date(`${a.date}T${a.time}`) - new Date(`${b.date}T${b.time}`));
       const sortedExternal = [...externalWorkouts].sort((a, b) => new Date(`${a.date}T${a.time}`) - new Date(`${b.date}T${b.time}`));
       const stateToSave = { settings, workouts: sortedWorkouts, trainees, registrations, waitlist, externalWorkouts: sortedExternal, gallery, siteVisits };
@@ -4632,15 +4677,18 @@ export default function App() {
                   <div className="fixed inset-0 bg-black/80 backdrop-blur-md flex items-center justify-center p-4 z-[9999] h-[100dvh]">
                     <div className="bg-white rounded-3xl p-6 max-w-sm w-full shadow-2xl max-h-[90dvh] overflow-y-auto m-auto">
                       <h3 className="font-bold text-xl text-gray-900 mb-4 flex items-center gap-2"><Lock /> התחברות למנהלת</h3>
-                      <input type="password" placeholder="הקלידי סיסמה..." id="directAdminPass" className="w-full p-3 border border-gray-300 rounded-xl mb-4 text-center text-lg font-bold tracking-widest outline-none focus:border-amber-500" autoFocus onKeyDown={(e) => {
+                      <input type="email" placeholder="אימייל מנהלת..." id="directAdminEmail" className="w-full p-3 border border-gray-300 rounded-xl mb-3 text-center text-lg font-bold outline-none focus:border-amber-500" autoFocus />
+                      <input type="password" placeholder="הקלידי סיסמה..." id="directAdminPass" className="w-full p-3 border border-gray-300 rounded-xl mb-4 text-center text-lg font-bold tracking-widest outline-none focus:border-amber-500" onKeyDown={(e) => {
                         if(e.key === 'Enter') {
-                          if(e.target.value === settings.adminPassword) { setIsAdminLoggedIn(true); window.history.pushState(null, '', '?admin'); } else { alert('סיסמה שגויה!'); e.target.value = ''; }
+                          const emailVal = document.getElementById('directAdminEmail').value.toLowerCase().trim();
+                          if(emailVal === 'tahelharari@gmail.com' && e.target.value === settings.adminPassword) { setIsAdminLoggedIn(true); window.history.pushState(null, '', '?admin'); } else { alert('אימייל או סיסמה שגויים!'); e.target.value = ''; }
                         }
                       }}/>
                       <button onClick={() => {
-                        const val = document.getElementById('directAdminPass').value;
-                        if(val === settings.adminPassword) { setIsAdminLoggedIn(true); window.history.pushState(null, '', '?admin'); } else { alert('סיסמה שגויה!'); document.getElementById('directAdminPass').value = ''; }
-                      }} className="w-full bg-gray-900 text-white font-bold py-3 rounded-xl">היכנסי לפאנל</button>
+                        const emailVal = document.getElementById('directAdminEmail').value.toLowerCase().trim();
+                        const passVal = document.getElementById('directAdminPass').value;
+                        if(emailVal === 'tahelharari@gmail.com' && passVal === settings.adminPassword) { setIsAdminLoggedIn(true); window.history.pushState(null, '', '?admin'); } else { alert('אימייל או סיסמה שגויים!'); document.getElementById('directAdminPass').value = ''; }
+                      }} className="w-full bg-[#c57b6d] hover:bg-[#b06a5c] text-white font-bold py-3 rounded-xl transition">היכנסי לפאנל</button>
                     </div>
                   </div>
                 )}
