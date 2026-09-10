@@ -491,16 +491,14 @@ const UserView = ({
     trackConversion('PageView', { page_path: `/${activeTab}` });
   }, [activeTab, authMode]);
 
-  const [loginEmail, setLoginEmail] = useState('');
-
   const handleLoginSubmit = (e) => {
     e.preventDefault();
-    const user = trainees.find(t => t.id_number === loginIdNumber && t.phone === loginPassword && t.email.toLowerCase() === loginEmail.toLowerCase());
+    const user = trainees.find(t => t.id_number === loginIdNumber && t.phone === loginPassword);
     if (user) {
       setCurrentUser(user);
       alert('התחברת בהצלחה!');
     } else {
-      alert('פרטי ההתחברות שגויים (וודאי ששדות האימייל, תעודת הזהות ומספר הטלפון תואמים).');
+      alert('אימייל או סיסמה שגויים. (סיסמה = מספר הטלפון שלך)');
     }
   };
 
@@ -917,10 +915,6 @@ const UserView = ({
           <div>
             <h2 className="text-2xl font-black text-gray-900 text-center mb-6">כניסה למערכת</h2>
             <form onSubmit={handleLoginSubmit} className="space-y-4">
-              <div>
-                <label className="block text-xs font-bold text-gray-700 mb-1">אימייל (זיהוי)</label>
-                <input required type="email" placeholder="tahelharari@gmail.com" value={loginEmail} onChange={(e) => setLoginEmail(e.target.value)} className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl text-sm outline-none" />
-              </div>
               <div>
                 <label className="block text-xs font-bold text-gray-700 mb-1">תעודת זהות</label>
                 <input required type="text" value={loginIdNumber} onChange={(e) => setLoginIdNumber(e.target.value)} className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl text-sm outline-none" />
