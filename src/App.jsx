@@ -97,6 +97,20 @@ const uploadToCloudinary = async (file, cloudName, uploadPreset) => {
   return data.secure_url;
 };
 
+const formatDateWithDay = (dateStr) => {
+  if (!dateStr) return '';
+  const days = ['ראשון', 'שני', 'שלישי', 'רביעי', 'חמישי', 'שישי', 'שבת'];
+  try {
+    const [y, m, d] = dateStr.split('-');
+    const dateObj = new Date(y, m - 1, d);
+    const dayName = days[dateObj.getDay()];
+    const revDate = dateStr.split('-').reverse().join('/');
+    return `יום ${dayName}, ${revDate}`;
+  } catch (e) {
+    return dateStr.split('-').reverse().join('/');
+  }
+};
+
 const exportToPdf = (elementId, filename, margin = 0) => {
   const element = document.getElementById(elementId);
   if (!element) return;
@@ -146,6 +160,7 @@ const MainHeader = ({ settings, isAdmin, onOpenAdminLogin, onLogout, currentUser
     const updatedUser = { ...currentUser, ...editForm };
     setCurrentUser(updatedUser);
     setTrainees(prev => prev.map(t => t.id === currentUser.id ? updatedUser : t));
+    supabase.from('trainees').upsert(updatedUser).then();
     setIsEditModalOpen(false);
     alert('הפרטים עודכנו בהצלחה!');
   };
@@ -799,6 +814,7 @@ const UserView = ({
       finalPaidAmount = 0;
       updatedUser.punch_card.entries -= 1;
       setTrainees(prev => prev.map(t => t.id === currentUser.id ? updatedUser : t));
+      supabase.from('trainees').upsert(updatedUser).then();
       setCurrentUser(updatedUser);
       alert(`נרשמת בהצלחה לאימון ${workout.type}!\nההרשמה חויבה אוטומטית מהכרטיסייה (נותרו ${updatedUser.punch_card.entries} כניסות).`);
     } else if (currentUser.credit_balance >= workout.price && (!currentUser.credit_expires_at || new Date(currentUser.credit_expires_at) >= new Date())) {
@@ -806,6 +822,7 @@ const UserView = ({
       finalPaidAmount = workout.price;
       updatedUser.credit_balance -= workout.price;
       setTrainees(prev => prev.map(t => t.id === currentUser.id ? updatedUser : t));
+      supabase.from('trainees').upsert(updatedUser).then();
       setCurrentUser(updatedUser);
       alert(`נרשמת בהצלחה לאימון ${workout.type}!\nהסכום קוזז אוטומטית מהארנק הדיגיטלי שלך (נותרה לך יתרה של ${updatedUser.credit_balance} ₪).`);
     } else {
@@ -1410,8 +1427,8 @@ const UserView = ({
 
                       <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-gray-600 font-medium">
                         <span className="flex items-center gap-1 text-amber-800 font-bold">
-                          <Calendar size={14} /> {workout.date.split('-').reverse().join('/')} בשעה {workout.time}
-                        </span>
+                      <Calendar size={14} /> {formatDateWithDay(workout.date)} בשעה {workout.time}
+                    </span>
                         <span>• {workout.location}</span>
                         <span className="font-bold text-gray-900">מחיר: {workout.price} ₪</span>
                       </div>
@@ -1530,9 +1547,9 @@ const UserView = ({
                 const workout = workouts.find(w => w.id === reg.workout_id);
                 return (
                   <div key={reg.id} className="bg-white/95 p-5 rounded-3xl shadow-md border border-emerald-100 flex justify-between items-center">
-                    <div>
-                      <h4 className="font-bold text-gray-900">{workout.type}</h4>
-                      <p className="text-xs text-gray-500">{workout.date.split('-').reverse().join('/')} | {workout.time} | {workout.location}</p>
+                <div>
+                  <h4 className="font-bold text-gray-900">{workout.type}</h4>
+                  <p className="text-xs text-gray-500">{formatDateWithDay(workout.date)} | {workout.time} | {workout.location}</p>
                       <p className="text-xs font-bold text-amber-800 mt-1">מחיר: {workout.price} ₪</p>
                     </div>
                     <div className="text-left">
@@ -1559,9 +1576,9 @@ const UserView = ({
                 const workout = workouts.find(w => w.id === reg.workout_id);
                 return (
                   <div key={reg.id} className="bg-gray-50/80 p-4 rounded-3xl shadow-sm border border-gray-200 flex justify-between items-center opacity-80 hover:opacity-100 transition">
-                    <div>
-                      <h4 className="font-bold text-gray-700 line-through">{workout.type}</h4>
-                      <p className="text-[11px] text-gray-500">{workout.date.split('-').reverse().join('/')} | {workout.time} | {workout.location}</p>
+              <div>
+                <h4 className="font-bold text-gray-700 line-through">{workout.type}</h4>
+                <p className="text-[11px] text-gray-500">{formatDateWithDay(workout.date)} | {workout.time} | {workout.location}</p>
                     </div>
                     <div className="text-left">
                       <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold flex items-center justify-center gap-1 ${reg.payment_status === 'paid' || reg.payment_status === 'wallet_credit' ? 'bg-emerald-100 text-emerald-800' : reg.payment_status === 'punch_card' ? 'bg-blue-100 text-blue-800' : 'bg-gray-200 text-gray-800'}`}>
@@ -1988,7 +2005,9 @@ const AdminDashboard = ({
   };
 
   const handleApproveTrainee = (trainee) => {
-    setTrainees(prev => prev.map(t => t.id === trainee.id ? { ...t, is_approved: true } : t));
+    const updated = { ...trainee, is_approved: true };
+    setTrainees(prev => prev.map(t => t.id === trainee.id ? updated : t));
+    supabase.from('trainees').upsert(updated).then();
     const currentSiteUrl = window.location.origin;
     const msg = `היי ${trainee.full_name}! 👋 אושרת בהצלחה באתר שלי! אפשר עכשיו להירשם לאימונים כאן: ${currentSiteUrl}`;
     setTimeout(() => openWhatsApp(trainee.phone, msg), 500);
@@ -2508,11 +2527,11 @@ const AdminDashboard = ({
                   return (
                     <div key={w.id} className={`p-4 rounded-2xl flex flex-col sm:flex-row justify-between sm:items-center gap-3 border ${w.isStudio ? 'bg-amber-50 border-amber-100' : 'bg-blue-50 border-blue-100'}`}>
                       <div>
-                        <div className="flex items-center gap-2">
-                          <span className="font-bold text-gray-900 text-sm">{w.type}</span>
-                          <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${w.isStudio ? 'bg-amber-200 text-amber-800' : 'bg-blue-200 text-blue-800'}`}>{w.isStudio ? 'סטודיו (לקוחות)' : 'פרטי / חיצוני'}</span>
-                        </div>
-                        <p className="text-xs text-gray-600 mt-1">{w.date.split('-').reverse().join('/')} בשעה {w.time} | {w.location}</p>
+                       <div className="flex items-center gap-2">
+                    <span className="font-bold text-gray-900 text-sm">{w.type}</span>
+                    <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${w.isStudio ? 'bg-amber-200 text-amber-800' : 'bg-blue-200 text-blue-800'}`}>{w.isStudio ? 'סטודיו (לקוחות)' : 'פרטי / חיצוני'}</span>
+                  </div>
+                  <p className="text-xs text-gray-600 mt-1">{formatDateWithDay(w.date)} בשעה {w.time} | {w.location}</p>
                       </div>
                       <div className="flex gap-2">
                         <a href={navLink} target="_blank" rel="noreferrer" className="bg-white hover:bg-gray-100 border text-gray-700 text-[11px] px-3 py-2 rounded-lg font-bold transition flex items-center justify-center gap-1 shadow-sm">
@@ -2766,8 +2785,8 @@ const AdminDashboard = ({
                         {isPast && <span className="bg-gray-200 text-gray-700 text-[10px] px-2 py-0.5 rounded-md font-bold">היסטוריה (ארכיון)</span>}
                       </div>
                       <p className="text-xs text-gray-600 mt-0.5">
-                        {workout.date.split('-').reverse().join('/')} בשעה {workout.time} {workout.duration ? `(${workout.duration} דק')` : ''} | {workout.location} | <span className="font-bold text-amber-800">{workout.price} ₪</span>
-                      </p>
+                  {formatDateWithDay(workout.date)} בשעה {workout.time} {workout.duration ? `(${workout.duration} דק')` : ''} | {workout.location} | <span className="font-bold text-amber-800">{workout.price} ₪</span>
+                </p>
                       <p className="text-xs text-gray-500 mt-1 font-semibold">
                         משתתפים: {regList.length} / {workout.max_participants}
                       </p>
@@ -3236,8 +3255,8 @@ const AdminDashboard = ({
                           <span className="bg-gray-300 text-gray-700 text-[10px] px-2 py-0.5 rounded-md font-bold">הושלם בארכיון</span>
                         </div>
                         <p className="text-xs text-gray-500 mt-0.5">
-                          {workout.date.split('-').reverse().join('/')} בשעה {workout.time} | {workout.location} | <span className="font-bold">{workout.price} ₪</span>
-                        </p>
+                      {formatDateWithDay(workout.date)} בשעה {workout.time} | {workout.location} | <span className="font-bold">{workout.price} ₪</span>
+                    </p>
                         <p className="text-xs text-gray-500 mt-1 font-semibold">
                           משתתפים בפועל: {regList.length} / {workout.max_participants}
                         </p>
@@ -3353,8 +3372,8 @@ const AdminDashboard = ({
                           <span className="bg-blue-100 text-blue-800 text-[10px] px-2 py-0.5 rounded-md font-bold">הושלם (חיצוני)</span>
                         </div>
                         <p className="text-xs text-gray-600 mt-1">
-                          {w.date.split('-').reverse().join('/')} בשעה {w.time} {w.duration ? `(${w.duration} שעות)` : ''} | {w.location}
-                        </p>
+                    {formatDateWithDay(w.date)} בשעה {w.time} {w.duration ? `(${w.duration} שעות)` : ''} | {w.location}
+                  </p>
                       </div>
                       <div className="flex gap-2">
                         <button onClick={() => setEditExternalWorkoutData(w)} className="text-blue-500 hover:bg-blue-50 border border-transparent hover:border-blue-100 px-2 py-1.5 rounded-lg transition" title="עריכת אימון עבר חיצוני">
@@ -3993,6 +4012,7 @@ const AdminDashboard = ({
                   };
                   
                   setTrainees(prev => prev.map(t => t.id === updatedUser.id ? updatedUser : t));
+                  supabase.from('trainees').upsert(updatedUser).then();
                   
                   if (punchCardForm.price > 0) {
                     const newPunchReg = {
@@ -4082,9 +4102,9 @@ const AdminDashboard = ({
       {editWorkoutData && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50">
           <div className="bg-white rounded-3xl p-6 max-w-lg w-full shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto">
-            <div className="flex justify-between items-center border-b pb-3">
+            <div className="flex justify-between items-center border-b pb-3 sticky top-0 bg-white z-20 pt-1">
               <h3 className="font-bold text-base text-gray-900">עריכת אימון: {editWorkoutData.type}</h3>
-              <button onClick={() => setEditWorkoutData(null)} className="text-gray-400 hover:text-gray-600"><X size={20} /></button>
+              <button type="button" onClick={() => setEditWorkoutData(null)} className="text-gray-400 hover:text-gray-600 bg-gray-100 p-1.5 rounded-full"><X size={20} /></button>
             </div>
             <form onSubmit={handleUpdateWorkoutSubmit} className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
               <div>
