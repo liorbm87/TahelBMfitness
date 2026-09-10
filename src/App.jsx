@@ -247,9 +247,9 @@ const MainHeader = ({ settings, isAdmin, onOpenAdminLogin, onLogout, currentUser
         </div>
       ) : currentUser ? (
         <div className="flex flex-col sm:flex-row items-center justify-center gap-3 w-full px-4">
-          <button onClick={() => { setCurrentUser(null); alert('התנתקת בהצלחה!'); window.location.reload(); }} className="bg-red-50 text-red-600 hover:bg-red-100 px-4 py-2 rounded-2xl transition flex items-center justify-center gap-2 font-bold text-sm shadow-sm border border-red-100" title="התנתקות">
-            <LogOut size={16} /> יציאה
-          </button>
+          <button onClick={() => { setCurrentUser(null); window.location.reload(); }} className="bg-red-50 text-red-600 hover:bg-red-100 px-4 py-2 rounded-2xl transition flex items-center justify-center gap-2 font-bold text-sm shadow-sm border border-red-100" title="התנתקות">
+        <LogOut size={16} /> יציאה
+      </button>
           {currentUser.is_approved && (
             <>
               <button
@@ -3599,14 +3599,14 @@ const AdminDashboard = ({
                             <input 
                           type="number" 
                           className="w-16 bg-gray-50 border border-gray-200 rounded p-1 text-center font-bold outline-none" 
-                          value={reg.paid_amount !== undefined ? reg.paid_amount : workout.price} 
-                          onChange={(e) => {
+                          defaultValue={reg.paid_amount !== undefined ? reg.paid_amount : workout.price} 
+                          onBlur={(e) => {
                             const newAmount = Number(e.target.value);
                             let note = reg.discount_note || '';
                             if (newAmount < workout.price) {
                               note = window.prompt('הוזן מחיר נמוך ממחיר האימון. נא להזין סיבה להנחה (עבור דוח רו"ח):', note) || note;
                             } else {
-                              note = ''; // איפוס הערה אם חזר למחיר רגיל
+                              note = '';
                             }
                             const updatedReg = { ...reg, paid_amount: newAmount, discount_note: note };
                             setRegistrations(prev => prev.map(r => r.id === reg.id ? updatedReg : r));
@@ -3928,31 +3928,17 @@ const AdminDashboard = ({
                           onClick={() => {
                             if (r.payment_status === 'paid' || r.payment_status === 'punch_card') {
                               if (window.confirm('האם לבטל את סימון התשלום?')) {
-                                if (window.confirm('לבטל בטוח?')) {
-                                  handleUpdatePaymentStatus(r.id, 'unpaid');
-                                }
+                                handleUpdatePaymentStatus(r.id, 'unpaid');
                               }
                             } else {
-                              const currentPrice = r.paid_amount !== undefined ? r.paid_amount : w.price;
-                              const doDiscount = window.confirm(`האם הסכום לתשלום הוא ${currentPrice} ₪ (אישור) או שתרצי להזין מחיר ידני (ביטול)?`);
-                              let finalPrice = currentPrice;
-                              if (!doDiscount) {
-                                const customAmount = window.prompt('הזיני את הסכום (₪):', currentPrice);
-                                if (customAmount === null) return; 
-                                finalPrice = Number(customAmount) || currentPrice;
+                              if (window.confirm('האם לסמן ששולם עבור אימון זה?')) {
+                                handleUpdatePaymentStatus(r.id, 'paid');
                               }
-                              let note = r.discount_note || '';
-                              if (finalPrice < w.price) {
-                                note = window.prompt('סיבה להנחה (לדוח רו"ח):', note) || note;
-                              } else { note = ''; }
-                              const isPaidNow = window.confirm('האם התשלום התקבל בפועל (שולם)?\nאישור = שולם, ביטול = טרם שולם');
-                              handleUpdatePaymentStatus(r.id, isPaidNow ? 'paid' : 'unpaid');
-                              setRegistrations(prev => prev.map(reg => reg.id === r.id ? { ...reg, paid_amount: finalPrice, discount_note: note } : reg));
                             }
                           }}
-                          className="text-[10px] text-blue-600 underline font-semibold cursor-pointer hover:text-blue-800"
+                          className={`px-3 py-1.5 rounded-lg font-bold transition ${r.payment_status === 'paid' ? 'bg-emerald-100 text-emerald-700' : r.payment_status === 'punch_card' ? 'bg-indigo-100 text-indigo-700' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}`}
                         >
-                          שנה סטטוס תשלום
+                          {r.payment_status === 'paid' ? 'שולם ✓' : r.payment_status === 'punch_card' ? 'שולם כרטיסייה' : 'טרם שולם'} ({r.paid_amount !== undefined ? r.paid_amount : editWorkoutData.price} ₪)
                         </button>
                       </div>
                     </div>
