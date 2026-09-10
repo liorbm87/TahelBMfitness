@@ -156,7 +156,7 @@ const MainHeader = ({ settings, isAdmin, onOpenAdminLogin, onLogout, currentUser
       <div
         onDoubleClick={onOpenAdminLogin}
         className="cursor-pointer select-none transition transform hover:scale-105 active:scale-95"
-        title="דאבל קליק: כניסת מנהלת"
+
       >
         {settings.logoUrl ? (
           <img src={settings.logoUrl} alt="תהל כושר" className="h-48 sm:h-64 object-contain drop-shadow-2xl hover:drop-shadow-[0_0_15px_rgba(255,255,255,0.5)] transition-all duration-300" />
