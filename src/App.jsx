@@ -715,9 +715,15 @@ const UserView = ({
         });
       });
 
-      if (newRegs.length > 0) setRegistrations(prev => [...prev, ...newRegs]);
-      if (newWaitlists.length > 0) setWaitlist(prev => [...prev, ...newWaitlists]);
-      
+      if (newRegs.length > 0) {
+        supabase.from('registrations').upsert(newRegs).then();
+        setRegistrations(prev => [...prev, ...newRegs]);
+      }
+      if (newWaitlists.length > 0) {
+        supabase.from('waitlist').upsert(newWaitlists).then();
+        setWaitlist(prev => [...prev, ...newWaitlists]);
+      }
+            
       setIsMultiSelectMode(false);
       setSelectedWorkoutsForCart([]);
       
