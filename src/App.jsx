@@ -4232,30 +4232,16 @@ const AdminDashboard = ({
                     <div key={r.id} className="flex justify-between items-center bg-gray-50 p-2.5 rounded-xl border border-gray-100 text-xs">
                       <span className="font-bold text-gray-800">{u.full_name}</span>
                       <div className="flex gap-2">
-                        <button
+                     <button 
                           onClick={() => {
                             if (r.payment_status === 'paid' || r.payment_status === 'punch_card') {
                               if (window.confirm('האם לבטל את סימון התשלום?')) {
-                                if (window.confirm('לבטל בטוח?')) {
-                                  handleUpdatePaymentStatus(r.id, 'unpaid');
-                                }
+                                handleUpdatePaymentStatus(r.id, 'unpaid');
                               }
                             } else {
-                              const currentPrice = r.paid_amount !== undefined ? r.paid_amount : editWorkoutData.price;
-                              const doDiscount = window.confirm(`האם הסכום לתשלום הוא ${currentPrice} ₪ (אישור) או שתרצי להזין מחיר ידני (ביטול)?`);
-                              let finalPrice = currentPrice;
-                              if (!doDiscount) {
-                                const customAmount = window.prompt('הזיני את הסכום (₪):', currentPrice);
-                                if (customAmount === null) return; 
-                                finalPrice = Number(customAmount) || currentPrice;
+                              if (window.confirm('האם לסמן ששולם עבור אימון זה?')) {
+                                handleUpdatePaymentStatus(r.id, 'paid');
                               }
-                              let note = r.discount_note || '';
-                              if (finalPrice < w.price) {
-                                note = window.prompt('סיבה להנחה (לדוח רו"ח):', note) || note;
-                              } else { note = ''; }
-                              const isPaidNow = window.confirm('האם התשלום התקבל בפועל (שולם)?\nאישור = שולם, ביטול = טרם שולם');
-                              handleUpdatePaymentStatus(r.id, isPaidNow ? 'paid' : 'unpaid');
-                              setRegistrations(prev => prev.map(reg => reg.id === r.id ? { ...reg, paid_amount: finalPrice, discount_note: note } : reg));
                             }
                           }}
                           className={`px-3 py-1.5 rounded-lg font-bold transition ${r.payment_status === 'paid' ? 'bg-emerald-100 text-emerald-700' : r.payment_status === 'punch_card' ? 'bg-indigo-100 text-indigo-700' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}`}
