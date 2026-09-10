@@ -1289,21 +1289,21 @@ const UserView = ({
       )}
 
       <div className="flex bg-white/80 p-1.5 rounded-2xl shadow-sm border border-gray-200/80">
-        <button 
-          onClick={() => setActiveTab('schedule')}
-          className={`flex-1 py-2.5 rounded-xl font-bold text-xs sm:text-sm transition flex items-center justify-center gap-2 ${
-            activeTab === 'schedule' ? 'bg-gray-900 text-white shadow-md' : 'text-gray-600 hover:text-gray-900'
-          }`}
-        >
+    <button 
+      onClick={() => setActiveTab('schedule')}
+      className={`flex-1 py-2.5 rounded-xl font-bold text-xs sm:text-sm transition flex items-center justify-center gap-2 ${
+        activeTab === 'schedule' ? 'bg-[#c57b6d] text-white shadow-md' : 'text-gray-600 hover:text-gray-900'
+      }`}
+    >
           <Calendar size={16} />
           <span>לוח אימונים שבועי</span>
         </button>
-        <button 
-          onClick={() => setActiveTab('my_workouts')}
-          className={`flex-1 py-2.5 rounded-xl font-bold text-xs sm:text-sm transition flex items-center justify-center gap-2 ${
-            activeTab === 'my_workouts' ? 'bg-gray-900 text-white shadow-md' : 'text-gray-600 hover:text-gray-900'
-          }`}
-        >
+      <button 
+      onClick={() => setActiveTab('my_workouts')}
+      className={`flex-1 py-2.5 rounded-xl font-bold text-xs sm:text-sm transition flex items-center justify-center gap-2 ${
+        activeTab === 'my_workouts' ? 'bg-[#c57b6d] text-white shadow-md' : 'text-gray-600 hover:text-gray-900'
+      }`}
+    >
           <Award size={16} />
           <span>האימונים שלי ({myRegisteredWorkoutIds.length})</span>
         </button>
