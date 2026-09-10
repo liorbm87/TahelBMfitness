@@ -190,6 +190,13 @@ const MainHeader = ({ settings, isAdmin, onOpenAdminLogin, onLogout, currentUser
           <button onClick={() => { if(onRefresh) { onRefresh(); alert('הנתונים רועננו בהצלחה!'); } }} className="bg-blue-50 text-blue-600 hover:bg-blue-100 px-4 py-2 rounded-xl text-sm font-bold flex items-center gap-1 transition" title="רענן נתונים מהשרת">
             <RefreshCw size={16} /> רענון
           </button>
+          <button onClick={async () => {
+            const { data } = await supabase.from('global_app_state').select('state_data').eq('id', 1).single();
+            const blob = new Blob([JSON.stringify(data?.state_data || {}, null, 2)], {type: "application/json"});
+            const link = document.createElement('a'); link.href = URL.createObjectURL(blob); link.download = 'tahel_database.json'; link.click();
+          }} className="bg-purple-50 text-purple-600 hover:bg-purple-100 px-4 py-2 rounded-xl text-sm font-bold flex items-center gap-1 transition" title="הורדת מסד הנתונים">
+            <Download size={16} /> גיבוי JSON
+          </button>
           <button
             onClick={onLogout}
             className="bg-red-50 text-red-600 hover:bg-red-100 px-4 py-2 rounded-xl text-sm font-bold flex items-center gap-1 transition"
