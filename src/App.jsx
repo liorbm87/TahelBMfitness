@@ -198,12 +198,47 @@ const MainHeader = ({ settings, isAdmin, onOpenAdminLogin, onLogout, currentUser
 
       {/* תפריט פעולות מרכזי (למנהלת או למתאמן) */}
       {isAdmin ? (
-    <div className="flex flex-wrap justify-center items-center gap-3 bg-white/80 p-3 rounded-2xl shadow-sm border border-amber-100">
-      <button onClick={() => { if(onRefresh) { onRefresh(); alert('הנתונים רועננו בהצלחה!'); } }} className="bg-blue-50 text-blue-600 hover:bg-blue-100 px-4 py-2 rounded-xl text-sm font-bold flex items-center gap-1 transition" title="רענן נתונים מהשרת">
-        <RefreshCw size={16} /> רענון
-      </button>
-      
-      <button
+        <div className="flex flex-wrap justify-center items-center gap-3 bg-white/80 p-3 rounded-2xl shadow-sm border border-amber-100">
+          <button onClick={() => { if(onRefresh) { onRefresh(); alert('הנתונים רועננו בהצלחה!'); } }} className="bg-blue-50 text-blue-600 hover:bg-blue-100 px-4 py-2 rounded-xl text-sm font-bold flex items-center gap-1 transition" title="רענן נתונים מהשרת">
+            <RefreshCw size={16} /> רענון
+          </button>
+          <button onClick={async () => {
+            try {
+              const [tRes, wRes, rRes, wlRes, extRes, gRes, sRes] = await Promise.all([
+                supabase.from('trainees').select('*'),
+                supabase.from('workouts').select('*'),
+                supabase.from('registrations').select('*'),
+                supabase.from('waitlist').select('*'),
+                supabase.from('external_workouts').select('*'),
+                supabase.from('gallery').select('*'),
+                supabase.from('global_app_state').select('*')
+              ]);
+              
+              const fullBackup = {
+                timestamp: new Date().toISOString(),
+                trainees: tRes.data || [],
+                workouts: wRes.data || [],
+                registrations: rRes.data || [],
+                waitlist: wlRes.data || [],
+                external_workouts: extRes.data || [],
+                gallery: gRes.data || [],
+                global_app_state: sRes.data || []
+              };
+
+              const blob = new Blob([JSON.stringify(fullBackup, null, 2)], { type: "application/json" });
+              const link = document.createElement('a');
+              link.href = URL.createObjectURL(blob);
+              link.download = `tahel_full_backup_${new Date().toISOString().substring(0, 10)}.json`;
+              link.click();
+            } catch (err) {
+              console.error('Backup error:', err);
+              alert('שגיאה ביצירת הגיבוי');
+            }
+          }} className="bg-purple-50 text-purple-600 hover:bg-purple-100 px-4 py-2 rounded-xl text-sm font-bold flex items-center gap-1 transition" title="הורדת גיבוי מלא לכל הטבלאות">
+            <Download size={16} /> גיבוי מלא (כל הטבלאות)
+          </button>
+          
+          <button
             onClick={onLogout}
             className="bg-red-50 text-red-600 hover:bg-red-100 px-4 py-2 rounded-xl text-sm font-bold flex items-center gap-1 transition"
           >
