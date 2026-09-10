@@ -197,27 +197,7 @@ const MainHeader = ({ settings, isAdmin, onOpenAdminLogin, onLogout, currentUser
           }} className="bg-purple-50 text-purple-600 hover:bg-purple-100 px-4 py-2 rounded-xl text-sm font-bold flex items-center gap-1 transition" title="הורדת מסד הנתונים">
             <Download size={16} /> גיבוי JSON
           </button>
-          <button onClick={async () => {
-            if(!window.confirm('האם להתחיל בהגירת הנתונים למסד הנתונים החדש? פעולה זו תיקח כדקה, אנא אל תסגרי את האתר!')) return;
-            try {
-              const { data } = await supabase.from('global_app_state').select('state_data').eq('id', 1).single();
-              if(!data) return alert('לא נמצאו נתונים להעברה');
-              const state = data.state_data;
-              
-              if(state.trainees?.length) await supabase.from('trainees').upsert(state.trainees);
-              if(state.workouts?.length) await supabase.from('workouts').upsert(state.workouts);
-              if(state.registrations?.length) await supabase.from('registrations').upsert(state.registrations);
-              if(state.waitlist?.length) await supabase.from('waitlist').upsert(state.waitlist);
-              if(state.externalWorkouts?.length) await supabase.from('external_workouts').upsert(state.externalWorkouts);
-              if(state.gallery?.length) await supabase.from('gallery').upsert(state.gallery);
-              
-              alert('הגירת הנתונים בוצעה בהצלחה! 🚀 אפשר להמשיך לשלב הבא.');
-            } catch (err) {
-              alert('שגיאה בהגירה: ' + err.message);
-            }
-          }} className="bg-red-500 text-white hover:bg-red-600 px-4 py-2 rounded-xl text-sm font-bold flex items-center gap-1 transition shadow-md" title="הגירה לסופה בייס">
-             הגירת נתונים 🚀
-          </button>
+          
           <button
             onClick={onLogout}
             className="bg-red-50 text-red-600 hover:bg-red-100 px-4 py-2 rounded-xl text-sm font-bold flex items-center gap-1 transition"
@@ -863,6 +843,9 @@ const UserView = ({
 
     if (window.confirm(`האם לבטל את הרשמתך לאימון ${workout.type}?`)) {
       const regToCancel = registrations.find(r => r.workout_id === workoutId && r.user_id === currentUser.id);
+      if (regToCancel) {
+        supabase.from('registrations').delete().eq('id', regToCancel.id).then();
+      }
       
       if (regToCancel?.payment_status === 'punch_card') {
         const updatedUser = { ...currentUser };
@@ -917,6 +900,7 @@ const UserView = ({
   // ביטול רשימת המתנה
   const handleCancelWaitlist = (workoutId) => {
     if (window.confirm('האם להסיר את עצמך מרשימת ההמתנה?')) {
+      supabase.from('waitlist').delete().eq('workout_id', workoutId).eq('user_id', currentUser.id).then();
       setWaitlist(prev => prev.filter(w => !(w.workout_id === workoutId && w.user_id === currentUser.id)));
       alert('הוסרת מרשימת ההמתנה.');
     }
@@ -1901,12 +1885,12 @@ const AdminDashboard = ({
     setRecurringWeeks(0);
   };
 
-  const handleDeleteWorkout = (id) => {
+  const handleDeleteWorkout = async (id) => {
     const workoutToDelete = workouts.find(w => w.id === id);
     if (!workoutToDelete) return;
 
     const confirmInitial = window.confirm('האם להתחיל בתהליך מחיקת אימון זה? (כל הרשמות המתאמנים יבוטלו)');
-    if (!confirmInitial) return; // אם לחצו "ביטול" כאן - הפעולה מתבטלת לגמרי ולא קורה כלום
+    if (!confirmInitial) return;
 
     if (workoutToDelete.is_recurring && workoutToDelete.recurring_group_id) {
       const deleteSeries = window.confirm('אימון זה מחזורי! האם למחוק את כל האימונים העתידיים בסדרה?\n(לחצי "אישור" למחיקת כל הסדרה, או "ביטול" למחיקת אימון זה בלבד)');
@@ -1914,15 +1898,23 @@ const AdminDashboard = ({
       if (deleteSeries) {
         const wDate = new Date(`${workoutToDelete.date}T${workoutToDelete.time}`);
         const idsToDelete = workouts.filter(w => w.recurring_group_id === workoutToDelete.recurring_group_id && new Date(`${w.date}T${w.time}`) >= wDate).map(w => w.id);
+        
+        await supabase.from('workouts').delete().in('id', idsToDelete);
+        await supabase.from('registrations').delete().in('workout_id', idsToDelete);
+
         setWorkouts(prev => prev.filter(w => !idsToDelete.includes(w.id)));
         setRegistrations(prev => prev.filter(r => !idsToDelete.includes(r.workout_id)));
         alert(`נמחקו בהצלחה ${idsToDelete.length} אימונים (הסדרה כולה קדימה).`);
       } else {
+        await supabase.from('workouts').delete().eq('id', id);
+        await supabase.from('registrations').delete().eq('workout_id', id);
         setWorkouts(prev => prev.filter(w => w.id !== id));
         setRegistrations(prev => prev.filter(r => r.workout_id !== id));
         alert('האימון הבודד נמחק בהצלחה.');
       }
     } else {
+      await supabase.from('workouts').delete().eq('id', id);
+      await supabase.from('registrations').delete().eq('workout_id', id);
       setWorkouts(prev => prev.filter(w => w.id !== id));
       setRegistrations(prev => prev.filter(r => r.workout_id !== id));
       alert('האימון נמחק בהצלחה.');
@@ -2023,6 +2015,7 @@ const AdminDashboard = ({
   // תהל מעבירה מתאמנת מרשימת ההמתנה ישירות לרשימת המשתתפים באימון
   const handlePromoteFromWaitlist = (waitEntry, trainee, workout) => {
     // 1. הסרה מרשימת המתנה
+    supabase.from('waitlist').delete().eq('id', waitEntry.id).then();
     setWaitlist(prev => prev.filter(w => w.id !== waitEntry.id));
 
     // 2. בדיקת כרטיסייה והוספה להרשמות לאימון
@@ -2520,7 +2513,7 @@ const AdminDashboard = ({
                             <button onClick={() => setEditExternalWorkoutData(w)} className="text-blue-500 hover:bg-blue-50 border border-transparent hover:border-blue-100 px-2 py-1.5 rounded-lg transition" title="עריכת אימון חיצוני">
                               <Edit size={16}/>
                             </button>
-                            <button onClick={() => { if(window.confirm('האם להעביר אימון חיצוני זה לארכיון?')) setExternalWorkouts(prev => prev.map(ext => ext.id === w.id ? { ...ext, is_archived: true } : ext)); }} className="text-red-500 hover:bg-red-50 border border-transparent hover:border-red-100 px-2 py-1.5 rounded-lg transition" title="העברה לארכיון">
+<button onClick={() => { if(window.confirm('האם באמת למחוק אימון חיצוני זה מהארכיון לצמיתות?')) { supabase.from('external_workouts').delete().eq('id', w.id).then(); setExternalWorkouts(prev => prev.filter(ext => ext.id !== w.id)); } }} className="text-red-500 hover:bg-red-50 border border-transparent hover:border-red-100 px-2 py-1.5 rounded-lg transition" title="מחיקת אימון אישי לצמיתות">
                           <Trash2 size={16}/>
                         </button>
                           </>
@@ -3167,9 +3160,12 @@ const AdminDashboard = ({
                       onClick={() => {
                         if(window.confirm('האם למחוק את המשתמש לגמרי מהארכיון?')) {
                           if(window.confirm('האם למחוק גם מהדוחות הכספיים?\n\nאישור (כן) = מחיקה מוחלטת כולל כספים\nביטול (לא) = המשתמש יימחק מהארכיון אך סכומיו יישמרו בדוחות')) {
+                            supabase.from('trainees').delete().eq('id', t.id).then();
+                            supabase.from('registrations').delete().eq('user_id', t.id).then();
                             setTrainees(prev => prev.filter(tr => tr.id !== t.id));
                             setRegistrations(prev => prev.filter(r => r.user_id !== t.id));
                           } else {
+                            supabase.from('trainees').update({ is_deleted: true }).eq('id', t.id).then();
                             setTrainees(prev => prev.map(tr => tr.id === t.id ? { ...tr, is_deleted: true } : tr));
                           }
                         }
@@ -3354,7 +3350,7 @@ const AdminDashboard = ({
                         <button onClick={() => setEditExternalWorkoutData(w)} className="text-blue-500 hover:bg-blue-50 border border-transparent hover:border-blue-100 px-2 py-1.5 rounded-lg transition" title="עריכת אימון עבר חיצוני">
                           <Edit size={16}/>
                         </button>
-                        <button onClick={() => { if(window.confirm('האם באמת למחוק אימון חיצוני זה מהארכיון לצמיתות?')) setExternalWorkouts(prev => prev.filter(ext => ext.id !== w.id)); }} className="text-red-500 hover:bg-red-50 border border-transparent hover:border-red-100 px-2 py-1.5 rounded-lg transition" title="מחיקת אימון אישי לצמיתות">
+                        <button onClick={() => { if(window.confirm('האם באמת למחוק אימון חיצוני זה מהארכיון לצמיתות?')) { supabase.from('external_workouts').delete().eq('id', w.id).then(); setExternalWorkouts(prev => prev.filter(ext => ext.id !== w.id)); } }} className="text-red-500 hover:bg-red-50 border border-transparent hover:border-red-100 px-2 py-1.5 rounded-lg transition" title="מחיקת אימון אישי לצמיתות">
                           <Trash2 size={16}/>
                         </button>
                       </div>
@@ -3413,7 +3409,7 @@ const AdminDashboard = ({
                     <img src={item.url} alt="גלריה" className="w-full h-full object-cover" />
                   )}
                   <button 
-                    onClick={() => { if(window.confirm('למחוק פריט זה מהגלריה?')) setGallery(prev => prev.filter(g => g.id !== item.id)); }}
+                    onClick={() => { if(window.confirm('למחוק פריט זה מהגלריה?')) { supabase.from('gallery').delete().eq('id', item.id).then(); setGallery(prev => prev.filter(g => g.id !== item.id)); } }}
                     className="absolute top-2 right-2 bg-red-500 hover:bg-red-600 text-white p-2 rounded-lg opacity-0 group-hover:opacity-100 transition shadow-md"
                   >
                     <Trash2 size={16} />
@@ -3517,6 +3513,7 @@ const AdminDashboard = ({
                           return t;
                         }));
                         // מחיקת הרשומה הפיננסית ושינוי אימונים שחויבו ממנה ל"לא שולם"
+                        supabase.from('registrations').delete().eq('id', reg.id).then();
                         setRegistrations(prev => prev.filter(r => r.id !== reg.id).map(r => {
                           // הופך כל אימון של המתאמנת הזו ששולם בכרטיסייה, בחזרה ללא שולם
                           if (r.user_id === reg.user_id && r.payment_status === 'punch_card') {
@@ -3585,6 +3582,7 @@ const AdminDashboard = ({
                             <button onClick={() => {
                                 if(window.confirm('האם את בטוחה שברצונך למחוק רשומה זו?')) {
                                   if(window.confirm('אזהרה 2: מחיקת הרשומה תסיר אותה לחלוטין מדוח הכספים. להמשיך?')) {
+                                    supabase.from('registrations').delete().eq('id', reg.id).then();
                                     if (reg.payment_status === 'punch_card') {
                                       setTrainees(prev => prev.map(t => {
                                         if (t.id === reg.user_id && t.punch_card) {
@@ -4225,6 +4223,7 @@ const AdminDashboard = ({
                           onClick={() => {
                             if(window.confirm(`להסיר את ${u.full_name} מהאימון?`)) {
                               if(window.confirm('אזהרה כפולה: פעולה זו תמחק את הרישום שלה לאימון זה לחלוטין. להמשיך?')) {
+                                supabase.from('registrations').delete().eq('id', r.id).then();
                                 if (r.payment_status === 'punch_card') {
                                   setTrainees(prev => prev.map(tr => {
                                     if (tr.id === u.id && tr.punch_card) {
@@ -4522,17 +4521,30 @@ export default function App() {
   const loadGlobalState = async () => {
     window.isFetchingData = true; // חסימת שמירה עד לסיום משיכת נתונים טריים
     try {
+      // 1. משיכת הגדרות וביקורים בלבד מהטבלה הישנה
       const { data, error } = await supabase.from('global_app_state').select('state_data').eq('id', 1).single();
-      if (data && data.state_data && Object.keys(data.state_data).length > 0) {
+      if (data && data.state_data) {
         setSettings(data.state_data.settings || DEFAULT_SETTINGS);
-        setWorkouts(data.state_data.workouts || INITIAL_WORKOUTS);
-        setTrainees(data.state_data.trainees || INITIAL_TRAINEES);
-        setRegistrations(data.state_data.registrations || INITIAL_REGISTRATIONS);
-        setWaitlist(data.state_data.waitlist || INITIAL_WAITLIST);
-        setExternalWorkouts(data.state_data.externalWorkouts || INITIAL_EXTERNAL_WORKOUTS);
-        setGallery(data.state_data.gallery || INITIAL_GALLERY);
         setSiteVisits(data.state_data.siteVisits || INITIAL_SITE_VISITS);
       }
+
+      // 2. משיכת כל שאר הנתונים מהטבלאות הנפרדות האמיתיות
+      const [traineesRes, workoutsRes, regsRes, waitlistRes, extWorkoutsRes, galleryRes] = await Promise.all([
+        supabase.from('trainees').select('*'),
+        supabase.from('workouts').select('*'),
+        supabase.from('registrations').select('*'),
+        supabase.from('waitlist').select('*'),
+        supabase.from('external_workouts').select('*'),
+        supabase.from('gallery').select('*')
+      ]);
+
+      if (traineesRes.data) setTrainees(traineesRes.data);
+      if (workoutsRes.data) setWorkouts(workoutsRes.data);
+      if (regsRes.data) setRegistrations(regsRes.data);
+      if (waitlistRes.data) setWaitlist(waitlistRes.data);
+      if (extWorkoutsRes.data) setExternalWorkouts(extWorkoutsRes.data);
+      if (galleryRes.data) setGallery(galleryRes.data);
+
     } catch (err) {
       console.error("Error loading from Supabase:", err);
     } finally {
@@ -4554,25 +4566,53 @@ export default function App() {
     return () => document.removeEventListener('visibilitychange', handleVisibility);
   }, []);
 
-  // שמירת הנתונים ל-Supabase אוטומטית בכל שינוי
-  const isInitialMount = useRef(true);
+// פיצול השמירה האוטומטית לטבלאות נפרדות (למניעת דריסות צולבות)
+  const isInitialMount = useRef({ trainees: true, workouts: true, registrations: true, waitlist: true, externalWorkouts: true, gallery: true, settings: true });
+
   useEffect(() => {
     if (!isDataLoaded) return;
-    if (isInitialMount.current) {
-      isInitialMount.current = false;
-      return; // מונע שמירה אוטומטית ריקה בשנייה שהאתר נטען!
-    }
-    
-    const saveGlobalState = async () => {
-      if (window.isFetchingData) return; // מניעת "חזרה בזמן" - לא דורסים נתונים בזמן משיכה
+    if (isInitialMount.current.trainees) { isInitialMount.current.trainees = false; return; }
+    if (!window.isFetchingData && trainees.length > 0) supabase.from('trainees').upsert(trainees);
+  }, [trainees, isDataLoaded]);
+
+  useEffect(() => {
+    if (!isDataLoaded) return;
+    if (isInitialMount.current.workouts) { isInitialMount.current.workouts = false; return; }
+    if (!window.isFetchingData && workouts.length > 0) {
       const sortedWorkouts = [...workouts].sort((a, b) => new Date(`${a.date}T${a.time}`) - new Date(`${b.date}T${b.time}`));
-      const sortedExternal = [...externalWorkouts].sort((a, b) => new Date(`${a.date}T${a.time}`) - new Date(`${b.date}T${b.time}`));
-      const stateToSave = { settings, workouts: sortedWorkouts, trainees, registrations, waitlist, externalWorkouts: sortedExternal, gallery, siteVisits };
-      await supabase.from('global_app_state').upsert({ id: 1, state_data: stateToSave });
-    };
-    
-    saveGlobalState();
-  }, [settings, workouts, trainees, registrations, waitlist, externalWorkouts, gallery, isDataLoaded]); // siteVisits הוסר מכאן בכוונה
+      supabase.from('workouts').upsert(sortedWorkouts);
+    }
+  }, [workouts, isDataLoaded]);
+
+  useEffect(() => {
+    if (!isDataLoaded) return;
+    if (isInitialMount.current.registrations) { isInitialMount.current.registrations = false; return; }
+    if (!window.isFetchingData && registrations.length > 0) supabase.from('registrations').upsert(registrations);
+  }, [registrations, isDataLoaded]);
+
+  useEffect(() => {
+    if (!isDataLoaded) return;
+    if (isInitialMount.current.waitlist) { isInitialMount.current.waitlist = false; return; }
+    if (!window.isFetchingData && waitlist.length > 0) supabase.from('waitlist').upsert(waitlist);
+  }, [waitlist, isDataLoaded]);
+
+  useEffect(() => {
+    if (!isDataLoaded) return;
+    if (isInitialMount.current.externalWorkouts) { isInitialMount.current.externalWorkouts = false; return; }
+    if (!window.isFetchingData && externalWorkouts.length > 0) supabase.from('external_workouts').upsert(externalWorkouts);
+  }, [externalWorkouts, isDataLoaded]);
+
+  useEffect(() => {
+    if (!isDataLoaded) return;
+    if (isInitialMount.current.gallery) { isInitialMount.current.gallery = false; return; }
+    if (!window.isFetchingData && gallery.length > 0) supabase.from('gallery').upsert(gallery);
+  }, [gallery, isDataLoaded]);
+
+  useEffect(() => {
+    if (!isDataLoaded) return;
+    if (isInitialMount.current.settings) { isInitialMount.current.settings = false; return; }
+    if (!window.isFetchingData) supabase.from('global_app_state').upsert({ id: 1, state_data: { settings, siteVisits } });
+  }, [settings, siteVisits, isDataLoaded]);
 
   const [appReady, setAppReady] = useState(false);
   useEffect(() => {
