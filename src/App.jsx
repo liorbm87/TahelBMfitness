@@ -1237,7 +1237,7 @@ const UserView = ({
   const upcomingWorkouts = workouts
     .filter(w => {
       const wDate = new Date(`${w.date}T${w.time}`);
-      return wDate >= now && wDate <= threeWeeksFromNow && !w.is_archived;
+      return wDate >= now && wDate <= threeWeeksFromNow;
     })
     .sort((a, b) => new Date(`${a.date}T${a.time}`) - new Date(`${b.date}T${b.time}`));
 
@@ -1752,12 +1752,14 @@ const AdminDashboard = ({
       if (reg.is_punch_card_purchase) {
         const dateToUse = reg.payment_date || reg.created_at;
         months.add(dateToUse.substring(0, 7));
+        months.add(dateToUse.substring(0, 4)); // הוספת אופציית שנה שלמה
         return;
       }
       const w = workouts.find(wo => wo.id === reg.workout_id);
       if (w && w.date) {
         const dateToUse = (reg.payment_status !== 'unpaid' && reg.payment_date) ? reg.payment_date : w.date;
         months.add(dateToUse.substring(0, 7)); // שומר פורמט YYYY-MM
+        months.add(dateToUse.substring(0, 4)); // הוספת אופציית שנה שלמה
       }
     });
     return Array.from(months).sort((a, b) => b.localeCompare(a)); // ממיין מהחדש לישן
@@ -2518,8 +2520,22 @@ const AdminDashboard = ({
             <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b pb-3 mb-4 gap-2">
               <h3 className="font-extrabold text-gray-900 text-base">הלו"ז האישי שלי (לעינייך בלבד)</h3>
               <div className="flex items-center gap-2">
-                <span className="text-xs font-bold text-gray-600">סינון לפי חודש:</span>
-                <input type="month" value={selectedAdminMonth} onChange={(e) => setSelectedAdminMonth(e.target.value)} className="p-1.5 border rounded-lg text-xs font-bold outline-none shadow-sm" />
+                <span className="text-xs font-bold text-gray-600">סינון:</span>
+                <div className="flex border rounded-lg overflow-hidden shadow-sm">
+                  <select 
+                    value={selectedAdminMonth.length === 4 ? 'year' : 'month'} 
+                    onChange={(e) => setSelectedAdminMonth(e.target.value === 'year' ? new Date().getFullYear().toString() : new Date().toISOString().substring(0, 7))}
+                    className="p-1.5 text-xs font-bold bg-gray-50 outline-none border-l cursor-pointer"
+                  >
+                    <option value="month">חודש</option>
+                    <option value="year">שנה</option>
+                  </select>
+                  {selectedAdminMonth.length === 4 ? (
+                    <input type="number" min="2020" max="2030" value={selectedAdminMonth} onChange={(e) => setSelectedAdminMonth(e.target.value)} className="p-1.5 w-20 text-xs font-bold outline-none text-center" />
+                  ) : (
+                    <input type="month" value={selectedAdminMonth} onChange={(e) => setSelectedAdminMonth(e.target.value)} className="p-1.5 text-xs font-bold outline-none" />
+                  )}
+                </div>
               </div>
             </div>
             
@@ -2835,7 +2851,21 @@ const AdminDashboard = ({
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
               <h4 className="font-bold text-gray-900 text-sm flex items-center gap-2">
                 אימונים עתידיים ({workouts.filter(w => new Date(`${w.date}T${w.time}`) >= new Date()).length})
-                <input type="month" value={selectedAdminMonth} onChange={(e) => setSelectedAdminMonth(e.target.value)} className="ml-2 p-1.5 border rounded-lg text-xs font-bold outline-none shadow-sm" />
+                <div className="flex border rounded-lg overflow-hidden shadow-sm ml-2 font-normal">
+                  <select 
+                    value={selectedAdminMonth.length === 4 ? 'year' : 'month'} 
+                    onChange={(e) => setSelectedAdminMonth(e.target.value === 'year' ? new Date().getFullYear().toString() : new Date().toISOString().substring(0, 7))}
+                    className="p-1 text-xs bg-gray-50 outline-none border-l cursor-pointer font-bold"
+                  >
+                    <option value="month">חודש</option>
+                    <option value="year">שנה</option>
+                  </select>
+                  {selectedAdminMonth.length === 4 ? (
+                    <input type="number" min="2020" max="2030" value={selectedAdminMonth} onChange={(e) => setSelectedAdminMonth(e.target.value)} className="p-1 w-16 text-xs outline-none text-center font-bold" />
+                  ) : (
+                    <input type="month" value={selectedAdminMonth} onChange={(e) => setSelectedAdminMonth(e.target.value)} className="p-1 text-xs outline-none font-bold" />
+                  )}
+                </div>
               </h4>
               <div className="relative">
                 <Search size={16} className="absolute right-3 top-2.5 text-gray-400" />
@@ -3419,7 +3449,21 @@ const AdminDashboard = ({
                     <Archive size={18} className="text-blue-600" /> {archiveExternalStudioFilter ? `שעות עבודה (${archiveExternalStudioFilter})` : 'ארכיון אימונים חיצוניים'}
                   </h3>
                   <div className="flex flex-wrap items-center gap-2">
-                    <input type="month" value={selectedAdminMonth} onChange={(e) => setSelectedAdminMonth(e.target.value)} className="p-2 border border-blue-200 rounded-xl text-xs outline-none bg-white font-semibold text-blue-900 shadow-sm" />
+                    <div className="flex border border-blue-200 rounded-xl overflow-hidden shadow-sm bg-white">
+                      <select 
+                        value={selectedAdminMonth.length === 4 ? 'year' : 'month'} 
+                        onChange={(e) => setSelectedAdminMonth(e.target.value === 'year' ? new Date().getFullYear().toString() : new Date().toISOString().substring(0, 7))}
+                        className="p-2 text-xs bg-blue-50 outline-none border-l border-blue-200 cursor-pointer font-bold text-blue-900"
+                      >
+                        <option value="month">לפי חודש</option>
+                        <option value="year">לפי שנה</option>
+                      </select>
+                      {selectedAdminMonth.length === 4 ? (
+                        <input type="number" min="2020" max="2030" value={selectedAdminMonth} onChange={(e) => setSelectedAdminMonth(e.target.value)} className="p-2 w-20 text-xs outline-none text-center font-semibold text-blue-900" />
+                      ) : (
+                        <input type="month" value={selectedAdminMonth} onChange={(e) => setSelectedAdminMonth(e.target.value)} className="p-2 text-xs outline-none font-semibold text-blue-900" />
+                      )}
+                    </div>
                     <select 
                       value={archiveExternalStudioFilter} 
                       onChange={e => setArchiveExternalStudioFilter(e.target.value)}
@@ -3595,7 +3639,7 @@ const AdminDashboard = ({
               >
                 {availableFinanceMonths.length === 0 && <option value="">אין נתונים</option>}
                 {availableFinanceMonths.map(m => (
-                  <option key={m} value={m}>{m.split('-').reverse().join('/')}</option>
+                  <option key={m} value={m}>{m.length === 4 ? `שנת ${m}` : m.split('-').reverse().join('/')}</option>
                 ))}
               </select>
               <button 
