@@ -2515,7 +2515,13 @@ const AdminDashboard = ({
             </button>
           </div>
           <div className="bg-white/95 p-6 rounded-3xl shadow-md border border-gray-100">
-            <h3 className="font-extrabold text-gray-900 text-base border-b pb-3 mb-4">הלו"ז האישי שלי (לעינייך בלבד)</h3>
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b pb-3 mb-4 gap-2">
+              <h3 className="font-extrabold text-gray-900 text-base">הלו"ז האישי שלי (לעינייך בלבד)</h3>
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-bold text-gray-600">סינון לפי חודש:</span>
+                <input type="month" value={selectedAdminMonth} onChange={(e) => setSelectedAdminMonth(e.target.value)} className="p-1.5 border rounded-lg text-xs font-bold outline-none shadow-sm" />
+              </div>
+            </div>
             
             <details className="group mb-6 bg-blue-50/50 border border-blue-200 p-4 rounded-2xl">
               <summary className="font-extrabold text-blue-900 text-sm flex items-center justify-between cursor-pointer list-none outline-none">
@@ -2588,7 +2594,7 @@ const AdminDashboard = ({
             <div className="space-y-3 mt-4">
               <h4 className="font-bold text-sm text-gray-800">כל האימונים הקרובים (כולל אימוני סטודיו ופרטיים):</h4>
               {[...workouts.map(w => ({ ...w, isStudio: true })), ...externalWorkouts.map(w => ({ ...w, isStudio: false }))]
-                .filter(w => new Date(`${w.date}T${w.time}`) >= new Date() && !w.is_archived)
+                .filter(w => new Date(`${w.date}T${w.time}`) >= new Date() && !w.is_archived && w.date.startsWith(selectedAdminMonth))
                 .sort((a, b) => new Date(`${a.date}T${a.time}`) - new Date(`${b.date}T${b.time}`))
                 .map(w => {
                   const navLink = `https://waze.com/ul?q=${encodeURIComponent(w.location)}`;
@@ -2837,7 +2843,7 @@ const AdminDashboard = ({
               </div>
             </div>
             
-            {workouts.filter(w => new Date(`${w.date}T${w.time}`) >= new Date() && w.date.startsWith(selectedAdminMonth)).filter(w => {
+            {workouts.filter(w => new Date(`${w.date}T${w.time}`) >= new Date() && !w.is_archived && w.date.startsWith(selectedAdminMonth)).filter(w => {
               if (!searchWorkoutQuery) return true;
               const q = searchWorkoutQuery.toLowerCase();
               return w.type.toLowerCase().includes(q) || w.location.toLowerCase().includes(q) || w.date.includes(q) || w.price.toString().includes(q);
