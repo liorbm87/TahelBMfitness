@@ -562,26 +562,12 @@ const UserView = ({
 
   const handleLoginSubmit = async (e) => {
     e.preventDefault();
-    // Optimistic UI & Backward Compatibility: מחפש קודם במערך המקומי (לפי ת.ז או מייל)
+    // חזרה למערכת האימות המקומית המהירה כדי למנוע ייצור טוקנים שגויים (401)
     const localUser = trainees.find(t => t.id_number === loginIdNumber || t.email === loginIdNumber);
     
     if (localUser && localUser.phone === loginPassword) {
       setCurrentUser(localUser);
-      return; // סיום אופטימיסטי, מייצר חווית חיבור מיידית גם אם ה-Auth בטעינה
-    }
-
-    try {
-      // Supabase Auth Integration
-      const userEmailToAuth = localUser ? localUser.email : loginIdNumber;
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email: userEmailToAuth,
-        password: loginPassword // הסיסמה מבוססת על הטלפון כפי שהוגדר
-      });
-      
-      if (error) throw error;
-      const dbUser = trainees.find(t => t.email === data.user.email);
-      if (dbUser) setCurrentUser(dbUser);
-    } catch (err) {
+    } else {
       alert('שגיאה בהתחברות: תעודת זהות/אימייל או סיסמה שגויים. (הסיסמה היא מספר הטלפון שלך)');
     }
   };
@@ -5011,6 +4997,7 @@ export default function App() {
 
   // טעינת הנתונים מ-Supabase בפתיחת האתר וגם בחזרה לכרטיסייה (למניעת דריסת נתונים)
   useEffect(() => {
+    supabase.auth.signOut(); // מחיקת טוקנים פגומים ממערכת ההפעלה שגורמים לשגיאת 401
     loadGlobalState();
     
     const handleVisibility = () => {
