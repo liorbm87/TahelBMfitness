@@ -617,6 +617,7 @@ const UserView = ({
 
       setTrainees(prev => [...prev, newTrainee]);
       setCurrentUser(newTrainee);
+      supabase.from('trainees').upsert(newTrainee).then(); // שמירה מיידית וישירה למסד הנתונים למניעת אובדן בריענון
       
       trackConversion('CompleteRegistration', {
         content_name: 'Trainee Sign Up',
@@ -1919,6 +1920,7 @@ const AdminDashboard = ({
     }));
 
     setWorkouts(prev => [...newWorkouts, ...prev]);
+    supabase.from('workouts').upsert(newWorkouts).then(); // דחיפה מיידית ל-DB
     alert(`נוצרו בהצלחה ${newWorkouts.length} אימונים!`);
     
     setNewWorkout({
@@ -1934,39 +1936,56 @@ const AdminDashboard = ({
     setRecurringWeeks(0);
   };
 
-  const handleDeleteWorkout = async (id) => {
+  const handleDeleteWorkout = async (id, isPermanent = false) => {
     const workoutToDelete = workouts.find(w => w.id === id);
     if (!workoutToDelete) return;
 
-    const confirmInitial = window.confirm('האם להתחיל בתהליך מחיקת אימון זה? (כל הרשמות המתאמנים יבוטלו)');
+    const actionText = isPermanent ? 'למחוק לצמיתות' : 'להעביר לארכיון';
+    const effectText = isPermanent ? '(הפעולה בלתי הפיכה והנתונים יימחקו)' : '(הנתונים והרשמות המתאמנים יישמרו בארכיון)';
+
+    const confirmInitial = window.confirm(`האם ${actionText} אימון זה? ${effectText}`);
     if (!confirmInitial) return;
 
-    if (workoutToDelete.is_recurring && workoutToDelete.recurring_group_id) {
-      const deleteSeries = window.confirm('אימון זה מחזורי! האם למחוק את כל האימונים העתידיים בסדרה?\n(לחצי "אישור" למחיקת כל הסדרה, או "ביטול" למחיקת אימון זה בלבד)');
+    if (workoutToDelete.is_recurring && workoutToDelete.recurring_group_id && !isPermanent) {
+      const deleteSeries = window.confirm(`אימון זה מחזורי! האם ${actionText} את כל האימונים העתידיים בסדרה?\n(לחצי "אישור" לכל הסדרה, או "ביטול" לאימון זה בלבד)`);
       
       if (deleteSeries) {
         const wDate = new Date(`${workoutToDelete.date}T${workoutToDelete.time}`);
         const idsToDelete = workouts.filter(w => w.recurring_group_id === workoutToDelete.recurring_group_id && new Date(`${w.date}T${w.time}`) >= wDate).map(w => w.id);
         
-        await supabase.from('workouts').delete().in('id', idsToDelete);
-        await supabase.from('registrations').delete().in('workout_id', idsToDelete);
-
-        setWorkouts(prev => prev.filter(w => !idsToDelete.includes(w.id)));
-        setRegistrations(prev => prev.filter(r => !idsToDelete.includes(r.workout_id)));
-        alert(`נמחקו בהצלחה ${idsToDelete.length} אימונים (הסדרה כולה קדימה).`);
+        if (isPermanent) {
+          await supabase.from('workouts').delete().in('id', idsToDelete);
+          await supabase.from('registrations').delete().in('workout_id', idsToDelete);
+          setWorkouts(prev => prev.filter(w => !idsToDelete.includes(w.id)));
+          setRegistrations(prev => prev.filter(r => !idsToDelete.includes(r.workout_id)));
+        } else {
+          await supabase.from('workouts').update({ is_archived: true }).in('id', idsToDelete);
+          setWorkouts(prev => prev.map(w => idsToDelete.includes(w.id) ? { ...w, is_archived: true } : w));
+        }
+        alert(`הפעולה בוצעה על ${idsToDelete.length} אימונים בהצלחה.`);
       } else {
+        if (isPermanent) {
+          await supabase.from('workouts').delete().eq('id', id);
+          await supabase.from('registrations').delete().eq('workout_id', id);
+          setWorkouts(prev => prev.filter(w => w.id !== id));
+          setRegistrations(prev => prev.filter(r => r.workout_id !== id));
+        } else {
+          await supabase.from('workouts').update({ is_archived: true }).eq('id', id);
+          setWorkouts(prev => prev.map(w => w.id === id ? { ...w, is_archived: true } : w));
+        }
+        alert('הפעולה על האימון הבודד בוצעה בהצלחה.');
+      }
+    } else {
+      if (isPermanent) {
         await supabase.from('workouts').delete().eq('id', id);
         await supabase.from('registrations').delete().eq('workout_id', id);
         setWorkouts(prev => prev.filter(w => w.id !== id));
         setRegistrations(prev => prev.filter(r => r.workout_id !== id));
-        alert('האימון הבודד נמחק בהצלחה.');
+      } else {
+        await supabase.from('workouts').update({ is_archived: true }).eq('id', id);
+        setWorkouts(prev => prev.map(w => w.id === id ? { ...w, is_archived: true } : w));
       }
-    } else {
-      await supabase.from('workouts').delete().eq('id', id);
-      await supabase.from('registrations').delete().eq('workout_id', id);
-      setWorkouts(prev => prev.filter(w => w.id !== id));
-      setRegistrations(prev => prev.filter(r => r.workout_id !== id));
-      alert('האימון נמחק בהצלחה.');
+      alert('הפעולה בוצעה בהצלחה.');
     }
   };
 
@@ -2022,6 +2041,7 @@ const AdminDashboard = ({
       const updatedPrev = prev.map(w => w.id === editWorkoutData.id ? updatedCurrentWorkout : w);
       return [...newWorkoutsToAdd, ...updatedPrev];
     });
+    supabase.from('workouts').upsert([updatedCurrentWorkout, ...newWorkoutsToAdd]).then(); // שמירה מיידית של השינויים
 
     setEditWorkoutData(null);
     setRecurringWeeks(0);
@@ -2512,7 +2532,9 @@ const AdminDashboard = ({
                   if (!confirmPast) return;
                 }
                 const trimmedType = newExternalWorkout.type.trim();
-                setExternalWorkouts(prev => [...prev, { id: 'ext_' + Date.now(), ...newExternalWorkout, type: trimmedType }]);
+                const newExt = { id: 'ext_' + Date.now(), ...newExternalWorkout, type: trimmedType };
+                setExternalWorkouts(prev => [...prev, newExt]);
+                supabase.from('external_workouts').upsert(newExt).then(); // קליטה ישירה ל-DB
                 setNewExternalWorkout({ type: '', date: new Date().toISOString().split('T')[0], time: '', duration: '', location: '' });
                 if (isPast) {
                   alert('תאריך עבר נקלט: האימון החיצוני נוצר והועבר אוטומטית לארכיון!');
@@ -2582,9 +2604,9 @@ const AdminDashboard = ({
                             <button onClick={() => setEditExternalWorkoutData(w)} className="text-blue-500 hover:bg-blue-50 border border-transparent hover:border-blue-100 px-2 py-1.5 rounded-lg transition" title="עריכת אימון חיצוני">
                               <Edit size={16}/>
                             </button>
-<button onClick={() => { if(window.confirm('האם באמת למחוק אימון חיצוני זה מהארכיון לצמיתות?')) { supabase.from('external_workouts').delete().eq('id', w.id).then(); setExternalWorkouts(prev => prev.filter(ext => ext.id !== w.id)); } }} className="text-red-500 hover:bg-red-50 border border-transparent hover:border-red-100 px-2 py-1.5 rounded-lg transition" title="מחיקת אימון אישי לצמיתות">
-                          <Trash2 size={16}/>
-                        </button>
+                            <button onClick={() => { if(window.confirm('האם להעביר אימון חיצוני זה לארכיון?')) { supabase.from('external_workouts').update({ is_archived: true }).eq('id', w.id).then(); setExternalWorkouts(prev => prev.map(ext => ext.id === w.id ? { ...ext, is_archived: true } : ext)); } }} className="text-red-500 hover:bg-red-50 border border-transparent hover:border-red-100 px-2 py-1.5 rounded-lg transition" title="העברה לארכיון">
+                              <Trash2 size={16}/>
+                            </button>
                           </>
                         )}
                       </div>
@@ -3329,7 +3351,7 @@ const AdminDashboard = ({
                         <button onClick={() => setEditWorkoutData(workout)} className="p-2 text-blue-500 hover:bg-blue-50 rounded-xl transition" title="עריכת אימון עבר וניהול משתתפים">
                           <Edit size={18} />
                         </button>
-                        <button onClick={() => handleDeleteWorkout(workout.id)} className="p-2 text-red-500 hover:bg-red-50 rounded-xl transition" title="מחק אימון עבר לצמיתות">
+                        <button onClick={() => handleDeleteWorkout(workout.id, true)} className="p-2 text-red-500 hover:bg-red-50 rounded-xl transition" title="מחק אימון עבר לצמיתות">
                           <Trash2 size={18} />
                         </button>
                       </div>
