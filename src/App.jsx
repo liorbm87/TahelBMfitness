@@ -4970,9 +4970,10 @@ export default function App() {
         const loadedSettings = data.state_data.settings || DEFAULT_SETTINGS;
         setSettings(loadedSettings);
         setSiteVisits(data.state_data.siteVisits || INITIAL_SITE_VISITS);
-        if (loadedSettings.popupActive && !sessionStorage.getItem('popup_seen_session')) {
+        // שימוש בעוגיית סשן: מונע הקפצה בלשונית חדשה, מתאפס רק בסגירת הדפדפן קליל
+        if (loadedSettings.popupActive && !document.cookie.includes('tahel_popup_seen=true')) {
           setShowSitePopup(true);
-          sessionStorage.setItem('popup_seen_session', 'true');
+          document.cookie = "tahel_popup_seen=true; path=/"; 
         }
       }
 
