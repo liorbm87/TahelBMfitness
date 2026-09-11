@@ -3413,39 +3413,77 @@ const AdminDashboard = ({
             </div>
           ) : (
             <div className="bg-blue-50/50 border border-blue-200 p-5 rounded-3xl space-y-4 animate-fadeIn">
-              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-blue-200 pb-3">
-                <h3 className="font-extrabold text-blue-900 text-sm flex items-center gap-2">
-                  <Archive size={18} className="text-blue-600" /> {archiveExternalStudioFilter ? `ארכיון חיצוני (${archiveExternalStudioFilter})` : 'ארכיון אימונים חיצוניים'} ({
-                    externalWorkouts
-                      .filter(w => new Date(`${w.date}T${w.time}`) < new Date() || w.is_archived)
-                      .filter(w => archiveExternalStudioFilter === '' || w.type === archiveExternalStudioFilter)
-                      .filter(w => {
-                        if (!searchWorkoutQuery) return true;
-                        const q = searchWorkoutQuery.toLowerCase();
-                        return w.type.toLowerCase().includes(q) || w.location.toLowerCase().includes(q) || w.date.includes(q);
-                      }).length
-                  })
-                </h3>
-                <div className="flex flex-col sm:flex-row gap-2">
-                  <select 
-                    value={archiveExternalStudioFilter} 
-                    onChange={e => setArchiveExternalStudioFilter(e.target.value)}
-                    className="p-2 border border-blue-200 rounded-xl text-xs outline-none bg-white font-semibold text-blue-900 shadow-sm"
-                  >
-                    <option value="">כל הסטודיואים</option>
-                    {uniqueStudios.map((s, idx) => <option key={idx} value={s}>{s}</option>)}
-                  </select>
-                  <div className="relative">
-                    <Search size={16} className="absolute right-3 top-2.5 text-gray-400" />
-                    <input type="text" placeholder="חיפוש בארכיון החיצוני..." value={searchWorkoutQuery} onChange={(e) => setSearchWorkoutQuery(e.target.value)} className="w-full md:w-64 pl-4 pr-9 py-2 bg-white border border-blue-200 rounded-xl text-xs outline-none focus:border-blue-400 shadow-sm" />
+              <div className="flex flex-col gap-4 border-b border-blue-200 pb-3">
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                  <h3 className="font-extrabold text-blue-900 text-sm flex items-center gap-2">
+                    <Archive size={18} className="text-blue-600" /> {archiveExternalStudioFilter ? `שעות עבודה (${archiveExternalStudioFilter})` : 'ארכיון אימונים חיצוניים'}
+                  </h3>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <input type="month" value={selectedAdminMonth} onChange={(e) => setSelectedAdminMonth(e.target.value)} className="p-2 border border-blue-200 rounded-xl text-xs outline-none bg-white font-semibold text-blue-900 shadow-sm" />
+                    <select 
+                      value={archiveExternalStudioFilter} 
+                      onChange={e => setArchiveExternalStudioFilter(e.target.value)}
+                      className="p-2 border border-blue-200 rounded-xl text-xs outline-none bg-white font-semibold text-blue-900 shadow-sm"
+                    >
+                      <option value="">כל הסטודיואים</option>
+                      {uniqueStudios.map((s, idx) => <option key={idx} value={s}>{s}</option>)}
+                    </select>
+                    <div className="relative">
+                      <Search size={16} className="absolute right-3 top-2.5 text-gray-400" />
+                      <input type="text" placeholder="חיפוש בארכיון..." value={searchWorkoutQuery} onChange={(e) => setSearchWorkoutQuery(e.target.value)} className="w-full md:w-48 pl-4 pr-9 py-2 bg-white border border-blue-200 rounded-xl text-xs outline-none focus:border-blue-400 shadow-sm" />
+                    </div>
                   </div>
                 </div>
+
+                {archiveExternalStudioFilter && (
+                  <div className="flex gap-2 justify-end">
+                    <button onClick={() => {
+                      const filtered = externalWorkouts.filter(w => (new Date(`${w.date}T${w.time}`) < new Date() || w.is_archived) && w.type === archiveExternalStudioFilter && w.date.startsWith(selectedAdminMonth));
+                      if(filtered.length === 0) return alert('אין נתונים לחודש ולסטודיו הזה');
+                      let csvContent = "data:text/csv;charset=utf-8,\uFEFFתאריך,שעות עבודה\n";
+                      filtered.sort((a, b) => new Date(a.date) - new Date(b.date)).forEach(w => {
+                        csvContent += `${w.date.split('-').reverse().join('/')},${w.duration || 0}\n`;
+                      });
+                      const totalHours = filtered.reduce((acc, curr) => acc + Number(curr.duration || 0), 0);
+                      csvContent += `סה"כ שעות,${totalHours}\n`;
+                      const encodedUri = encodeURI(csvContent);
+                      const link = document.createElement("a");
+                      link.setAttribute("href", encodedUri);
+                      link.setAttribute("download", `${archiveExternalStudioFilter} - ${selectedAdminMonth} - שעות עבודה.csv`);
+                      document.body.appendChild(link);
+                      link.click();
+                      document.body.removeChild(link);
+                    }} className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-3 py-2 rounded-xl flex items-center gap-1.5 shadow-sm transition">
+                      <Download size={14} /> הורדת Excel (CSV)
+                    </button>
+
+                    <button onClick={() => {
+                      const filtered = externalWorkouts.filter(w => (new Date(`${w.date}T${w.time}`) < new Date() || w.is_archived) && w.type === archiveExternalStudioFilter && w.date.startsWith(selectedAdminMonth));
+                      if(filtered.length === 0) return alert('אין נתונים לחודש ולסטודיו הזה');
+                      let emailBody = `היי,%0Aמצ"ב פירוט שעות עבודה עבור ${archiveExternalStudioFilter} לחודש ${selectedAdminMonth}:%0A%0A`;
+                      filtered.sort((a, b) => new Date(a.date) - new Date(b.date)).forEach(w => {
+                        emailBody += `${w.date.split('-').reverse().join('/')} - ${w.duration || 0} שעות%0A`;
+                      });
+                      const totalHours = filtered.reduce((acc, curr) => acc + Number(curr.duration || 0), 0);
+                      emailBody += `%0Aסה"כ שעות החודש: ${totalHours}`;
+                      const mailtoLink = document.createElement('a');
+                      mailtoLink.href = `mailto:?subject=דוח שעות עבודה - ${archiveExternalStudioFilter} - ${selectedAdminMonth}&body=${emailBody}`;
+                      mailtoLink.target = '_blank';
+                      document.body.appendChild(mailtoLink);
+                      mailtoLink.click();
+                      document.body.removeChild(mailtoLink);
+                    }} className="bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold px-3 py-2 rounded-xl flex items-center gap-1.5 shadow-sm transition">
+                      <Send size={14} /> שלח במייל
+                    </button>
+                  </div>
+                )}
               </div>
 
               <div className="space-y-3">
                 {externalWorkouts
                   .filter(w => new Date(`${w.date}T${w.time}`) < new Date() || w.is_archived)
                   .filter(w => archiveExternalStudioFilter === '' || w.type === archiveExternalStudioFilter)
+                  .filter(w => w.date.startsWith(selectedAdminMonth))
                   .filter(w => {
                     if (!searchWorkoutQuery) return true;
                     const q = searchWorkoutQuery.toLowerCase();
