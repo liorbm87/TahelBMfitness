@@ -1237,7 +1237,7 @@ const UserView = ({
   const upcomingWorkouts = workouts
     .filter(w => {
       const wDate = new Date(`${w.date}T${w.time}`);
-      return wDate >= now && wDate <= threeWeeksFromNow;
+      return wDate >= now && wDate <= threeWeeksFromNow && !w.is_archived;
     })
     .sort((a, b) => new Date(`${a.date}T${a.time}`) - new Date(`${b.date}T${b.time}`));
 
@@ -3327,7 +3327,7 @@ const AdminDashboard = ({
             </div>
             
             <div className="space-y-4 opacity-80 hover:opacity-100 transition duration-300">
-              {workouts.filter(w => new Date(`${w.date}T${w.time}`) < new Date()).filter(w => {
+              {workouts.filter(w => new Date(`${w.date}T${w.time}`) < new Date() || w.is_archived).filter(w => {
                 if (!searchWorkoutQuery) return true;
                 const q = searchWorkoutQuery.toLowerCase();
                 return w.type.toLowerCase().includes(q) || w.location.toLowerCase().includes(q) || w.date.includes(q);
