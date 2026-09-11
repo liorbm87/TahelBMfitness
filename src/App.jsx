@@ -4095,11 +4095,7 @@ const AdminDashboard = ({
               <h4 className="font-bold text-xs text-indigo-900">ניהול הודעה קופצת (פופאפ) בכניסה לאתר</h4>
               <div className="flex items-center gap-2">
                 <input type="checkbox" id="popupActive" checked={tempSettings.popupActive} onChange={(e) => setTempSettings({...tempSettings, popupActive: e.target.checked})} className="w-4 h-4 cursor-pointer" />
-                <label htmlFor="popupActive" className="text-xs font-bold text-indigo-800 cursor-pointer">הצג הודעה צצה ללקוחות בכניסה לאתר</label>
-              </div>
-              <div className="flex items-center gap-2 mt-2">
-                <input type="checkbox" id="enableProgressTab" checked={tempSettings.enableProgressTab ?? true} onChange={(e) => setTempSettings({...tempSettings, enableProgressTab: e.target.checked})} className="w-4 h-4 cursor-pointer" />
-                <label htmlFor="enableProgressTab" className="text-xs font-bold text-indigo-800 cursor-pointer">להפעיל את 'ההתקדמות שלי'? (ללקוחות)</label>
+                <label htmlFor="popupActive" className="text-xs font-bold text-indigo-800 cursor-pointer">הצג הודעה ללקוחות</label>
               </div>
               <textarea placeholder="טקסט להודעה (ניתן להשתמש בתגיות HTML כמו <br>, <b>, <a>)..." value={tempSettings.popupText || ''} onChange={(e) => setTempSettings({...tempSettings, popupText: e.target.value})} className="w-full p-2 bg-white border border-indigo-200 rounded-lg text-xs outline-none" rows="3" />
               <div className="flex gap-2 items-center">
@@ -4108,7 +4104,13 @@ const AdminDashboard = ({
               </div>
               {tempSettings.popupImageUrl && <img src={tempSettings.popupImageUrl} className="h-20 object-contain rounded border" alt="פופאפ" />}
             </div>
-
+<div className="space-y-3 sm:col-span-2 p-4 bg-pink-50 rounded-2xl border border-pink-100">
+                <h4 className="font-bold text-xs text-pink-900">הגדרות תצוגה ופיצ'רים</h4>
+                <div className="flex items-center gap-2">
+                  <input type="checkbox" id="enableProgressTab" checked={tempSettings.enableProgressTab ?? true} onChange={(e) => setTempSettings({...tempSettings, enableProgressTab: e.target.checked})} className="w-4 h-4 cursor-pointer accent-pink-600" />
+                  <label htmlFor="enableProgressTab" className="text-xs font-bold text-pink-900 cursor-pointer">להפעיל את לשונית 'ההתקדמות שלי' עבור הלקוחות?</label>
+                </div>
+              </div>
             <div className="space-y-2 sm:col-span-2 p-4 bg-gray-50 rounded-2xl border border-gray-200">
               <label className="block text-sm font-bold text-gray-700">סיסמת כניסה למנהלת (לתפריט הנסתר)</label>
               <input 
