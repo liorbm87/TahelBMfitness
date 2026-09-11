@@ -596,9 +596,11 @@ const UserView = ({
       
       setTimeout(() => {
         setIsSaving(false);
-        setPendingWhatsApp(autoApprove 
-          ? `היי תהל! מילאתי מחדש את הצהרת הבריאות. שמי ${updatedUser.full_name}, והמערכת אישרה אותי אוטומטית כי ההצהרה שלי תקינה. נתראה באימונים! 💪` 
-          : `היי תהל! מילאתי מחדש את הצהרת הבריאות. שמי ${updatedUser.full_name}, סימנתי "כן" באחת השאלות אז אני ממתינה לאישור הידני שלך!`);
+        if (autoApprove) {
+          setAuthMode('landing');
+        } else {
+          setPendingWhatsApp(`היי תהל! מילאתי מחדש את הצהרת הבריאות. שמי ${updatedUser.full_name}, סימנתי "כן" באחת השאלות אז אני ממתינה לאישור הידני שלך!`);
+        }
       }, 2500); 
     } else {
       // מצב מתאמנת חדשה
@@ -629,9 +631,11 @@ const UserView = ({
       
       setTimeout(() => {
         setIsSaving(false);
-        setPendingWhatsApp(autoApprove 
-          ? `היי תהל! איזה כיף, נרשמתי לאתר ואושרתי אוטומטית ע"י הצהרת הבריאות! שמי ${formData.first_name} ${formData.last_name}. נתראה באימונים! 🩷` 
-          : `היי תהל! נרשמתי לאתר. שמי ${formData.first_name} ${formData.last_name}. בגלל שסימנתי "כן" באחת השאלות בהצהרה הרפואית, אני צריכה את האישור הידני שלך באפליקציה!`);
+        if (autoApprove) {
+          setAuthMode('landing');
+        } else {
+          setPendingWhatsApp(`היי תהל! נרשמתי לאתר. שמי ${formData.first_name} ${formData.last_name}. בגלל שסימנתי "כן" באחת השאלות בהצהרה הרפואית, אני צריכה את האישור הידני שלך באפליקציה!`);
+        }
       }, 2500);
     }
   };
@@ -2188,18 +2192,18 @@ const AdminDashboard = ({
     }
   };
 
-  const sendEmailWithDetails = (t) => {
+ const sendEmailWithDetails = (t) => {
     const healthQs = { q1: '1. מחלת לב?', q2a: '2א. כאבים בחזה מנוחה?', q2b: '2ב. כאבים בחזה שגרה?', q2c: '2ג. כאבים בפעילות?', q3a: '3א. סחרחורת?', q3b: '3ב. אובדן הכרה?', q4a: '4א. אסטמה תרופות?', q4b: '4ב. אסטמה קוצר נשימה?', q5a: '5א. משפחה לב?', q5b: '5ב. משפחה מוות פתאומי?', q6: '6. אימון רק בהשגחה?', q7: '7. מחלה קבועה?', q8: '8. הריון בסיכון?' };
     let ansTxt = '';
     if (t.health_declaration?.answers) {
       ansTxt = Object.entries(t.health_declaration.answers).map(([k, v]) => `${healthQs[k] || k}: ${v ? 'כן' : 'לא'}`).join('%0A');
     }
-    const emailBody = `שם מלא: ${t.full_name}%0Aתעודת זהות: ${t.id_number || 'לא הוזן'}%0Aתאריך לידה: ${t.dob ? t.dob.split('-').reverse().join('/') : 'לא הוזן'}%0Aטלפון: ${t.phone}%0Aאימייל: ${t.email}%0Aתאריך חתימת הצהרה: ${t.health_declaration?.signed_at || 'לא הוזן'}%0Aיש בעיה רפואית? ${t.health_declaration?.has_medical_condition ? 'כן ⚠️' : 'לא'}%0A%0A--- תשובות שאלון רפואי ---%0A${ansTxt}%0A%0A* שימי לב: קובץ ה-PDF ירד הרגע באופן אוטומטי למחשב/טלפון שלך. תוכלי לגרור או לצרף אותו למייל זה.`;
+    const emailBody = `שם מלא: ${t.full_name}%0Aתעודת זהות: ${t.id_number || 'לא הוזן'}%0Aתאריך לידה: ${t.dob ? t.dob.split('-').reverse().join('/') : 'לא הוזן'}%0Aטלפון: ${t.phone}%0Aאימייל: ${t.email}%0Aתאריך חתימת הצהרה: ${t.health_declaration?.signed_at || 'לא הוזן'}%0Aיש בעיה רפואית? ${t.health_declaration?.has_medical_condition ? 'כן ⚠️' : 'לא'}%0A%0A--- תשובות שאלון רפואי ---%0A${ansTxt}%0A%0A* שימי לב: קובץ ה-PDF ירד הרגע באופן אוטומטי למכשירך. תוכלי לגרור או לצרף אותו למייל זה.`;
     
     exportToPdf(`formal_pdf_${t.id}`, `הצהרת_בריאות_${t.full_name}.pdf`);
     setTimeout(() => {
-      window.location.href = `mailto:?subject=פרטי מתאמנת והצהרת בריאות - ${t.full_name}&body=${emailBody}`;
-    }, 800);
+      window.open(`mailto:?subject=פרטי מתאמנת והצהרת בריאות - ${t.full_name}&body=${emailBody}`, '_self');
+    }, 1500);
   };
 
   const checkAdminNeedsRenewal = (t) => {
@@ -3652,16 +3656,16 @@ const AdminDashboard = ({
                 <Download size={16} /> ייצוא (PDF)
               </button>
               <button 
-                onClick={() => {
-                  exportToPdf('accounting-report-table', `דוח_הכנסות_${financeMonth}.pdf`, 10);
-                  setTimeout(() => {
-                    window.location.href = `mailto:?subject=דוח הכנסות לחודש ${financeMonth}&body=מצ"ב דוח ההכנסות לחודש ${financeMonth}.%0A%0A* שימי לב: קובץ ה-PDF ירד הרגע למכשירך. תוכלי לצרף אותו למייל זה.`;
-                  }, 800);
-                }}
-                className="bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold px-4 py-2.5 rounded-xl flex items-center gap-1.5 shadow-md transition"
-              >
-                <Send size={16} /> שלחי לרו"ח
-              </button>
+              onClick={() => {
+                exportToPdf('accounting-report-table', `דוח_הכנסות_${financeMonth}.pdf`, 10);
+                setTimeout(() => {
+                  window.open(`mailto:?subject=דוח הכנסות לחודש ${financeMonth}&body=מצ"ב דוח ההכנסות לחודש ${financeMonth}.%0A%0A* שימי לב: קובץ ה-PDF ירד הרגע למכשירך. תוכלי לצרף אותו למייל זה.`, '_self');
+                }, 1500);
+              }}
+              className="bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold px-4 py-2.5 rounded-xl flex items-center gap-1.5 shadow-md transition"
+            >
+              <Send size={16} /> שלחי לרו"ח
+            </button>
             </div>
           </div>
 
