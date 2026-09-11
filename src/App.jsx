@@ -5154,8 +5154,27 @@ export default function App() {
         .pdf-export-mode .hide-on-pdf { display: none !important; }
         .pdf-export-mode .show-on-pdf { display: inline-block !important; }
         .show-on-pdf { display: none; }
-        .hidden-tab-content > *:not(.fixed) { display: none !important; }
-      `}</style>
+          .hidden-tab-content > *:not(.fixed) { display: none !important; }
+
+          /* הגדרות גלילה ואיקס דביק שמאלי לכל החלוניות באתר (מודאלים) */
+          .fixed.inset-0 > .bg-white.rounded-3xl,
+          .fixed.inset-0 > div > .bg-white.rounded-3xl {
+            max-height: 90vh !important;
+            overflow-y: auto !important;
+            position: relative !important;
+          }
+          .fixed.inset-0 > .bg-white.rounded-3xl > div:first-child,
+          .fixed.inset-0 > div > .bg-white.rounded-3xl > div:first-child {
+            position: sticky !important;
+            top: -1.5rem !important; /* מכסה את הריווח העליון */
+            background-color: white !important;
+            z-index: 50 !important;
+            padding-top: 1.5rem !important;
+            margin-top: -1.5rem !important;
+            border-bottom: 1px solid #f3f4f6;
+            margin-bottom: 1rem;
+          }
+        `}</style>
       <div dir="rtl" className="text-gray-900 antialiased selection:bg-amber-200 relative min-h-screen">
         <div className="fixed inset-0 z-[-2] bg-cover bg-top h-screen w-screen bg-no-repeat" style={{ backgroundImage: `url(${settings.backgroundUrl})` }}></div>
         <div className="fixed inset-0 z-[-1] bg-gradient-to-b from-white/80 via-white/70 to-white/85 backdrop-blur-[3px]"></div>
@@ -5184,9 +5203,11 @@ export default function App() {
 
           {isPublicGalleryOpen && (
             <div className="fixed inset-0 bg-black/90 backdrop-blur-md flex items-center justify-center p-4 z-[9999] animate-fadeIn">
-              <div className="bg-white/10 p-5 rounded-3xl max-w-4xl w-full max-h-[90vh] overflow-y-auto relative">
-                <button onClick={() => setIsPublicGalleryOpen(false)} className="absolute top-2 left-2 bg-white/20 hover:bg-white/40 text-white p-2 rounded-full transition"><X size={24}/></button>
-                <h3 className="text-white font-black text-2xl mb-6 text-center tracking-wide">גלריית מתאמנות 📸</h3>
+              <div className="bg-[#1a1a1a] border border-white/10 p-6 rounded-3xl max-w-4xl w-full max-h-[90vh] overflow-y-auto relative">
+                <div className="flex justify-between items-center mb-6 sticky -top-6 bg-[#1a1a1a] z-20 pt-6 pb-3 border-b border-white/10">
+                  <h3 className="text-white font-black text-xl tracking-wide">גלריית מתאמנות 📸</h3>
+                  <button onClick={() => setIsPublicGalleryOpen(false)} className="bg-white/10 hover:bg-white/20 text-white p-2 rounded-full transition"><X size={20}/></button>
+                </div>
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
                   {gallery.map(item => (
                     <div key={item.id} className="rounded-xl overflow-hidden shadow-2xl border border-white/20 aspect-square">
@@ -5204,12 +5225,17 @@ export default function App() {
 
 {showSitePopup && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex flex-col items-center justify-center p-4 z-[9999] animate-fadeIn">
-          <div className="bg-white rounded-3xl overflow-hidden max-w-sm w-full shadow-2xl relative border border-amber-200">
-            <button onClick={() => setShowSitePopup(false)} className="absolute top-3 right-3 bg-black/50 hover:bg-black/70 text-white p-1.5 rounded-full transition z-10"><X size={20}/></button>
-            {settings.popupImageUrl && <img src={settings.popupImageUrl} alt="הודעה" className="w-full h-auto object-cover max-h-64" />}
-            <div className="p-6 text-center bg-gradient-to-b from-white to-amber-50/30">
-              <div className="text-sm font-bold text-gray-800 whitespace-pre-wrap" dangerouslySetInnerHTML={{ __html: settings.popupText }} />
-              <button onClick={() => setShowSitePopup(false)} className="mt-5 w-full bg-gradient-to-r from-gray-900 to-amber-900 text-white font-bold py-3 rounded-xl transition shadow-lg">הבנתי, תודה!</button>
+          <div className="bg-white rounded-[24px] overflow-hidden max-w-sm w-full shadow-2xl relative border border-amber-200 flex flex-col max-h-[90vh]">
+            <div className="flex justify-between items-center bg-white p-4 shrink-0 sticky top-0 z-20 border-b border-gray-100">
+              <h3 className="font-bold text-gray-900 text-sm">הודעה מתהל</h3>
+              <button onClick={() => setShowSitePopup(false)} className="bg-gray-100 hover:bg-gray-200 text-gray-600 p-2 rounded-full transition"><X size={20}/></button>
+            </div>
+            <div className="overflow-y-auto">
+              {settings.popupImageUrl && <img src={settings.popupImageUrl} alt="הודעה" className="w-full h-auto object-cover max-h-64" />}
+              <div className="p-6 text-center bg-gradient-to-b from-white to-amber-50/30">
+                <div className="text-sm font-bold text-gray-800 whitespace-pre-wrap" dangerouslySetInnerHTML={{ __html: settings.popupText }} />
+                <button onClick={() => setShowSitePopup(false)} className="mt-5 w-full bg-gradient-to-r from-gray-900 to-amber-900 text-white font-bold py-3 rounded-xl transition shadow-lg">הבנתי, תודה!</button>
+              </div>
             </div>
           </div>
         </div>
