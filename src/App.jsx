@@ -23,13 +23,13 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 const DEFAULT_SETTINGS = {
   logoUrl: '',
   backgroundUrl: 'https://images.unsplash.com/photo-1517838277536-f5f99be501cd?q=80&w=2070&auto=format&fit=crop',
-  adminPassword: '304977804',
   makeWebhookUrl: '',
   cloudinaryCloudName: 'mryir3yi',
   cloudinaryPreset: 'tahel_images',
   popupActive: false,
   popupImageUrl: '',
-  popupText: 'ברוכות הבאות לתהל פיטנס!'
+  popupText: 'ברוכות הבאות לתהל פיטנס!',
+  enableProgressTab: true
 };
 
 const INITIAL_WORKOUTS = [];
@@ -158,9 +158,25 @@ const MainHeader = ({ settings, isAdmin, onOpenAdminLogin, onLogout, currentUser
     }
   };
 
-  const handleSaveProfile = (e) => {
+  const handleSaveProfile = async (e) => {
     e.preventDefault();
-    const updatedUser = { ...currentUser, ...editForm };
+    const { oldPassword, newPassword, ...restEditForm } = editForm;
+
+    // טיפול בשינוי סיסמה
+    if (oldPassword && newPassword) {
+      const { error: signInError } = await supabase.auth.signInWithPassword({ email: currentUser.email, password: oldPassword });
+      if (signInError) {
+        return alert('הסיסמה הנוכחית שגויה. לא ניתן לשנות סיסמה.');
+      }
+      const { error: updateError } = await supabase.auth.updateUser({ password: newPassword });
+      if (updateError) {
+        return alert('שגיאה בעדכון הסיסמה: ' + updateError.message);
+      }
+    }
+
+    const updatedUser = { ...currentUser, ...restEditForm };
+    if (newPassword) updatedUser.phone = newPassword; // סנכרון לוקאלי כדי לא לשבור זיהוי ישן
+
     setCurrentUser(updatedUser);
     setTrainees(prev => prev.map(t => t.id === currentUser.id ? updatedUser : t));
     supabase.from('trainees').upsert(updatedUser).then();
@@ -300,6 +316,11 @@ const MainHeader = ({ settings, isAdmin, onOpenAdminLogin, onLogout, currentUser
                 <label className="block text-xs font-bold text-gray-700 mb-1">אימייל</label>
                 <input required type="email" value={editForm.email} onChange={e => setEditForm({...editForm, email: e.target.value})} className="w-full p-3 bg-gray-50 border rounded-xl text-sm" />
               </div>
+              <div className="pt-3 border-t border-gray-100">
+                <label className="block text-xs font-bold text-gray-700 mb-1">שינוי סיסמה (אופציונלי)</label>
+                <input type="password" placeholder="סיסמה נוכחית (חובה לשינוי)" onChange={e => setEditForm({...editForm, oldPassword: e.target.value})} className="w-full p-2 mb-2 bg-gray-50 border rounded-xl text-sm" />
+                <input type="password" placeholder="סיסמה חדשה" onChange={e => setEditForm({...editForm, newPassword: e.target.value})} className="w-full p-2 bg-gray-50 border rounded-xl text-sm" />
+              </div>
               <div className="bg-amber-50 p-3 rounded-xl border border-amber-100 text-[11px] text-gray-700 space-y-1">
                 <p><strong>תעודת זהות:</strong> {currentUser.id_number || 'לא הוזן'}</p>
                 <p><strong>תאריך לידה:</strong> {currentUser.dob ? currentUser.dob.split('-').reverse().join('/') : 'לא הוזן'}</p>
@@ -394,16 +415,21 @@ const AdminLoginModal = ({ isOpen, onClose, onLogin, currentPassword }) => {
 
   if (!isOpen) return null;
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    if (emailInput.toLowerCase().trim() === 'tahelharari@gmail.com' && (passwordInput === currentPassword || passwordInput === '304977804')) {
+    const { data, error: authError } = await supabase.auth.signInWithPassword({
+      email: emailInput.toLowerCase().trim(),
+      password: passwordInput,
+    });
+
+    if (authError || !data.user) {
+      setError('אימייל או סיסמה שגויים! החיבור נדחה על ידי שרת האבטחה.');
+    } else {
       onLogin();
       setEmailInput('');
       setPasswordInput('');
       setError('');
       onClose();
-    } else {
-      setError('אימייל או סיסמה שגויים! לא ניתן להיכנס.');
     }
   };
 
@@ -562,13 +588,26 @@ const UserView = ({
 
   const handleLoginSubmit = async (e) => {
     e.preventDefault();
-    // חזרה למערכת האימות המקומית המהירה כדי למנוע ייצור טוקנים שגויים (401)
     const localUser = trainees.find(t => t.id_number === loginIdNumber || t.email === loginIdNumber);
-    
-    if (localUser && localUser.phone === loginPassword) {
+
+    if (!localUser) {
+      return alert('משתמשת לא קיימת במערכת. ודאי שהזנת אימייל או ת.ז נכונים.');
+    }
+
+    // נסיון התחברות מאובטח מול Supabase Auth
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email: localUser.email,
+      password: loginPassword,
+    });
+
+    // מעבר חלק (Migration): אם אין יוזר ב-Auth אבל הסיסמה הישנה נכונה, נרשום אותה ל-Auth בשקט
+    if (error && localUser.phone === loginPassword) {
+      await supabase.auth.signUp({ email: localUser.email, password: localUser.phone });
+      setCurrentUser(localUser);
+    } else if (data.user) {
       setCurrentUser(localUser);
     } else {
-      alert('שגיאה בהתחברות: תעודת זהות/אימייל או סיסמה שגויים. (הסיסמה היא מספר הטלפון שלך)');
+      alert('שגיאה בהתחברות: אימייל/ת.ז או סיסמה שגויים.');
     }
   };
 
@@ -1013,7 +1052,15 @@ const UserView = ({
                 <input required type="password" value={loginPassword} onChange={(e) => setLoginPassword(e.target.value)} className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl text-sm outline-none" />
               </div>
               <button type="submit" className="w-full bg-[#c57b6d] hover:bg-[#b06a5c] text-white font-bold py-3.5 rounded-2xl shadow-lg mt-2">היכנסי</button>
-              <button type="button" onClick={() => setAuthMode('landing')} className="w-full text-xs text-gray-500 mt-4 underline text-center block">חזרה לתפריט</button>
+              <div className="flex justify-between items-center mt-4">
+                <button type="button" onClick={async () => {
+                  if(!loginIdNumber || !loginIdNumber.includes('@')) return alert('אנא הקלידי את האימייל שלך בשורת שם המשתמש ולחצי שוב על "שכחתי סיסמה".');
+                  const { error } = await supabase.auth.resetPasswordForEmail(loginIdNumber);
+                  if(error) alert('שגיאה: ' + error.message);
+                  else alert('קישור לאיפוס סיסמה נשלח לאימייל שלך! (בדקי גם בספאם)');
+                }} className="text-xs text-amber-600 font-bold underline">שכחתי סיסמה?</button>
+                <button type="button" onClick={() => setAuthMode('landing')} className="text-xs text-gray-500 underline">חזרה לתפריט</button>
+              </div>
             </form>
           </div>
         )}
@@ -1390,15 +1437,17 @@ const UserView = ({
           <Award size={16} />
           <span>האימונים שלי ({myRegisteredWorkoutIds.length})</span>
         </button>
-      <button 
-      onClick={() => setActiveTab('progress')}
-      className={`flex-1 py-2.5 rounded-xl font-bold text-xs sm:text-sm transition flex items-center justify-center gap-2 ${
-        activeTab === 'progress' ? 'bg-[#c57b6d] text-white shadow-md' : 'text-gray-600 hover:text-gray-900'
-      }`}
-    >
+      {settings.enableProgressTab !== false && (
+        <button 
+          onClick={() => setActiveTab('progress')}
+          className={`flex-1 py-2.5 rounded-xl font-bold text-xs sm:text-sm transition flex items-center justify-center gap-2 ${
+            activeTab === 'progress' ? 'bg-[#c57b6d] text-white shadow-md' : 'text-gray-600 hover:text-gray-900'
+          }`}
+        >
           <Award size={16} />
           <span>ההתקדמות שלי</span>
         </button>
+      )}
       </div>
 
       {activeTab === 'schedule' && (
@@ -4047,6 +4096,10 @@ const AdminDashboard = ({
               <div className="flex items-center gap-2">
                 <input type="checkbox" id="popupActive" checked={tempSettings.popupActive} onChange={(e) => setTempSettings({...tempSettings, popupActive: e.target.checked})} className="w-4 h-4 cursor-pointer" />
                 <label htmlFor="popupActive" className="text-xs font-bold text-indigo-800 cursor-pointer">הצג הודעה צצה ללקוחות בכניסה לאתר</label>
+              </div>
+              <div className="flex items-center gap-2 mt-2">
+                <input type="checkbox" id="enableProgressTab" checked={tempSettings.enableProgressTab ?? true} onChange={(e) => setTempSettings({...tempSettings, enableProgressTab: e.target.checked})} className="w-4 h-4 cursor-pointer" />
+                <label htmlFor="enableProgressTab" className="text-xs font-bold text-indigo-800 cursor-pointer">להפעיל את 'ההתקדמות שלי'? (ללקוחות)</label>
               </div>
               <textarea placeholder="טקסט להודעה (ניתן להשתמש בתגיות HTML כמו <br>, <b>, <a>)..." value={tempSettings.popupText || ''} onChange={(e) => setTempSettings({...tempSettings, popupText: e.target.value})} className="w-full p-2 bg-white border border-indigo-200 rounded-lg text-xs outline-none" rows="3" />
               <div className="flex gap-2 items-center">
