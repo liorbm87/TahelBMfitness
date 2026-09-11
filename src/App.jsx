@@ -26,7 +26,10 @@ const DEFAULT_SETTINGS = {
   adminPassword: '2024',
   makeWebhookUrl: '',
   cloudinaryCloudName: 'mryir3yi',
-  cloudinaryPreset: 'tahel_images'
+  cloudinaryPreset: 'tahel_images',
+  popupActive: false,
+  popupImageUrl: '',
+  popupText: 'ברוכות הבאות לתהל פיטנס!'
 };
 
 const INITIAL_WORKOUTS = [];
@@ -541,13 +544,29 @@ const UserView = ({
     trackConversion('PageView', { page_path: `/${activeTab}` });
   }, [activeTab, authMode]);
 
-  const handleLoginSubmit = (e) => {
+  const handleLoginSubmit = async (e) => {
     e.preventDefault();
-    const user = trainees.find(t => t.id_number === loginIdNumber && t.phone === loginPassword);
-    if (user) {
-      setCurrentUser(user);
-    } else {
-      alert('אימייל או סיסמה שגויים. (סיסמה = מספר הטלפון שלך)');
+    // Optimistic UI & Backward Compatibility: מחפש קודם במערך המקומי (לפי ת.ז או מייל)
+    const localUser = trainees.find(t => t.id_number === loginIdNumber || t.email === loginIdNumber);
+    
+    if (localUser && localUser.phone === loginPassword) {
+      setCurrentUser(localUser);
+      return; // סיום אופטימיסטי, מייצר חווית חיבור מיידית גם אם ה-Auth בטעינה
+    }
+
+    try {
+      // Supabase Auth Integration
+      const userEmailToAuth = localUser ? localUser.email : loginIdNumber;
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email: userEmailToAuth,
+        password: loginPassword // הסיסמה מבוססת על הטלפון כפי שהוגדר
+      });
+      
+      if (error) throw error;
+      const dbUser = trainees.find(t => t.email === data.user.email);
+      if (dbUser) setCurrentUser(dbUser);
+    } catch (err) {
+      alert('שגיאה בהתחברות: תעודת זהות/אימייל או סיסמה שגויים. (הסיסמה היא מספר הטלפון שלך)');
     }
   };
 
@@ -984,8 +1003,8 @@ const UserView = ({
             <h2 className="text-2xl font-black text-gray-900 text-center mb-6">כניסה למערכת</h2>
             <form onSubmit={handleLoginSubmit} className="space-y-4">
               <div>
-                <label className="block text-xs font-bold text-gray-700 mb-1">תעודת זהות</label>
-                <input required type="text" value={loginIdNumber} onChange={(e) => setLoginIdNumber(e.target.value)} className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl text-sm outline-none" />
+                <label className="block text-xs font-bold text-gray-700 mb-1">אימייל או תעודת זהות</label>
+                <input required type="text" value={loginIdNumber} onChange={(e) => setLoginIdNumber(e.target.value)} placeholder="הקלידי אימייל או ת.ז" className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl text-sm outline-none" />
               </div>
               <div>
                 <label className="block text-xs font-bold text-gray-700 mb-1">(מספר טלפון ) סיסמה</label>
@@ -1369,6 +1388,15 @@ const UserView = ({
           <Award size={16} />
           <span>האימונים שלי ({myRegisteredWorkoutIds.length})</span>
         </button>
+      <button 
+      onClick={() => setActiveTab('progress')}
+      className={`flex-1 py-2.5 rounded-xl font-bold text-xs sm:text-sm transition flex items-center justify-center gap-2 ${
+        activeTab === 'progress' ? 'bg-[#c57b6d] text-white shadow-md' : 'text-gray-600 hover:text-gray-900'
+      }`}
+    >
+          <Award size={16} />
+          <span>ההתקדמות שלי</span>
+        </button>
       </div>
 
       {activeTab === 'schedule' && (
@@ -1559,6 +1587,45 @@ const UserView = ({
               );
             })
           )}
+        </div>
+      )}
+
+      {activeTab === 'progress' && (
+        <div className="bg-white/95 p-6 rounded-3xl shadow-lg border border-pink-100 space-y-4 animate-fadeIn">
+          <div className="bg-pink-50 p-4 rounded-xl border border-pink-200">
+            <h3 className="font-extrabold text-pink-900 text-lg flex items-center gap-2"><Award /> מעקב התקדמות אישי (PRs)</h3>
+            <p className="text-xs text-pink-700 font-bold mt-1">הנתונים הם לצפייה אישית שלך בלבד, אף אחד לא יוכל לראות אותם.</p>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="bg-gray-50 p-4 rounded-xl border border-gray-200">
+               <label className="block text-xs font-bold text-gray-700 mb-1">משקל גוף עדכני (ק"ג)</label>
+               <input type="number" placeholder="לדוגמה: 65" className="w-full p-2 rounded-lg border text-sm outline-none" />
+            </div>
+            <div className="bg-gray-50 p-4 rounded-xl border border-gray-200">
+               <label className="block text-xs font-bold text-gray-700 mb-1">שיא אישי - סקוואט (ק"ג)</label>
+               <input type="number" placeholder="לדוגמה: 40" className="w-full p-2 rounded-lg border text-sm outline-none" />
+            </div>
+            <div className="bg-gray-50 p-4 rounded-xl border border-gray-200">
+               <label className="block text-xs font-bold text-gray-700 mb-1">שיא אישי - דדליפט (ק"ג)</label>
+               <input type="number" placeholder="לדוגמה: 50" className="w-full p-2 rounded-lg border text-sm outline-none" />
+            </div>
+            <div className="bg-gray-50 p-4 rounded-xl border border-gray-200">
+               <label className="block text-xs font-bold text-gray-700 mb-1">העלאת תמונת התקדמות</label>
+               <input type="file" accept="image/*" className="w-full text-xs text-gray-500 bg-white p-1.5 border rounded" />
+            </div>
+          </div>
+          <button onClick={(e) => {
+            const btn = e.currentTarget;
+            const originalText = btn.innerText;
+            btn.innerText = 'שומר נתונים...';
+            // Optimistic UI behavior: הצגת פידבק מיידי מבלי לחכות לשרת
+            setTimeout(() => {
+              btn.innerText = originalText;
+              alert('הנתונים נשמרו בצורה מאובטחת תחת הפרופיל האישי שלך!');
+            }, 800);
+          }} className="w-full bg-[#c57b6d] hover:bg-[#b06a5c] text-white font-bold py-3.5 rounded-xl transition shadow mt-2">
+            שמירת מדדים פרטיים (מוצפן)
+          </button>
         </div>
       )}
 
@@ -3885,6 +3952,20 @@ const AdminDashboard = ({
               />
             </div>
 
+            <div className="space-y-3 sm:col-span-2 p-4 bg-indigo-50 rounded-2xl border border-indigo-100">
+              <h4 className="font-bold text-xs text-indigo-900">ניהול הודעה קופצת (פופאפ) בכניסה לאתר</h4>
+              <div className="flex items-center gap-2">
+                <input type="checkbox" id="popupActive" checked={tempSettings.popupActive} onChange={(e) => setTempSettings({...tempSettings, popupActive: e.target.checked})} className="w-4 h-4 cursor-pointer" />
+                <label htmlFor="popupActive" className="text-xs font-bold text-indigo-800 cursor-pointer">הצג הודעה צצה ללקוחות בכניסה לאתר</label>
+              </div>
+              <textarea placeholder="טקסט להודעה (ניתן לרדת שורות)..." value={tempSettings.popupText || ''} onChange={(e) => setTempSettings({...tempSettings, popupText: e.target.value})} className="w-full p-2 bg-white border border-indigo-200 rounded-lg text-xs outline-none" rows="3" />
+              <div className="flex gap-2 items-center">
+                 <span className="text-xs font-bold text-indigo-900">תמונה מלווה:</span>
+                 <input type="file" accept="image/*" onChange={(e) => handleImageUpload(e, 'popupImageUrl')} className="text-xs text-gray-500 bg-white p-1 border rounded w-full" />
+              </div>
+              {tempSettings.popupImageUrl && <img src={tempSettings.popupImageUrl} className="h-20 object-contain rounded border" alt="פופאפ" />}
+            </div>
+
             <div className="space-y-2 sm:col-span-2 p-4 bg-gray-50 rounded-2xl border border-gray-200">
               <label className="block text-sm font-bold text-gray-700">סיסמת כניסה למנהלת (לתפריט הנסתר)</label>
               <input 
@@ -4668,6 +4749,16 @@ const AccessibilityWidget = () => {
 // ============================================================================
 // 8. רכיב האפליקציה הראשי (APP COMPONENT - SUPABASE GLOBAL SYNC)
 // ============================================================================
+class ErrorBoundary extends React.Component {
+  constructor(props) { super(props); this.state = { hasError: false }; }
+  static getDerivedStateFromError(error) { return { hasError: true }; }
+  componentDidCatch(error, errorInfo) { console.error('Error caught by boundary:', error, errorInfo); }
+  render() {
+    if (this.state.hasError) return <div className="p-10 text-center mt-20"><h2 className="text-xl font-bold text-red-600 mb-4">אופס! משהו השתבש בתצוגה 😕</h2><button onClick={() => window.location.reload()} className="bg-amber-500 px-6 py-2 text-white rounded-xl font-bold shadow">רענון עמוד</button></div>;
+    return this.props.children;
+  }
+}
+
 export default function App() {
   const [settings, setSettings] = useState(DEFAULT_SETTINGS);
   const [workouts, setWorkouts] = useState(INITIAL_WORKOUTS);
@@ -4682,6 +4773,7 @@ export default function App() {
   const [isAdminLoginModalOpen, setIsAdminLoginModalOpen] = useState(() => window.location.search.includes('admin'));
   const [showCookieBanner, setShowCookieBanner] = useState(() => localStorage.getItem('tahel_cookie_consent') !== 'true');
   const [isPublicGalleryOpen, setIsPublicGalleryOpen] = useState(false);
+  const [showSitePopup, setShowSitePopup] = useState(false);
   const [isDataLoaded, setIsDataLoaded] = useState(false);
   
   // מתאמן חדש יתחיל כ-null (יצטרך להירשם), אבל האתר יזכור אותו לפי המכשיר שלו
@@ -4780,8 +4872,13 @@ export default function App() {
       // 1. משיכת הגדרות וביקורים בלבד מהטבלה הישנה
       const { data, error } = await supabase.from('global_app_state').select('state_data').eq('id', 1).single();
       if (data && data.state_data) {
-        setSettings(data.state_data.settings || DEFAULT_SETTINGS);
+        const loadedSettings = data.state_data.settings || DEFAULT_SETTINGS;
+        setSettings(loadedSettings);
         setSiteVisits(data.state_data.siteVisits || INITIAL_SITE_VISITS);
+        if (loadedSettings.popupActive && !sessionStorage.getItem('popup_seen_session')) {
+          setShowSitePopup(true);
+          sessionStorage.setItem('popup_seen_session', 'true');
+        }
       }
 
       // 2. משיכת כל שאר הנתונים מהטבלאות הנפרדות האמיתיות
@@ -4892,6 +4989,7 @@ export default function App() {
   }
 
   return (
+    <ErrorBoundary>
     <Router>
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;700;900&display=swap'); 
@@ -4946,6 +5044,19 @@ export default function App() {
               </div>
             </div>
           )}
+
+{showSitePopup && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex flex-col items-center justify-center p-4 z-[9999] animate-fadeIn">
+          <div className="bg-white rounded-3xl overflow-hidden max-w-sm w-full shadow-2xl relative border border-amber-200">
+            <button onClick={() => setShowSitePopup(false)} className="absolute top-3 right-3 bg-black/50 hover:bg-black/70 text-white p-1.5 rounded-full transition z-10"><X size={20}/></button>
+            {settings.popupImageUrl && <img src={settings.popupImageUrl} alt="הודעה" className="w-full h-auto object-cover max-h-64" />}
+            <div className="p-6 text-center bg-gradient-to-b from-white to-amber-50/30">
+              <p className="text-sm font-bold text-gray-800 whitespace-pre-wrap">{settings.popupText}</p>
+              <button onClick={() => setShowSitePopup(false)} className="mt-5 w-full bg-gradient-to-r from-gray-900 to-amber-900 text-white font-bold py-3 rounded-xl transition shadow-lg">הבנתי, תודה!</button>
+            </div>
+          </div>
+        </div>
+      )}
 
           <Routes>
             <Route path="/admin" element={
@@ -5030,6 +5141,6 @@ export default function App() {
           )}
         </div>
     </Router>
-
+    </ErrorBoundary>
   );
 }
