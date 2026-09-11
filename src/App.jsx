@@ -1661,7 +1661,8 @@ const UserView = ({
                     setProgressForm({ id: null, body_weight: '', achievements: '', photo_url: '' });
                     alert('הנתונים נשמרו בצורה מאובטחת תחת הפרופיל האישי שלך!');
                   } else {
-                    alert('שגיאה בשמירה, נסי שוב.');
+                    console.error("Supabase Save Error:", error);
+                    alert('שגיאה בשמירה: ' + (error?.message || 'שגיאת רשת 401'));
                   }
                   btn.innerText = originalText;
                 }} className="flex-1 bg-[#c57b6d] hover:bg-[#b06a5c] text-white font-bold py-3.5 rounded-xl transition shadow mt-2">
@@ -4067,9 +4068,14 @@ const AdminDashboard = ({
             
             <div className="sm:col-span-2 pt-2">
               <button 
-                onClick={() => {
-                  setSettings(tempSettings);
-                  alert('כל ההגדרות נשמרו בהצלחה!');
+                onClick={async () => {
+                  const { error } = await supabase.from('global_app_state').upsert({ id: 1, state_data: { settings: tempSettings, siteVisits } });
+                  if (error) {
+                    alert('שגיאת תקשורת מול השרת: ' + error.message);
+                  } else {
+                    setSettings(tempSettings);
+                    alert('כל ההגדרות נשמרו בהצלחה במסד הנתונים!');
+                  }
                 }}
                 className="w-full bg-gradient-to-r from-gray-900 to-amber-900 text-white font-bold py-4 rounded-xl shadow-lg hover:opacity-95 transition flex items-center justify-center gap-2"
               >
@@ -4997,8 +5003,13 @@ export default function App() {
 
   // טעינת הנתונים מ-Supabase בפתיחת האתר וגם בחזרה לכרטיסייה (למניעת דריסת נתונים)
   useEffect(() => {
-    supabase.auth.signOut(); // מחיקת טוקנים פגומים ממערכת ההפעלה שגורמים לשגיאת 401
-    loadGlobalState();
+    const initData = async () => {
+      await supabase.auth.signOut(); // המתנה לסיום מלא של מחיקת הטוקן
+      // מחיקה ידנית ועמוקה של כל שאריות האבטחה (טוקנים) מהדפדפן שגורמים ל-401
+      Object.keys(localStorage).forEach(key => key.startsWith('sb-') && localStorage.removeItem(key));
+      loadGlobalState();
+    };
+    initData();
     
     const handleVisibility = () => {
       if (document.visibilityState === 'visible') {
