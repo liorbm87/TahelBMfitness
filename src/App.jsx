@@ -1703,6 +1703,7 @@ const AdminDashboard = ({
   });
 
   const [editExternalWorkoutData, setEditExternalWorkoutData] = useState(null);
+  const [archiveMainTab, setArchiveMainTab] = useState('trainees'); // 'trainees' | 'workouts'
   const [archiveWorkoutTab, setArchiveWorkoutTab] = useState('studio'); // 'studio' | 'external'
   const [archiveExternalStudioFilter, setArchiveExternalStudioFilter] = useState('');
 
@@ -2169,7 +2170,12 @@ const AdminDashboard = ({
     
     exportToPdf(`formal_pdf_${t.id}`, `הצהרת_בריאות_${t.full_name}.pdf`);
     setTimeout(() => {
-      window.location.href = `mailto:?subject=פרטי מתאמנת והצהרת בריאות - ${t.full_name}&body=${emailBody}`;
+      const mailtoLink = document.createElement('a');
+      mailtoLink.href = `mailto:?subject=פרטי מתאמנת והצהרת בריאות - ${t.full_name}&body=${emailBody}`;
+      mailtoLink.target = '_blank';
+      document.body.appendChild(mailtoLink);
+      mailtoLink.click();
+      document.body.removeChild(mailtoLink);
     }, 800);
   };
 
@@ -2331,15 +2337,12 @@ const AdminDashboard = ({
     <div className="max-w-6xl mx-auto space-y-6">
       <div className="bg-white/95 backdrop-blur-md p-2 rounded-3xl shadow-lg border border-gray-100 flex flex-wrap gap-1">
         {[
-          { id: 'overview', label: 'סיכום דשבורד', icon: Award },
+          { id: 'overview', label: 'דשבורד', icon: Award },
           { id: 'workouts', label: `ניהול אימונים (${workouts.filter(w => new Date(w.date + 'T' + w.time) >= new Date()).length})`, icon: Calendar },
           { id: 'trainees', label: `מתאמנים (${stats.pendingTraineesCount ? `! ${stats.pendingTraineesCount}` : stats.totalTraineesCount})`, icon: Users },
           { id: 'finance', label: `כספים ורו"ח ${stats.unpaidDebtsList.length ? '⚠️' : ''}`, icon: CreditCard },
-          { id: 'settings', label: 'הגדרות ומיתוג', icon: Settings },
-          { id: 'my_schedule', label: 'הלו"ז שלי', icon: Calendar },
-          { id: 'archive', label: 'ארכיון מתאמנים', icon: Archive },
-          { id: 'archive_workouts', label: 'ארכיון אימונים', icon: Archive }
-       ].map(tab => {
+          { id: 'archive', label: 'ארכיון', icon: Archive }
+        ].map(tab => {
           const Icon = tab.icon;
           const isActive = activeTab === tab.id;
           return (
@@ -2359,16 +2362,24 @@ const AdminDashboard = ({
 
       {activeTab === 'overview' && (
         <div className="space-y-6">
-          <div className="flex justify-between items-center bg-white p-4 rounded-3xl shadow-sm border border-gray-100">
+          <div className="flex flex-wrap justify-between items-center bg-white p-4 rounded-3xl shadow-sm border border-gray-100 gap-2">
             <div>
               <h3 className="font-extrabold text-gray-900 text-lg">סיכום נתונים</h3>
             </div>
-            <button 
-              onClick={() => setActiveTab('manage_gallery')} 
-              className="bg-gradient-to-r from-purple-500 to-pink-500 hover:opacity-90 text-white px-4 py-2 rounded-xl text-sm font-bold flex items-center gap-2 shadow-md transition"
-            >
-              <Eye size={18} /> נהלי גלריית מדיה
-            </button>
+            <div className="flex gap-2">
+              <button 
+                onClick={() => setActiveTab('settings')} 
+                className="bg-gray-100 hover:bg-gray-200 text-gray-800 px-4 py-2 rounded-xl text-sm font-bold flex items-center gap-2 shadow-sm transition"
+              >
+                <Settings size={18} /> הגדרות ומיתוג
+              </button>
+              <button 
+                onClick={() => setActiveTab('manage_gallery')} 
+                className="bg-gradient-to-r from-purple-500 to-pink-500 hover:opacity-90 text-white px-4 py-2 rounded-xl text-sm font-bold flex items-center gap-2 shadow-md transition"
+              >
+                <Eye size={18} /> נהלי גלריית מדיה
+              </button>
+            </div>
           </div>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <div className="bg-white/90 p-5 rounded-3xl shadow-sm border border-gray-100">
@@ -2472,6 +2483,11 @@ const AdminDashboard = ({
 
       {(activeTab === 'my_schedule' || editExternalWorkoutData) && (
         <div className={`space-y-6 ${activeTab !== 'my_schedule' ? 'hidden-tab-content' : ''}`}>
+          <div className="flex justify-end mb-2">
+            <button onClick={() => setActiveTab('workouts')} className="bg-gray-100 hover:bg-gray-200 text-gray-800 px-4 py-2 rounded-xl text-sm font-bold flex items-center gap-2 shadow-sm transition">
+              <ChevronRight size={18} /> חזרה לניהול אימונים
+            </button>
+          </div>
           <div className="bg-white/95 p-6 rounded-3xl shadow-md border border-gray-100">
             <h3 className="font-extrabold text-gray-900 text-base border-b pb-3 mb-4">הלו"ז האישי שלי (לעינייך בלבד)</h3>
             
@@ -2625,6 +2641,14 @@ const AdminDashboard = ({
 
       {(activeTab === 'workouts' || editWorkoutData) && (
         <div className={`space-y-6 ${activeTab !== 'workouts' ? 'hidden-tab-content' : ''}`}>
+          <div className="flex justify-start mb-2">
+            <button 
+              onClick={() => setActiveTab('my_schedule')} 
+              className="bg-blue-50 text-blue-700 hover:bg-blue-100 px-4 py-2 rounded-xl text-sm font-bold flex items-center gap-2 shadow-sm transition border border-blue-200"
+            >
+              <Calendar size={18} /> הלו"ז שלי (אימונים פרטיים וחיצוניים)
+            </button>
+          </div>
           <details className="bg-white/95 p-5 rounded-3xl shadow-md border border-gray-100 group">
             <summary className="font-extrabold text-gray-900 text-base flex items-center justify-between cursor-pointer list-none outline-none">
               <div className="flex items-center gap-2">
@@ -3158,6 +3182,12 @@ const AdminDashboard = ({
 
       {activeTab === 'archive' && (
         <div className="space-y-6">
+          <div className="flex gap-3 mb-2">
+            <button onClick={() => setArchiveMainTab('trainees')} className={`flex-1 py-2.5 rounded-xl font-bold text-sm transition ${archiveMainTab === 'trainees' ? 'bg-gray-800 text-white shadow-md' : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-50'}`}>ארכיון מתאמנים</button>
+            <button onClick={() => setArchiveMainTab('workouts')} className={`flex-1 py-2.5 rounded-xl font-bold text-sm transition ${archiveMainTab === 'workouts' ? 'bg-gray-800 text-white shadow-md' : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-50'}`}>ארכיון אימונים</button>
+          </div>
+
+          {archiveMainTab === 'trainees' && (
           <div className="bg-gray-100 border border-gray-300 p-5 rounded-3xl space-y-4">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-gray-200 pb-3">
               <h3 className="font-extrabold text-gray-900 text-sm flex items-center gap-2">
@@ -3235,12 +3265,11 @@ const AdminDashboard = ({
               )}
             </div>
           </div>
-        </div>
-      )}
+          )}
 
-      {activeTab === 'archive_workouts' && (
-        <div className="space-y-6">
-          {/* כפתורי ניווט פנימיים בארכיון */}
+          {archiveMainTab === 'workouts' && (
+            <div className="space-y-6">
+              {/* כפתורי ניווט פנימיים בארכיון */}
           <div className="flex gap-2">
             <button onClick={() => setArchiveWorkoutTab('studio')} className={`px-4 py-2 rounded-xl font-bold text-sm transition ${archiveWorkoutTab === 'studio' ? 'bg-gray-900 text-white shadow-md' : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-50'}`}>
               ארכיון אימוני סטודיו
@@ -3416,6 +3445,8 @@ const AdminDashboard = ({
               </div>
             </div>
           )}
+            </div>
+          )}
         </div>
       )}
 
@@ -3496,9 +3527,25 @@ const AdminDashboard = ({
               </select>
               <button 
                 onClick={() => exportToPdf('accounting-report-table', `דוח_הכנסות_${financeMonth}.pdf`, 10)}
-                className="bg-gradient-to-r from-gray-900 to-amber-900 text-white text-xs font-bold px-4 py-2.5 rounded-xl flex items-center gap-1.5 shadow-md"
+                className="bg-gradient-to-r from-gray-900 to-amber-900 text-white text-xs font-bold px-4 py-2.5 rounded-xl flex items-center gap-1.5 shadow-md transition"
               >
-                <Download size={16} /> ייצוא דוח לרו"ח (PDF)
+                <Download size={16} /> ייצוא (PDF)
+              </button>
+              <button 
+                onClick={() => {
+                  exportToPdf('accounting-report-table', `דוח_הכנסות_${financeMonth}.pdf`, 10);
+                  setTimeout(() => {
+                    const mailtoLink = document.createElement('a');
+                    mailtoLink.href = `mailto:?subject=דוח הכנסות לחודש ${financeMonth}&body=מצ"ב דוח ההכנסות לחודש ${financeMonth}.%0A%0A* שימי לב: קובץ ה-PDF ירד הרגע באופן אוטומטי למחשב/טלפון שלך. תוכלי לגרור או לצרף אותו למייל זה.`;
+                    mailtoLink.target = '_blank';
+                    document.body.appendChild(mailtoLink);
+                    mailtoLink.click();
+                    document.body.removeChild(mailtoLink);
+                  }, 800);
+                }}
+                className="bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold px-4 py-2.5 rounded-xl flex items-center gap-1.5 shadow-md transition"
+              >
+                <Send size={16} /> שלחי לרו"ח
               </button>
             </div>
           </div>
@@ -3685,7 +3732,10 @@ const AdminDashboard = ({
 
      {activeTab === 'settings' && (
         <div className="bg-white/95 p-6 rounded-3xl shadow-md border border-gray-100 space-y-6">
-          <h3 className="font-extrabold text-gray-900 text-base border-b pb-3">הגדרות מערכת, מיתוג וסיסמאות</h3>
+          <div className="flex items-center gap-3 border-b pb-3">
+            <button onClick={() => setActiveTab('overview')} className="p-2 bg-gray-100 rounded-full hover:bg-gray-200 transition" title="חזרה לדשבורד"><ChevronRight size={20}/></button>
+            <h3 className="font-extrabold text-gray-900 text-base">הגדרות מערכת, מיתוג וסיסמאות</h3>
+          </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
             <div className="space-y-3 p-4 bg-gray-50 rounded-2xl border border-gray-200">
