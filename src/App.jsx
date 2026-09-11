@@ -2198,12 +2198,7 @@ const AdminDashboard = ({
     
     exportToPdf(`formal_pdf_${t.id}`, `הצהרת_בריאות_${t.full_name}.pdf`);
     setTimeout(() => {
-      const mailtoLink = document.createElement('a');
-      mailtoLink.href = `mailto:?subject=פרטי מתאמנת והצהרת בריאות - ${t.full_name}&body=${emailBody}`;
-      mailtoLink.target = '_blank';
-      document.body.appendChild(mailtoLink);
-      mailtoLink.click();
-      document.body.removeChild(mailtoLink);
+      window.location.href = `mailto:?subject=פרטי מתאמנת והצהרת בריאות - ${t.full_name}&body=${emailBody}`;
     }, 800);
   };
 
@@ -3504,20 +3499,28 @@ const AdminDashboard = ({
                     <button onClick={() => {
                       const filtered = externalWorkouts.filter(w => (new Date(`${w.date}T${w.time}`) < new Date() || w.is_archived) && w.type === archiveExternalStudioFilter && w.date.startsWith(selectedAdminMonth));
                       if(filtered.length === 0) return alert('אין נתונים לחודש ולסטודיו הזה');
-                      let emailBody = `היי,%0Aמצ"ב פירוט שעות עבודה עבור ${archiveExternalStudioFilter} לחודש ${selectedAdminMonth}:%0A%0A`;
+                      
+                      let csvContent = "data:text/csv;charset=utf-8,\uFEFFתאריך,שעות עבודה\n";
                       filtered.sort((a, b) => new Date(a.date) - new Date(b.date)).forEach(w => {
-                        emailBody += `${w.date.split('-').reverse().join('/')} - ${w.duration || 0} שעות%0A`;
+                        csvContent += `${w.date.split('-').reverse().join('/')},${w.duration || 0}\n`;
                       });
                       const totalHours = filtered.reduce((acc, curr) => acc + Number(curr.duration || 0), 0);
-                      emailBody += `%0Aסה"כ שעות החודש: ${totalHours}`;
-                      const mailtoLink = document.createElement('a');
-                      mailtoLink.href = `mailto:?subject=דוח שעות עבודה - ${archiveExternalStudioFilter} - ${selectedAdminMonth}&body=${emailBody}`;
-                      mailtoLink.target = '_blank';
-                      document.body.appendChild(mailtoLink);
-                      mailtoLink.click();
-                      document.body.removeChild(mailtoLink);
+                      csvContent += `סה"כ שעות,${totalHours}\n`;
+                      
+                      const encodedUri = encodeURI(csvContent);
+                      const link = document.createElement("a");
+                      link.setAttribute("href", encodedUri);
+                      link.setAttribute("download", `${archiveExternalStudioFilter} - ${selectedAdminMonth} - שעות עבודה.csv`);
+                      document.body.appendChild(link);
+                      link.click();
+                      document.body.removeChild(link);
+
+                      setTimeout(() => {
+                        const emailBody = `היי,%0Aמצ"ב דוח שעות עבודה עבור ${archiveExternalStudioFilter} לחודש ${selectedAdminMonth}.%0Aסה"כ שעות החודש: ${totalHours}.%0A%0A* שימי לב: קובץ ה-Excel ירד הרגע למכשירך, תוכלי לצרף אותו למייל זה.`;
+                        window.location.href = `mailto:?subject=דוח שעות עבודה - ${archiveExternalStudioFilter} - ${selectedAdminMonth}&body=${emailBody}`;
+                      }, 500);
                     }} className="bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold px-3 py-2 rounded-xl flex items-center gap-1.5 shadow-sm transition">
-                      <Send size={14} /> שלח במייל
+                      <Send size={14} /> הורד ושלח במייל
                     </button>
                   </div>
                 )}
@@ -3652,12 +3655,7 @@ const AdminDashboard = ({
                 onClick={() => {
                   exportToPdf('accounting-report-table', `דוח_הכנסות_${financeMonth}.pdf`, 10);
                   setTimeout(() => {
-                    const mailtoLink = document.createElement('a');
-                    mailtoLink.href = `mailto:?subject=דוח הכנסות לחודש ${financeMonth}&body=מצ"ב דוח ההכנסות לחודש ${financeMonth}.%0A%0A* שימי לב: קובץ ה-PDF ירד הרגע באופן אוטומטי למחשב/טלפון שלך. תוכלי לגרור או לצרף אותו למייל זה.`;
-                    mailtoLink.target = '_blank';
-                    document.body.appendChild(mailtoLink);
-                    mailtoLink.click();
-                    document.body.removeChild(mailtoLink);
+                    window.location.href = `mailto:?subject=דוח הכנסות לחודש ${financeMonth}&body=מצ"ב דוח ההכנסות לחודש ${financeMonth}.%0A%0A* שימי לב: קובץ ה-PDF ירד הרגע למכשירך. תוכלי לצרף אותו למייל זה.`;
                   }, 800);
                 }}
                 className="bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold px-4 py-2.5 rounded-xl flex items-center gap-1.5 shadow-md transition"
@@ -4068,9 +4066,67 @@ const AdminDashboard = ({
       {historyModalUser && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50">
           <div className="bg-white rounded-3xl p-6 max-w-lg w-full shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto">
-            <div className="flex justify-between items-center border-b pb-3">
-              <h3 className="font-bold text-base text-gray-900">היסטוריית אימונים - {historyModalUser.full_name}</h3>
-              <button onClick={() => setHistoryModalUser(null)} className="text-gray-400 hover:text-gray-600"><X size={20} /></button>
+            <div className="flex flex-col gap-3 border-b pb-3">
+              <div className="flex justify-between items-center">
+                <h3 className="font-bold text-base text-gray-900">היסטוריית אימונים - {historyModalUser.full_name}</h3>
+                <button onClick={() => setHistoryModalUser(null)} className="text-gray-400 hover:text-gray-600"><X size={20} /></button>
+              </div>
+              <div className="flex gap-2">
+                <button onClick={() => {
+                  const userRegs = registrations.filter(r => r.user_id === historyModalUser.id).sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+                  if(userRegs.length === 0) return alert('אין נתונים לייצוא');
+                  let csvContent = "data:text/csv;charset=utf-8,\uFEFFשם אימון,יום,תאריך,שעה,מיקום,מחיר מחירון,סכום ששולם,סטטוס תשלום\n";
+                  userRegs.forEach(r => {
+                    const w = workouts.find(wo => wo.id === r.workout_id);
+                    if(w) {
+                       const days = ['ראשון', 'שני', 'שלישי', 'רביעי', 'חמישי', 'שישי', 'שבת'];
+                       const [y, m, d] = w.date.split('-');
+                       const dayName = days[new Date(y, m - 1, d).getDay()];
+                       const statusHebrew = r.payment_status === 'paid' ? 'שולם' : r.payment_status === 'punch_card' ? 'כרטיסייה' : 'לא שולם';
+                       csvContent += `"${w.type}","${dayName}","${w.date.split('-').reverse().join('/')}","${w.time}","${w.location}","${w.price}","${r.paid_amount !== undefined ? r.paid_amount : w.price}","${statusHebrew}"\n`;
+                    }
+                  });
+                  const encodedUri = encodeURI(csvContent);
+                  const link = document.createElement("a");
+                  link.setAttribute("href", encodedUri);
+                  link.setAttribute("download", `היסטוריית_אימונים_${historyModalUser.full_name}.csv`);
+                  document.body.appendChild(link);
+                  link.click();
+                  document.body.removeChild(link);
+                }} className="bg-emerald-600 hover:bg-emerald-700 text-white text-[11px] font-bold px-3 py-1.5 rounded-lg flex items-center gap-1 shadow-sm transition">
+                  <Download size={14} /> הורדת Excel
+                </button>
+                <button onClick={() => {
+                  const userRegs = registrations.filter(r => r.user_id === historyModalUser.id).sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+                  if(userRegs.length === 0) return alert('אין נתונים לייצוא');
+                  let csvContent = "data:text/csv;charset=utf-8,\uFEFFשם אימון,יום,תאריך,שעה,מיקום,מחיר מחירון,סכום ששולם,סטטוס תשלום\n";
+                  userRegs.forEach(r => {
+                    const w = workouts.find(wo => wo.id === r.workout_id);
+                    if(w) {
+                       const days = ['ראשון', 'שני', 'שלישי', 'רביעי', 'חמישי', 'שישי', 'שבת'];
+                       const [y, m, d] = w.date.split('-');
+                       const dayName = days[new Date(y, m - 1, d).getDay()];
+                       const statusHebrew = r.payment_status === 'paid' ? 'שולם' : r.payment_status === 'punch_card' ? 'כרטיסייה' : 'לא שולם';
+                       csvContent += `"${w.type}","${dayName}","${w.date.split('-').reverse().join('/')}","${w.time}","${w.location}","${w.price}","${r.paid_amount !== undefined ? r.paid_amount : w.price}","${statusHebrew}"\n`;
+                    }
+                  });
+                  const encodedUri = encodeURI(csvContent);
+                  const link = document.createElement("a");
+                  link.setAttribute("href", encodedUri);
+                  link.setAttribute("download", `היסטוריית_אימונים_${historyModalUser.full_name}.csv`);
+                  document.body.appendChild(link);
+                  link.click();
+                  document.body.removeChild(link);
+                  
+                  setTimeout(() => {
+                    const emailBody = `היי ${historyModalUser.full_name},%0Aמצ"ב קובץ Excel עם היסטוריית האימונים שלך.%0A%0A* שימי לב: הקובץ ירד למכשירך, תוכלי לצרף אותו למייל.`;
+                    const userEmail = historyModalUser.email || '';
+                    window.location.href = `mailto:${userEmail}?subject=היסטוריית אימונים - תהל פיטנס&body=${emailBody}`;
+                  }, 500);
+                }} className="bg-blue-600 hover:bg-blue-700 text-white text-[11px] font-bold px-3 py-1.5 rounded-lg flex items-center gap-1 shadow-sm transition">
+                  <Send size={14} /> שליחה למתאמנת
+                </button>
+              </div>
             </div>
             <div className="space-y-3 max-h-64 overflow-y-auto pr-1">
               {registrations.filter(r => r.user_id === historyModalUser.id).length === 0 ? (
