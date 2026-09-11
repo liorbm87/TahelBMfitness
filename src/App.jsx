@@ -1237,7 +1237,7 @@ const UserView = ({
   const upcomingWorkouts = workouts
     .filter(w => {
       const wDate = new Date(`${w.date}T${w.time}`);
-      return wDate >= now && wDate <= threeWeeksFromNow;
+      return wDate >= now && wDate <= threeWeeksFromNow && !w.is_archived;
     })
     .sort((a, b) => new Date(`${a.date}T${a.time}`) - new Date(`${b.date}T${b.time}`));
 
@@ -2366,7 +2366,7 @@ const AdminDashboard = ({
       <div className="bg-white/95 backdrop-blur-md p-2 rounded-3xl shadow-lg border border-gray-100 flex flex-wrap gap-1">
         {[
           { id: 'overview', label: 'דשבורד', icon: Award },
-          { id: 'workouts', label: `ניהול אימונים (${workouts.filter(w => new Date(w.date + 'T' + w.time) >= new Date()).length})`, icon: Calendar },
+          { id: 'workouts', label: `ניהול אימונים (${workouts.filter(w => new Date(w.date + 'T' + w.time) >= new Date() && !w.is_archived).length})`, icon: Calendar },
           { id: 'trainees', label: `מתאמנים (${stats.pendingTraineesCount ? `! ${stats.pendingTraineesCount}` : stats.totalTraineesCount})`, icon: Users },
           { id: 'finance', label: `כספים ורו"ח ${stats.unpaidDebtsList.length ? '⚠️' : ''}`, icon: CreditCard },
           { id: 'archive', label: 'ארכיון', icon: Archive }
@@ -2850,7 +2850,7 @@ const AdminDashboard = ({
           <div className="space-y-4">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
               <h4 className="font-bold text-gray-900 text-sm flex items-center gap-2">
-                אימונים עתידיים ({workouts.filter(w => new Date(`${w.date}T${w.time}`) >= new Date()).length})
+                אימונים עתידיים ({workouts.filter(w => new Date(`${w.date}T${w.time}`) >= new Date() && !w.is_archived).length})
                 <div className="flex border rounded-lg overflow-hidden shadow-sm ml-2 font-normal">
                   <select 
                     value={selectedAdminMonth.length === 4 ? 'year' : 'month'} 
@@ -3348,7 +3348,7 @@ const AdminDashboard = ({
             <div className="bg-gray-100 border border-gray-300 p-5 rounded-3xl space-y-4 animate-fadeIn">
               <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-gray-200 pb-3">
                 <h3 className="font-extrabold text-gray-900 text-sm flex items-center gap-2">
-                  <Archive size={18} className="text-gray-600" /> היסטוריית אימוני סטודיו ({workouts.filter(w => new Date(`${w.date}T${w.time}`) < new Date()).length})
+                  <Archive size={18} className="text-gray-600" /> היסטוריית אימוני סטודיו ({workouts.filter(w => new Date(`${w.date}T${w.time}`) < new Date() || w.is_archived).length})
                 </h3>
               <div className="relative">
                 <Search size={16} className="absolute right-3 top-2.5 text-gray-400" />
