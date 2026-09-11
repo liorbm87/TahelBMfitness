@@ -4048,7 +4048,7 @@ const AdminDashboard = ({
                 <input type="checkbox" id="popupActive" checked={tempSettings.popupActive} onChange={(e) => setTempSettings({...tempSettings, popupActive: e.target.checked})} className="w-4 h-4 cursor-pointer" />
                 <label htmlFor="popupActive" className="text-xs font-bold text-indigo-800 cursor-pointer">הצג הודעה צצה ללקוחות בכניסה לאתר</label>
               </div>
-              <textarea placeholder="טקסט להודעה (ניתן לרדת שורות)..." value={tempSettings.popupText || ''} onChange={(e) => setTempSettings({...tempSettings, popupText: e.target.value})} className="w-full p-2 bg-white border border-indigo-200 rounded-lg text-xs outline-none" rows="3" />
+              <textarea placeholder="טקסט להודעה (ניתן להשתמש בתגיות HTML כמו <br>, <b>, <a>)..." value={tempSettings.popupText || ''} onChange={(e) => setTempSettings({...tempSettings, popupText: e.target.value})} className="w-full p-2 bg-white border border-indigo-200 rounded-lg text-xs outline-none" rows="3" />
               <div className="flex gap-2 items-center">
                  <span className="text-xs font-bold text-indigo-900">תמונה מלווה:</span>
                  <input type="file" accept="image/*" onChange={(e) => handleImageUpload(e, 'popupImageUrl')} className="text-xs text-gray-500 bg-white p-1 border rounded w-full" />
@@ -5153,7 +5153,7 @@ export default function App() {
             <button onClick={() => setShowSitePopup(false)} className="absolute top-3 right-3 bg-black/50 hover:bg-black/70 text-white p-1.5 rounded-full transition z-10"><X size={20}/></button>
             {settings.popupImageUrl && <img src={settings.popupImageUrl} alt="הודעה" className="w-full h-auto object-cover max-h-64" />}
             <div className="p-6 text-center bg-gradient-to-b from-white to-amber-50/30">
-              <p className="text-sm font-bold text-gray-800 whitespace-pre-wrap">{settings.popupText}</p>
+              <div className="text-sm font-bold text-gray-800 whitespace-pre-wrap" dangerouslySetInnerHTML={{ __html: settings.popupText }} />
               <button onClick={() => setShowSitePopup(false)} className="mt-5 w-full bg-gradient-to-r from-gray-900 to-amber-900 text-white font-bold py-3 rounded-xl transition shadow-lg">הבנתי, תודה!</button>
             </div>
           </div>
