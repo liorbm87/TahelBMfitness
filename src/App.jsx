@@ -592,6 +592,7 @@ const UserView = ({
       const updatedUser = { ...currentUser, health_declaration: healthDecl, needs_renewal: false, is_approved: autoApprove };
       setTrainees(prev => prev.map(t => t.id === currentUser.id ? updatedUser : t));
       setCurrentUser(updatedUser);
+      supabase.from('trainees').upsert(updatedUser).then(); // שמירה מיידית של החידוש במסד הנתונים
       
       setTimeout(() => {
         setIsSaving(false);
@@ -2061,18 +2062,21 @@ const AdminDashboard = ({
   const handleRejectTrainee = (traineeId) => {
     if (window.confirm('האם לדחות את המתאמן/ת ולהעביר לארכיון?')) {
       setTrainees(prev => prev.map(t => t.id === traineeId ? { ...t, is_archived: true, is_approved: false } : t));
+      supabase.from('trainees').update({ is_archived: true, is_approved: false }).eq('id', traineeId).then();
     }
   };
 
   const handleDeleteTrainee = (traineeId, traineeName) => {
     if (window.confirm(`האם להעביר את ${traineeName} לארכיון? המידע שלה יישמר בדוחות הכספיים אך היא תוסר מרשימת הפעילים.`)) {
       setTrainees(prev => prev.map(t => t.id === traineeId ? { ...t, is_archived: true, is_approved: false } : t));
+      supabase.from('trainees').update({ is_archived: true, is_approved: false }).eq('id', traineeId).then();
       alert('המתאמנת הועברה לארכיון בהצלחה.');
     }
   };
 
   const handleRestoreTrainee = (traineeId) => {
     setTrainees(prev => prev.map(t => t.id === traineeId ? { ...t, is_archived: false, is_approved: true } : t));
+    supabase.from('trainees').update({ is_archived: false, is_approved: true }).eq('id', traineeId).then();
     alert('המתאמנת שוחזרה מהארכיון.');
   };
 
@@ -2170,7 +2174,9 @@ const AdminDashboard = ({
       const url = await uploadToCloudinary(file, settings.cloudinaryCloudName, settings.cloudinaryPreset);
       setTrainees(prev => prev.map(t => {
         if (t.id === traineeId) {
-          return { ...t, health_declaration: { ...t.health_declaration, medical_cert_url: url } };
+          const updatedTrainee = { ...t, health_declaration: { ...t.health_declaration, medical_cert_url: url } };
+          supabase.from('trainees').upsert(updatedTrainee).then();
+          return updatedTrainee;
         }
         return t;
       }));
@@ -3169,6 +3175,7 @@ const AdminDashboard = ({
                         if(window.confirm('לדרוש הצהרת בריאות חדשה? המתאמנת תקבל חלונית דרישה בכניסה הבאה לאתר.')) {
                           setTimeout(() => {
                             setTrainees(prev => prev.map(tr => tr.id === t.id ? {...tr, is_approved: false, needs_renewal: true} : tr));
+                            supabase.from('trainees').update({ is_approved: false, needs_renewal: true }).eq('id', t.id).then();
                           }, 150);
                         }
                       }}
