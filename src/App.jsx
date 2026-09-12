@@ -415,6 +415,12 @@ const AdminLoginModal = ({ isOpen, onClose, onLogin, currentPassword }) => {
   const [passwordInput, setPasswordInput] = useState('');
   const [error, setError] = useState('');
 
+  useEffect(() => {
+    if (isOpen) document.body.classList.add('modal-open');
+    else document.body.classList.remove('modal-open');
+    return () => document.body.classList.remove('modal-open');
+  }, [isOpen]);
+
   if (!isOpen) return null;
 
   const handleSubmit = async (e) => {
@@ -436,15 +442,16 @@ const AdminLoginModal = ({ isOpen, onClose, onLogin, currentPassword }) => {
   };
 
   return (
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-fadeIn h-[100dvh]">
-      <div className="bg-white rounded-3xl p-6 max-w-sm w-full shadow-2xl border border-amber-100 m-auto">
-        <div className="flex justify-between items-center mb-4">
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-fadeIn overflow-hidden">
+      <div className="bg-white rounded-3xl max-w-sm w-full shadow-2xl border border-amber-100 m-auto flex flex-col max-h-[90vh]">
+        <div className="flex justify-between items-center p-5 border-b border-gray-100 shrink-0 sticky top-0 bg-white z-10 rounded-t-3xl">
           <div className="flex items-center gap-2 text-amber-600">
             <Lock size={22} />
             <h3 className="font-bold text-lg text-gray-900">כניסת מנהלת נסתרת</h3>
           </div>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600"><X size={20} /></button>
+          <button onClick={onClose} className="bg-gray-100 p-1.5 rounded-full text-gray-400 hover:text-gray-600 transition"><X size={20} /></button>
         </div>
+        <div className="overflow-y-auto p-5">
         
         <p className="text-xs text-gray-500 mb-4">
           הזני את סיסמת המנהלת לכניסה לפאנל הניהול של תהל.
@@ -477,6 +484,7 @@ const AdminLoginModal = ({ isOpen, onClose, onLogin, currentPassword }) => {
             התחברי לפאנל
           </button>
         </form>
+        </div>
       </div>
     </div>
   );
@@ -4301,12 +4309,12 @@ const AdminDashboard = ({
       )}
 
       {historyModalUser && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-3xl p-6 max-w-lg w-full shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto">
-            <div className="flex flex-col gap-3 border-b pb-3">
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50 overflow-hidden" ref={() => document.body.classList.add('modal-open')}>
+          <div className="bg-white rounded-3xl max-w-lg w-full shadow-2xl flex flex-col max-h-[90vh]">
+            <div className="flex flex-col gap-3 border-b p-5 shrink-0 sticky top-0 bg-white z-10 rounded-t-3xl">
               <div className="flex justify-between items-center">
                 <h3 className="font-bold text-base text-gray-900">היסטוריית אימונים - {historyModalUser.full_name}</h3>
-                <button onClick={() => setHistoryModalUser(null)} className="text-gray-400 hover:text-gray-600"><X size={20} /></button>
+                <button onClick={() => { setHistoryModalUser(null); document.body.classList.remove('modal-open'); }} className="bg-gray-100 p-1.5 rounded-full text-gray-400 hover:text-gray-600 transition"><X size={20} /></button>
               </div>
               <div className="flex gap-2">
                 <button onClick={() => {
@@ -4406,22 +4414,24 @@ const AdminDashboard = ({
                 })
               )}
             </div>
-            <button onClick={() => setHistoryModalUser(null)} className="w-full bg-gray-900 text-white font-bold py-2.5 rounded-xl text-xs mt-2 hover:bg-gray-800 transition">
-              סגרי חלון
-            </button>
+            <div className="p-5 border-t border-gray-100 shrink-0">
+              <button onClick={() => { setHistoryModalUser(null); document.body.classList.remove('modal-open'); }} className="w-full bg-gray-900 text-white font-bold py-2.5 rounded-xl text-xs hover:bg-gray-800 transition">
+                סגרי חלון
+              </button>
+            </div>
           </div>
         </div>
       )}
 
       {punchCardModalUser && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-3xl p-6 max-w-sm w-full shadow-2xl space-y-4">
-            <div className="flex justify-between items-center border-b pb-3">
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50 overflow-hidden" ref={() => document.body.classList.add('modal-open')}>
+          <div className="bg-white rounded-3xl max-w-sm w-full shadow-2xl flex flex-col max-h-[90vh]">
+            <div className="flex justify-between items-center p-5 border-b border-gray-100 shrink-0 sticky top-0 bg-white z-10 rounded-t-3xl">
               <h3 className="font-bold text-base text-gray-900">ניהול כרטיסייה - {punchCardModalUser.full_name}</h3>
-              <button onClick={() => setPunchCardModalUser(null)} className="text-gray-400 hover:text-gray-600"><X size={20} /></button>
+              <button onClick={() => { setPunchCardModalUser(null); document.body.classList.remove('modal-open'); }} className="bg-gray-100 p-1.5 rounded-full text-gray-400 hover:text-gray-600 transition"><X size={20} /></button>
             </div>
             
-            <div className="space-y-4">
+            <div className="overflow-y-auto p-5 space-y-4">
               {punchCardModalUser.punch_card ? (
                 <div className="bg-indigo-50 p-4 rounded-xl border border-indigo-200">
                   <p className="text-sm font-bold text-indigo-900">סטטוס כרטיסייה נוכחי:</p>
@@ -4501,6 +4511,7 @@ const AdminDashboard = ({
 
                   alert('הכרטיסייה הוקצתה והתוקף חושב בהצלחה!');
                   setPunchCardModalUser(null);
+                  document.body.classList.remove('modal-open');
                 }}
                 className={`w-full font-bold py-3 rounded-xl transition shadow-md flex items-center justify-center gap-2 text-white ${punchCardForm.entries === 0 ? 'bg-red-500 hover:bg-red-600' : 'bg-indigo-600 hover:bg-indigo-700'}`}
               >
@@ -4823,16 +4834,18 @@ const Footer = () => {
     }
 
     return (
-      <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-[60] animate-fadeIn">
-        <div className="bg-white rounded-3xl p-6 max-w-lg w-full shadow-2xl border border-amber-100 max-h-[85vh] overflow-y-auto flex flex-col">
-          <div className="flex justify-between items-center mb-4 border-b pb-3">
+      <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-[60] animate-fadeIn overflow-hidden" ref={() => document.body.classList.add('modal-open')}>
+        <div className="bg-white rounded-3xl max-w-lg w-full shadow-2xl border border-amber-100 flex flex-col max-h-[90vh]">
+          <div className="flex justify-between items-center p-5 border-b border-gray-100 shrink-0 sticky top-0 bg-white z-10 rounded-t-3xl">
             <h3 className="font-black text-xl text-gray-900">{title}</h3>
-            <button onClick={() => setActiveModal(null)} className="text-gray-400 hover:text-gray-600 bg-gray-100 p-2 rounded-full transition"><X size={20}/></button>
+            <button onClick={() => { setActiveModal(null); document.body.classList.remove('modal-open'); }} className="bg-gray-100 p-1.5 rounded-full text-gray-400 hover:text-gray-600 transition"><X size={20}/></button>
           </div>
-          <div className="flex-1 overflow-y-auto pr-2">
+          <div className="overflow-y-auto p-5">
             {content}
           </div>
-          <button onClick={() => setActiveModal(null)} className="mt-6 w-full bg-gray-900 text-white font-bold py-3 rounded-2xl shadow-lg hover:opacity-95 transition">קראתי והבנתי, סגירה</button>
+          <div className="p-5 border-t border-gray-100 shrink-0">
+            <button onClick={() => { setActiveModal(null); document.body.classList.remove('modal-open'); }} className="w-full bg-gray-900 text-white font-bold py-3 rounded-2xl shadow-lg hover:opacity-95 transition">קראתי והבנתי, סגירה</button>
+          </div>
         </div>
       </div>
     );
@@ -4931,6 +4944,18 @@ export default function App() {
   const [isPublicGalleryOpen, setIsPublicGalleryOpen] = useState(false);
   const [showSitePopup, setShowSitePopup] = useState(false);
   const [isDataLoaded, setIsDataLoaded] = useState(false);
+
+  // חסימת גלילת רקע כאשר מודאל כלשהו פתוח
+  useEffect(() => {
+    const hasAnyModalOpen = isPublicGalleryOpen || showSitePopup || isAdminLoginModalOpen;
+    // נבדוק גם אלמנטים פנימיים שפותחים מודאלים ברחבי האתר בעזרת class כללי שנוסף אוטומטית בהמשך
+    if (hasAnyModalOpen || document.body.classList.contains('modal-open')) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = 'unset';
+    }
+    return () => { document.body.style.overflow = 'unset'; };
+  }, [isPublicGalleryOpen, showSitePopup, isAdminLoginModalOpen]);
   
   // מתאמן חדש יתחיל כ-null (יצטרך להירשם), אבל האתר יזכור אותו לפי המכשיר שלו
   const [currentUser, setCurrentUser] = useState(() => {
