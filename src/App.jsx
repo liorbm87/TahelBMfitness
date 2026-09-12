@@ -1925,7 +1925,8 @@ const AdminDashboard = ({
     date: new Date().toISOString().split('T')[0],
     time: '',
     duration: '',
-    location: ''
+    location: '',
+    plan: ''
   });
 
   const [editExternalWorkoutData, setEditExternalWorkoutData] = useState(null);
@@ -2783,7 +2784,7 @@ const AdminDashboard = ({
                 const newExt = { id: 'ext_' + Date.now(), ...newExternalWorkout, type: trimmedType };
                 setExternalWorkouts(prev => [...prev, newExt]);
                 supabase.from('external_workouts').upsert(newExt).then(); // קליטה ישירה ל-DB
-                setNewExternalWorkout({ type: '', date: new Date().toISOString().split('T')[0], time: '', duration: '', location: '' });
+                setNewExternalWorkout({ type: '', date: new Date().toISOString().split('T')[0], time: '', duration: '', location: '', plan: '' });
                 if (isPast) {
                   alert('תאריך עבר נקלט: האימון החיצוני נוצר והועבר אוטומטית לארכיון!');
                 } else {
@@ -2822,6 +2823,10 @@ const AdminDashboard = ({
                   <input required type="text" value={newExternalWorkout.location} onChange={(e) => setNewExternalWorkout({...newExternalWorkout, location: e.target.value})} className="w-full p-2.5 bg-white border rounded-xl outline-none" placeholder="למשל: הירקון 10" />
                 </div>
                 <div className="sm:col-span-5">
+                  <label className="block font-bold text-gray-700 mb-1">תכנית אימון (אופציונלי)</label>
+                  <textarea value={newExternalWorkout.plan || ''} onChange={(e) => setNewExternalWorkout({...newExternalWorkout, plan: e.target.value})} className="w-full p-2.5 bg-white border rounded-xl outline-none" placeholder="כתבי כאן את תכנית האימון..." rows="2"></textarea>
+                </div>
+                <div className="sm:col-span-5">
                   <button type="submit" className="w-full bg-blue-600 text-white font-bold py-2.5 rounded-xl hover:bg-blue-700 transition shadow-sm">שמרי אימון חיצוני</button>
                 </div>
               </form>
@@ -2835,29 +2840,49 @@ const AdminDashboard = ({
                 .map(w => {
                   const navLink = `https://waze.com/ul?q=${encodeURIComponent(w.location)}`;
                   return (
-                    <div key={w.id} className={`p-4 rounded-2xl flex flex-col sm:flex-row justify-between sm:items-center gap-3 border ${w.isStudio ? 'bg-amber-50 border-amber-100' : 'bg-blue-50 border-blue-100'}`}>
-                      <div>
-                       <div className="flex items-center gap-2">
-                    <span className="font-bold text-gray-900 text-sm">{w.type}</span>
-                    <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${w.isStudio ? 'bg-amber-200 text-amber-800' : 'bg-blue-200 text-blue-800'}`}>{w.isStudio ? 'סטודיו (לקוחות)' : 'פרטי / חיצוני'}</span>
-                  </div>
-                  <p className="text-xs text-gray-600 mt-1">{formatDateWithDay(w.date)} בשעה {w.time} | {w.location}</p>
+                    <div key={w.id} className={`p-4 rounded-2xl flex flex-col gap-3 border ${w.isStudio ? 'bg-amber-50 border-amber-100' : 'bg-blue-50 border-blue-100'}`}>
+                      <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-3">
+                        <div>
+                         <div className="flex items-center gap-2">
+                          <span className="font-bold text-gray-900 text-sm">{w.type}</span>
+                          <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${w.isStudio ? 'bg-amber-200 text-amber-800' : 'bg-blue-200 text-blue-800'}`}>{w.isStudio ? 'סטודיו (לקוחות)' : 'פרטי / חיצוני'}</span>
+                        </div>
+                        <p className="text-xs text-gray-600 mt-1">{formatDateWithDay(w.date)} בשעה {w.time} | {w.location}</p>
+                        </div>
+                        <div className="flex gap-2">
+                          <a href={navLink} target="_blank" rel="noreferrer" className="bg-white hover:bg-gray-100 border text-gray-700 text-[11px] px-3 py-2 rounded-lg font-bold transition flex items-center justify-center gap-1 shadow-sm">
+                            🚗 ניווט
+                          </a>
+                          {!w.isStudio && (
+                            <>
+                              <button onClick={() => {
+                                setNewExternalWorkout({ type: w.type, date: w.date, time: w.time, duration: w.duration || '', location: w.location, plan: w.plan || '' });
+                                window.scrollTo({ top: 0, behavior: 'smooth' });
+                                alert('פרטי האימון החיצוני הועתקו לטופס למעלה. תוכלי לשנות תאריך ולשמור מחדש!');
+                              }} className="text-indigo-500 hover:bg-indigo-50 border border-transparent hover:border-indigo-100 px-2 py-1.5 rounded-lg transition" title="שכפול אימון חיצוני">
+                                <Plus size={16}/>
+                              </button>
+                              <button onClick={() => setEditExternalWorkoutData(w)} className="text-blue-500 hover:bg-blue-50 border border-transparent hover:border-blue-100 px-2 py-1.5 rounded-lg transition" title="עריכת אימון חיצוני">
+                                <Edit size={16}/>
+                              </button>
+                              <button onClick={() => { if(window.confirm('האם להעביר אימון חיצוני זה לארכיון?')) { supabase.from('external_workouts').update({ is_archived: true }).eq('id', w.id).then(); setExternalWorkouts(prev => prev.map(ext => ext.id === w.id ? { ...ext, is_archived: true } : ext)); } }} className="text-red-500 hover:bg-red-50 border border-transparent hover:border-red-100 px-2 py-1.5 rounded-lg transition" title="העברה לארכיון">
+                                <Trash2 size={16}/>
+                              </button>
+                            </>
+                          )}
+                        </div>
                       </div>
-                      <div className="flex gap-2">
-                        <a href={navLink} target="_blank" rel="noreferrer" className="bg-white hover:bg-gray-100 border text-gray-700 text-[11px] px-3 py-2 rounded-lg font-bold transition flex items-center justify-center gap-1 shadow-sm">
-                          🚗 ניווט
-                        </a>
-                        {!w.isStudio && (
-                          <>
-                            <button onClick={() => setEditExternalWorkoutData(w)} className="text-blue-500 hover:bg-blue-50 border border-transparent hover:border-blue-100 px-2 py-1.5 rounded-lg transition" title="עריכת אימון חיצוני">
-                              <Edit size={16}/>
-                            </button>
-                            <button onClick={() => { if(window.confirm('האם להעביר אימון חיצוני זה לארכיון?')) { supabase.from('external_workouts').update({ is_archived: true }).eq('id', w.id).then(); setExternalWorkouts(prev => prev.map(ext => ext.id === w.id ? { ...ext, is_archived: true } : ext)); } }} className="text-red-500 hover:bg-red-50 border border-transparent hover:border-red-100 px-2 py-1.5 rounded-lg transition" title="העברה לארכיון">
-                              <Trash2 size={16}/>
-                            </button>
-                          </>
-                        )}
-                      </div>
+                      {!w.isStudio && w.plan && (
+                        <details className="mt-1 group bg-white/70 border border-blue-200 rounded-xl overflow-hidden">
+                          <summary className="text-[11px] font-bold text-blue-900 p-2.5 cursor-pointer select-none flex justify-between items-center hover:bg-blue-50 transition list-none outline-none">
+                            <span className="flex items-center gap-1.5">📋 צפייה בתכנית האימון</span>
+                            <ChevronDown size={14} className="text-blue-400 group-open:rotate-180 transition-transform" />
+                          </summary>
+                          <div className="p-3 text-xs text-gray-800 whitespace-pre-wrap border-t border-blue-100 bg-white">
+                            {w.plan}
+                          </div>
+                        </details>
+                      )}
                     </div>
                   )
               })}
@@ -2898,6 +2923,10 @@ const AdminDashboard = ({
                   <div className="sm:col-span-2">
                     <label className="block font-bold text-gray-700 mb-1">מיקום</label>
                     <input required type="text" value={editExternalWorkoutData.location} onChange={(e) => setEditExternalWorkoutData({...editExternalWorkoutData, location: e.target.value})} className="w-full p-2.5 bg-gray-50 border rounded-xl outline-none" />
+                  </div>
+                  <div className="sm:col-span-2">
+                    <label className="block font-bold text-gray-700 mb-1">תכנית אימון (אופציונלי)</label>
+                    <textarea value={editExternalWorkoutData.plan || ''} onChange={(e) => setEditExternalWorkoutData({...editExternalWorkoutData, plan: e.target.value})} className="w-full p-2.5 bg-gray-50 border rounded-xl outline-none" rows="3"></textarea>
                   </div>
                   <div className="sm:col-span-2 mt-2">
                     <button type="submit" className="w-full bg-blue-600 text-white font-bold py-3 rounded-xl hover:bg-blue-700 transition shadow-sm">שמירת שינויים</button>
