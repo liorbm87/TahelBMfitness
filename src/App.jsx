@@ -297,13 +297,14 @@ const MainHeader = ({ settings, isAdmin, onOpenAdminLogin, onLogout, currentUser
 
       {/* מודאל עריכת פרטים אישיים */}
       {isEditModalOpen && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-fadeIn">
-          <div className="bg-white rounded-3xl p-6 max-w-sm w-full shadow-2xl border border-amber-100">
-            <div className="flex justify-between items-center mb-6">
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-fadeIn overflow-hidden">
+          <div className="bg-white rounded-3xl max-w-sm w-full shadow-2xl border border-amber-100 flex flex-col max-h-[90vh]">
+            <div className="flex justify-between items-center p-5 border-b border-gray-100 shrink-0 sticky top-0 bg-white z-10 rounded-t-3xl">
               <h3 className="font-bold text-lg text-gray-900">עריכת פרטים אישיים</h3>
-              <button onClick={() => setIsEditModalOpen(false)} className="text-gray-400 hover:text-gray-600"><X size={20} /></button>
+              <button onClick={() => setIsEditModalOpen(false)} className="bg-gray-100 p-1.5 rounded-full text-gray-400 hover:text-gray-600 transition"><X size={20} /></button>
             </div>
-            <form onSubmit={handleSaveProfile} className="space-y-4">
+            <div className="overflow-y-auto p-5">
+              <form onSubmit={handleSaveProfile} className="space-y-4">
               <div>
                 <label className="block text-xs font-bold text-gray-700 mb-1">שם מלא</label>
                 <input required type="text" value={editForm.full_name} onChange={e => setEditForm({...editForm, full_name: e.target.value})} className="w-full p-3 bg-gray-50 border rounded-xl text-sm" />
@@ -358,6 +359,7 @@ const MainHeader = ({ settings, isAdmin, onOpenAdminLogin, onLogout, currentUser
                 שמירת שינויים
               </button>
             </form>
+            </div>
           </div>
         </div>
       )}
@@ -4511,14 +4513,15 @@ const AdminDashboard = ({
       )}
 
       {globalBroadcastModal && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-3xl p-6 max-w-lg w-full shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto">
-            <div className="flex justify-between items-center border-b pb-3">
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50 overflow-hidden">
+          <div className="bg-white rounded-3xl max-w-lg w-full shadow-2xl flex flex-col max-h-[90vh]">
+            <div className="flex justify-between items-center p-5 border-b border-gray-100 shrink-0 sticky top-0 bg-white z-10 rounded-t-3xl">
               <h3 className="font-bold text-base text-gray-900">הודעת תפוצה לכל המתאמנים</h3>
-              <button onClick={() => setGlobalBroadcastModal(false)} className="text-gray-400 hover:text-gray-600"><X size={20} /></button>
+              <button onClick={() => setGlobalBroadcastModal(false)} className="bg-gray-100 p-1.5 rounded-full text-gray-400 hover:text-gray-600 transition"><X size={20} /></button>
             </div>
 
-            <div>
+            <div className="overflow-y-auto p-5 space-y-4">
+              <div>
               <label className="block text-xs font-bold text-gray-700 mb-1">נוסח ההודעה הכללית:</label>
               <div className="flex flex-wrap gap-1 mb-2">
                 {['[שם פרטי]', '[כתובת האתר]'].map(tag => (
@@ -4561,7 +4564,10 @@ const AdminDashboard = ({
                 })}
               </div>
             </div>
-            <button onClick={() => setGlobalBroadcastModal(false)} className="w-full bg-gray-900 text-white font-bold py-2.5 rounded-xl text-xs mt-2 hover:bg-gray-800 transition">סגרי חלון</button>
+            <div className="p-5 border-t border-gray-100 shrink-0">
+              <button onClick={() => setGlobalBroadcastModal(false)} className="w-full bg-gray-900 text-white font-bold py-2.5 rounded-xl text-xs hover:bg-gray-800 transition">סגרי חלון</button>
+            </div>
+            </div>
           </div>
         </div>
       )}
