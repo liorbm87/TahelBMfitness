@@ -1917,7 +1917,8 @@ const AdminDashboard = ({
     location: '',
     price: '',
     max_participants: '',
-    notes: ''
+    notes: '',
+    plan: ''
   });
 
   const [newExternalWorkout, setNewExternalWorkout] = useState({
@@ -2159,7 +2160,8 @@ const AdminDashboard = ({
       location: '',
       price: '',
       max_participants: '',
-      notes: ''
+      notes: '',
+      plan: ''
     });
     setAdditionalDates([]);
     setRecurringWeeks(0);
@@ -3083,6 +3085,17 @@ const AdminDashboard = ({
                   placeholder="ציוד נדרש, מיקוד האימון..."
                   className="w-full p-2.5 bg-gray-50 border rounded-xl outline-none"
                 />
+              </div>
+              
+              <div className="sm:col-span-2 md:col-span-3">
+                <label className="block font-bold text-gray-700 mb-1">תכנית אימון (אופציונלי)</label>
+                <textarea 
+                  value={newWorkout.plan || ''} 
+                  onChange={(e) => setNewWorkout({...newWorkout, plan: e.target.value})} 
+                  className="w-full p-2.5 bg-gray-50 border rounded-xl outline-none" 
+                  placeholder="כתבי כאן את תכנית האימון..." 
+                  rows="3"
+                ></textarea>
               </div>
 
               <div className="sm:col-span-2 md:col-span-3 pt-2">
@@ -4664,6 +4677,10 @@ const AdminDashboard = ({
               <div className="sm:col-span-2">
                 <label className="block font-bold text-gray-700 mb-1">הערות</label>
                 <input type="text" value={editWorkoutData.notes || ''} onChange={(e) => setEditWorkoutData({...editWorkoutData, notes: e.target.value})} className="w-full p-2.5 bg-gray-50 border rounded-xl outline-none" />
+              </div>
+              <div className="sm:col-span-2">
+                <label className="block font-bold text-gray-700 mb-1">תכנית אימון (אופציונלי)</label>
+                <textarea value={editWorkoutData.plan || ''} onChange={(e) => setEditWorkoutData({...editWorkoutData, plan: e.target.value})} className="w-full p-2.5 bg-gray-50 border rounded-xl outline-none" rows="3"></textarea>
               </div>
 
               {/* בלוק שכפול נוסף בעריכה */}
