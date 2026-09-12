@@ -817,7 +817,9 @@ const UserView = ({
           user_id: updatedUser.id,
           payment_status: appliedStatus,
           paid_amount: finalAmount,
-          created_at: new Date().toISOString()
+          created_at: new Date().toISOString(),
+          payment_reminder_sent: false,
+          workout_reminder_sent: false
         });
       });
 
@@ -935,7 +937,9 @@ const UserView = ({
       user_id: currentUser.id,
       payment_status: appliedPaymentStatus,
       paid_amount: appliedPaymentStatus === 'punch_card' ? 0 : finalPaidAmount,
-      created_at: new Date().toISOString()
+      created_at: new Date().toISOString(),
+      payment_reminder_sent: false,
+      workout_reminder_sent: false
     };
 
     supabase.from('registrations').upsert(newReg).then();
@@ -1998,6 +2002,7 @@ const AdminDashboard = ({
   
   const [searchTraineeQuery, setSearchTraineeQuery] = useState('');
   const [searchWorkoutQuery, setSearchWorkoutQuery] = useState('');
+  const [showOnlyWithRegistrations, setShowOnlyWithRegistrations] = useState(false);
   const [punchCardModalUser, setPunchCardModalUser] = useState(null);
   const [punchCardForm, setPunchCardForm] = useState({ entries: 10, price: 0 });
   const [globalBroadcastModal, setGlobalBroadcastModal] = useState(false);
@@ -3082,13 +3087,20 @@ const AdminDashboard = ({
                   )}
                 </div>
               </h4>
-              <div className="relative">
-                <Search size={16} className="absolute right-3 top-2.5 text-gray-400" />
-                <input type="text" placeholder="חיפוש לפי תאריך, סוג, מיקום או מחיר..." value={searchWorkoutQuery} onChange={(e) => setSearchWorkoutQuery(e.target.value)} className="w-full md:w-72 pl-4 pr-9 py-2 bg-white border border-gray-200 rounded-xl text-xs outline-none focus:border-amber-400 transition shadow-sm" />
+              <div className="flex flex-wrap items-center gap-3">
+                <label className="flex items-center gap-1.5 cursor-pointer text-xs font-bold text-gray-700 bg-white border border-gray-200 px-3 py-2 rounded-xl shadow-sm hover:bg-gray-50 transition select-none">
+                  <input type="checkbox" checked={showOnlyWithRegistrations} onChange={(e) => setShowOnlyWithRegistrations(e.target.checked)} className="accent-amber-500 w-3.5 h-3.5 cursor-pointer" />
+                  רק אימונים עם משתתפות
+                </label>
+                <div className="relative">
+                  <Search size={16} className="absolute right-3 top-2.5 text-gray-400" />
+                  <input type="text" placeholder="חיפוש לפי תאריך, סוג, מיקום או מחיר..." value={searchWorkoutQuery} onChange={(e) => setSearchWorkoutQuery(e.target.value)} className="w-full md:w-72 pl-4 pr-9 py-2 bg-white border border-gray-200 rounded-xl text-xs outline-none focus:border-amber-400 transition shadow-sm" />
+                </div>
               </div>
             </div>
             
             {workouts.filter(w => new Date(`${w.date}T${w.time}`) >= new Date() && !w.is_archived && w.date.startsWith(selectedAdminMonth)).filter(w => {
+              if (showOnlyWithRegistrations && registrations.filter(r => r.workout_id === w.id).length === 0) return false;
               if (!searchWorkoutQuery) return true;
               const q = searchWorkoutQuery.toLowerCase();
               return w.type.toLowerCase().includes(q) || w.location.toLowerCase().includes(q) || w.date.includes(q) || w.price.toString().includes(q);
