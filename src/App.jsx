@@ -28,7 +28,7 @@ const DEFAULT_SETTINGS = {
   cloudinaryPreset: 'tahel_images',
   popupActive: false,
   popupImageUrl: '',
-  popupText: 'ברוכות הבאות לתהל פיטנס!',
+  popupText: 'ברוכות הבאות , אימוני כושר עם תהל בן משה!',
   enableProgressTab: true
 };
 
@@ -201,7 +201,7 @@ const MainHeader = ({ settings, isAdmin, onOpenAdminLogin, onLogout, currentUser
             </div>
             <div className="text-center">
               <h1 className="text-3xl font-extrabold bg-gradient-to-r from-gray-900 via-amber-800 to-amber-600 bg-clip-text text-transparent">
-                תהל פיטנס
+                תהל בן משה
               </h1>
             </div>
           </div>
@@ -1039,8 +1039,15 @@ const UserView = ({
       <div className="max-w-md mx-auto bg-white/95 backdrop-blur-md p-8 rounded-3xl shadow-xl border border-amber-100 mt-6">
         {authMode === 'landing' ? (
           <div className="text-center space-y-6">
-            <h2 className="text-3xl font-black text-gray-900">ברוכות הבאות לתהל פיטנס!</h2>
-            <p className="text-gray-600 text-sm">אנא היכנסי לחשבונך או הרשמי כדי לצפות באזור האישי שלך ולהירשם לאימונים.</p>
+            <h2 className="text-3xl font-black text-gray-900 drop-shadow-sm">ברוכות הבאות , אימוני כושר עם תהל בן משה! 💪</h2>
+            <p className="text-gray-600 text-sm px-4">הצטרפי לקהילת הנשים שלנו לאימונים באווירה אנרגית ובריאה , יחס אישי ותוצאות אמיתיות.</p>
+            
+            <div className="flex justify-center gap-4 text-xs font-bold text-gray-700 bg-gray-50/50 py-3 rounded-2xl border border-gray-100">
+              <div className="flex flex-col items-center gap-1"><Award size={18} className="text-amber-500" /><span>יחס אישי</span></div>
+              <div className="flex flex-col items-center gap-1"><Users size={18} className="text-pink-500" /><span>קבוצות קטנות</span></div>
+              <div className="flex flex-col items-center gap-1"><Calendar size={18} className="text-blue-500" /><span>גמישות מלאה</span></div>
+            </div>
+
             <div className="space-y-3">
               <button onClick={() => setAuthMode('login')} className="w-full bg-[#c57b6d] hover:bg-[#b06a5c] text-white font-bold py-3.5 rounded-2xl shadow-lg transition flex items-center justify-center gap-2">
                 <LogIn size={18} /> כניסה למשתמשת קיימת
@@ -1802,11 +1809,18 @@ const UserView = ({
                   <p className="text-xs text-gray-500">{formatDateWithDay(workout.date)} | {workout.time} | {workout.location}</p>
                       <p className="text-xs font-bold text-amber-800 mt-1">מחיר: {workout.price} ₪</p>
                     </div>
-                    <div className="text-left">
+                    <div className="text-left flex flex-col items-end gap-2">
                       <span className={`text-xs px-3 py-1 rounded-full font-bold flex items-center justify-center gap-1 ${reg.payment_status === 'paid' || reg.payment_status === 'wallet_credit' ? 'bg-emerald-100 text-emerald-800' : reg.payment_status === 'punch_card' ? 'bg-blue-100 text-blue-800' : 'bg-red-100 text-red-800'}`}>
                         {reg.payment_status === 'paid' ? 'שולם' : reg.payment_status === 'punch_card' ? 'כרטיסייה' : reg.payment_status === 'wallet_credit' ? 'שולם (ארנק)' : 'טרם שולם'}
                         <span className="text-[10px] font-black opacity-75">| {reg.paid_amount !== undefined ? reg.paid_amount : workout.price} ₪</span>
                       </span>
+                      <a 
+                        href={`https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent('אימון: ' + workout.type)}&dates=${workout.date.replace(/-/g, '')}T${workout.time.replace(':', '')}00/${workout.date.replace(/-/g, '')}T${String(Number(workout.time.split(':')[0]) + 1).padStart(2, '0')}${workout.time.split(':')[1]}00&details=${encodeURIComponent('מיקום: ' + workout.location)}&location=${encodeURIComponent(workout.location)}`}
+                        target="_blank" rel="noreferrer"
+                        className="text-[10px] bg-gray-100 hover:bg-gray-200 text-gray-700 px-2.5 py-1 rounded-lg font-bold flex items-center gap-1 transition"
+                      >
+                        <Calendar size={12} /> יומן גוגל
+                      </a>
                     </div>
                   </div>
                 );
@@ -4420,7 +4434,7 @@ const AdminDashboard = ({
                   setTimeout(() => {
                     const emailBody = `היי ${historyModalUser.full_name},%0Aמצ"ב קובץ Excel עם היסטוריית האימונים שלך.%0A%0A* שימי לב: הקובץ ירד למכשירך, תוכלי לצרף אותו למייל.`;
                     const userEmail = historyModalUser.email || '';
-                    window.location.href = `mailto:${userEmail}?subject=היסטוריית אימונים - תהל פיטנס&body=${emailBody}`;
+                    window.location.href = `mailto:${userEmail}?subject=היסטוריית אימונים - תהל בן משה&body=${emailBody}`;
                   }, 500);
                 }} className="bg-blue-600 hover:bg-blue-700 text-white text-[11px] font-bold px-3 py-1.5 rounded-lg flex items-center gap-1 shadow-sm transition">
                   <Send size={14} /> שליחה למתאמנת
@@ -5087,7 +5101,7 @@ export default function App() {
 
     // הגדרת הכותרת והתיאור שיופיעו בוואטסאפ
     setOgMetaTag('og:title', 'תהל בן משה - מאמנת כושר');
-    setOgMetaTag('og:description', 'תהל פיטנס - אימוני כוח וחיטוב');
+    setOgMetaTag('og:description', 'תהל בן משה - אימוני כוח וחיטוב');
     setOgMetaTag('og:type', 'website');
 
     if (settings.logoUrl) {
