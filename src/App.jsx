@@ -7,7 +7,7 @@ import {
   Calendar, Users, Settings, LogOut, Check, X, CreditCard, MessageCircle, 
   Download, Upload, Plus, Trash2, AlertCircle, CheckCircle2, Clock, 
   DollarSign, Edit, Search, Send, FileText, ChevronRight, Filter, Eye, 
-  Lock, RefreshCw, Award, ChevronDown, CheckSquare, Square, Phone, ShieldAlert, Archive, UserPlus, LogIn, ListOrdered
+  Lock, RefreshCw, Award, ChevronDown, CheckSquare, Square, Phone, ShieldAlert, Archive, UserPlus, LogIn, ListOrdered, Gamepad2, Cat, Dog, Smile, Dumbbell, Scale, Activity
 } from 'lucide-react';
 
 // ============================================================================
@@ -29,7 +29,9 @@ const DEFAULT_SETTINGS = {
   popupActive: false,
   popupImageUrl: '',
   popupText: 'ברוכות הבאות , אימוני כושר עם תהל בן משה!',
-  enableProgressTab: true
+  enableProgressTab: true,
+  enableFitBuddy: false,
+  enableBalanceGame: false
 };
 
 const INITIAL_WORKOUTS = [];
@@ -149,6 +151,10 @@ const trackConversion = (eventName, payload = {}) => {
 const MainHeader = ({ settings, isAdmin, onOpenAdminLogin, onLogout, currentUser, setCurrentUser, setTrainees, onRefresh, workouts = [], registrations = [] }) => {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false);
+  const [isGamesModalOpen, setIsGamesModalOpen] = useState(false);
+  const [activeGame, setActiveGame] = useState(null);
+  const [fitBuddyClick, setFitBuddyClick] = useState(false);
+  const [balanceScore, setBalanceScore] = useState(0);
   const [editForm, setEditForm] = useState({ full_name: '', phone: '', email: '' });
 
   const openEditModal = () => {
@@ -184,8 +190,34 @@ const MainHeader = ({ settings, isAdmin, onOpenAdminLogin, onLogout, currentUser
     alert('הפרטים עודכנו בהצלחה!');
   };
 
+  const hasUpcoming = currentUser && (registrations || []).some(r => r.user_id === currentUser.id && workouts.some(w => w.id === r.workout_id && new Date(`${w.date}T${w.time}`) >= new Date()));
+  const buddyMsg = hasUpcoming ? "יששש! נרשמת לאימון! 💪" : "אני מרגיש קצת חלש... אולי נרשם לאימון? 🥺";
+  const BuddyIcon = currentUser?.fit_buddy_type === 'cat' ? Cat : currentUser?.fit_buddy_type === 'dog' ? Dog : currentUser?.fit_buddy_type === 'smile' ? Smile : currentUser?.fit_buddy_type === 'activity' ? Activity : Dumbbell;
+
   return (
-    <div className="flex flex-col items-center justify-center pt-10 sm:pt-6 pb-2 space-y-3">
+    <div className="flex flex-col items-center justify-center pt-10 sm:pt-6 pb-2 space-y-3 relative">
+      
+      {/* כפתור משחקי כושר צף בצד שמאל (רק אם תהל הדליקה אחד מהם) */}
+      {currentUser && !isAdmin && (settings.enableFitBuddy || settings.enableBalanceGame) && (
+        <button onClick={() => setIsGamesModalOpen(true)} className="absolute top-2 left-4 bg-gradient-to-r from-purple-500 to-pink-500 text-white p-2.5 rounded-full shadow-lg hover:scale-110 transition flex items-center gap-2 z-50 border border-pink-300/50">
+          <Gamepad2 size={20} />
+          <span className="text-xs font-black hidden sm:inline">משחקים</span>
+        </button>
+      )}
+
+      {/* הפיט-באדי (הטמגוצ'י) - מוצג רק אם פעיל אצל הלקוחה ותהל לא כיבתה */}
+      {currentUser && !isAdmin && settings.enableFitBuddy && currentUser.fit_buddy_active && (
+        <div className="absolute top-4 z-40 flex flex-col items-center animate-fadeIn cursor-pointer hover:-translate-y-1 transition-transform" onClick={() => { setFitBuddyClick(true); setTimeout(() => setFitBuddyClick(false), 3000); }}>
+          <div className="bg-white px-3 py-1.5 rounded-2xl shadow-md border border-gray-100 text-[10px] font-bold text-gray-700 mb-1 relative whitespace-nowrap">
+            {fitBuddyClick ? "איזה כיף שחזרת! 🤩" : buddyMsg}
+            <div className="absolute -bottom-1.5 left-1/2 -translate-x-1/2 w-3 h-3 bg-white rotate-45 border-b border-r border-gray-100"></div>
+          </div>
+          <div className="bg-pink-100 text-pink-600 p-2.5 rounded-full shadow-sm border border-pink-200">
+            <BuddyIcon size={24} />
+          </div>
+        </div>
+      )}
+
       {/* לוגו מרכזי גדול */}
       <div
         onDoubleClick={onOpenAdminLogin}
@@ -403,6 +435,80 @@ const MainHeader = ({ settings, isAdmin, onOpenAdminLogin, onLogout, currentUser
           </div>
         </div>
       )}
+
+      {isGamesModalOpen && currentUser && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-[9999] animate-fadeIn text-right" dir="rtl">
+          <div className="bg-white rounded-3xl p-6 max-w-sm w-full shadow-2xl border border-pink-100 max-h-[85vh] overflow-y-auto relative">
+            <button onClick={() => { setIsGamesModalOpen(false); setActiveGame(null); setBalanceScore(0); }} className="absolute top-4 left-4 text-gray-400 hover:text-gray-600 bg-gray-100 p-1.5 rounded-full"><X size={20}/></button>
+            <h3 className="text-xl font-black text-gray-900 mb-5 flex items-center gap-2"><Gamepad2 className="text-purple-500"/> משחקי כושר</h3>
+            
+            {!activeGame ? (
+              <div className="space-y-4">
+                {settings.enableFitBuddy && (
+                  <div className="bg-pink-50 p-4 rounded-2xl border border-pink-200">
+                    <div className="flex justify-between items-center mb-3">
+                      <h4 className="font-bold text-pink-900 text-sm">הפיט-באדי שלי 🐾</h4>
+                      <label className="relative inline-flex items-center cursor-pointer">
+                        <input type="checkbox" className="sr-only peer" checked={currentUser.fit_buddy_active || false} onChange={async (e) => {
+                          const updated = { ...currentUser, fit_buddy_active: e.target.checked };
+                          setCurrentUser(updated); setTrainees(prev => prev.map(t => t.id === updated.id ? updated : t));
+                          await supabase.from('trainees').upsert(updated);
+                        }} />
+                        <div className="w-9 h-5 bg-gray-300 peer-focus:outline-none rounded-full peer peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:right-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-pink-500"></div>
+                      </label>
+                    </div>
+                    {currentUser.fit_buddy_active && (
+                      <div className="space-y-2 mt-4 pt-3 border-t border-pink-200/50">
+                        <p className="text-[11px] text-pink-700 font-bold text-center">בחרי את הדמות שתלווה אותך:</p>
+                        <div className="flex flex-wrap gap-2 justify-center">
+                          {[{id: 'dumbbell', Icon: Dumbbell}, {id: 'smile', Icon: Smile}, {id: 'cat', Icon: Cat}, {id: 'dog', Icon: Dog}, {id: 'activity', Icon: Activity}].map(char => (
+                            <button key={char.id} onClick={async () => {
+                              const updated = { ...currentUser, fit_buddy_type: char.id };
+                              setCurrentUser(updated); setTrainees(prev => prev.map(t => t.id === updated.id ? updated : t));
+                              await supabase.from('trainees').upsert(updated);
+                            }} className={`p-2.5 rounded-full transition-all ${currentUser.fit_buddy_type === char.id ? 'bg-pink-500 text-white shadow-md scale-110' : 'bg-white text-gray-500 hover:bg-pink-100 border border-pink-100'}`}>
+                              <char.Icon size={20} />
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+                
+                {settings.enableBalanceGame && (
+                  <button onClick={() => setActiveGame('balance')} className="w-full bg-blue-50 hover:bg-blue-100 text-blue-800 p-4 rounded-2xl border border-blue-200 transition flex items-center justify-between shadow-sm">
+                    <div className="flex items-center gap-3">
+                      <Scale size={24} className="text-blue-500" />
+                      <div className="text-right">
+                        <h4 className="font-bold text-sm">אתגר שיווי המשקל</h4>
+                        <p className="text-[10px] text-blue-600">אזני את הארוחה שלך!</p>
+                      </div>
+                    </div>
+                    <ChevronRight size={18} />
+                  </button>
+                )}
+              </div>
+            ) : (
+              <div className="text-center space-y-4 mt-2">
+                 <h4 className="font-bold text-lg text-blue-900">אזני את המאזניים! ⚖️</h4>
+                 <p className="text-xs text-gray-600">המאזניים נוטים לאוכל מעובד. לחצי על הפריטים הבריאים כדי לאזן אותם ל-100%!</p>
+                 <div className="bg-gray-200 h-5 rounded-full overflow-hidden w-full relative shadow-inner">
+                    <div className="bg-gradient-to-r from-blue-400 to-emerald-400 h-full transition-all duration-500" style={{width: `${Math.min(balanceScore, 100)}%`}}></div>
+                 </div>
+                 <div className="flex flex-wrap justify-center gap-2 mt-4">
+                    <button onClick={() => setBalanceScore(prev => prev + 30)} disabled={balanceScore >= 100} className="bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 text-emerald-800 px-3 py-2 rounded-xl text-xs font-bold transition disabled:opacity-50">🍗 חלבון (+30)</button>
+                    <button onClick={() => setBalanceScore(prev => prev + 20)} disabled={balanceScore >= 100} className="bg-cyan-50 hover:bg-cyan-100 border border-cyan-200 text-cyan-800 px-3 py-2 rounded-xl text-xs font-bold transition disabled:opacity-50">💧 מים (+20)</button>
+                    <button onClick={() => setBalanceScore(prev => prev + 40)} disabled={balanceScore >= 100} className="bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 text-indigo-800 px-3 py-2 rounded-xl text-xs font-bold transition disabled:opacity-50">😴 שינה (+40)</button>
+                 </div>
+                 {balanceScore >= 100 && <p className="text-emerald-600 font-black text-base mt-2 animate-bounce bg-emerald-50 p-2 rounded-lg">מעולה! הבאת את הגוף לאיזון מושלם! 🎉</p>}
+                 <button onClick={() => { setActiveGame(null); setBalanceScore(0); }} className="mt-4 text-xs font-bold text-gray-500 underline">חזרה למשחקים</button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
     </div>
   );
 };
@@ -4255,10 +4361,18 @@ const AdminDashboard = ({
               {tempSettings.popupImageUrl && <img src={tempSettings.popupImageUrl} className="h-20 object-contain rounded border" alt="פופאפ" />}
             </div>
 <div className="space-y-3 sm:col-span-2 p-4 bg-pink-50 rounded-2xl border border-pink-100">
-                <h4 className="font-bold text-xs text-pink-900">הגדרות תצוגה ופיצ'רים</h4>
+                <h4 className="font-bold text-xs text-pink-900">הגדרות תצוגה ופיצ'רים משחקיים (Gamification)</h4>
                 <div className="flex items-center gap-2">
                   <input type="checkbox" id="enableProgressTab" checked={tempSettings.enableProgressTab ?? true} onChange={(e) => setTempSettings({...tempSettings, enableProgressTab: e.target.checked})} className="w-4 h-4 cursor-pointer accent-pink-600" />
-                  <label htmlFor="enableProgressTab" className="text-xs font-bold text-pink-900 cursor-pointer">להפעיל את לשונית 'ההתקדמות שלי' עבור הלקוחות?</label>
+                  <label htmlFor="enableProgressTab" className="text-xs font-bold text-pink-900 cursor-pointer">להפעיל את לשונית 'ההתקדמות שלי' (מעקב משקל)?</label>
+                </div>
+                <div className="flex items-center gap-2 border-t border-pink-200/50 pt-2">
+                  <input type="checkbox" id="enableFitBuddy" checked={tempSettings.enableFitBuddy ?? false} onChange={(e) => setTempSettings({...tempSettings, enableFitBuddy: e.target.checked})} className="w-4 h-4 cursor-pointer accent-pink-600" />
+                  <label htmlFor="enableFitBuddy" className="text-xs font-bold text-pink-900 cursor-pointer">להפעיל את "פיט-באדי" (חבר כושר וירטואלי למתאמנות)?</label>
+                </div>
+                <div className="flex items-center gap-2 border-t border-pink-200/50 pt-2">
+                  <input type="checkbox" id="enableBalanceGame" checked={tempSettings.enableBalanceGame ?? false} onChange={(e) => setTempSettings({...tempSettings, enableBalanceGame: e.target.checked})} className="w-4 h-4 cursor-pointer accent-pink-600" />
+                  <label htmlFor="enableBalanceGame" className="text-xs font-bold text-pink-900 cursor-pointer">להפעיל את "אתגר שיווי המשקל" (משחק תזונה קצר)?</label>
                 </div>
               </div>
             <div className="space-y-2 sm:col-span-2 p-4 bg-gray-50 rounded-2xl border border-gray-200">
