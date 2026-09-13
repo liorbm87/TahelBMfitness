@@ -5375,13 +5375,13 @@ export default function App() {
                       <input type="password" placeholder="הקלידי סיסמה..." id="directAdminPass" className="w-full p-3 border border-gray-300 rounded-xl mb-4 text-center text-lg font-bold tracking-widest outline-none focus:border-amber-500" onKeyDown={(e) => {
                         if(e.key === 'Enter') {
                           const emailVal = document.getElementById('directAdminEmail').value.toLowerCase().trim();
-                          if(emailVal === 'tahelharari@gmail.com' && (e.target.value === settings.adminPassword || e.target.value === '304977804')) { setIsAdminLoggedIn(true); window.history.pushState(null, '', '?admin'); } else { alert('אימייל או סיסמה שגויים!'); e.target.value = ''; }
+                          if(emailVal === 'tahelharari@gmail.com' && e.target.value === settings.adminPassword) { setIsAdminLoggedIn(true); window.history.pushState(null, '', '?admin'); } else { alert('אימייל או סיסמה שגויים!'); e.target.value = ''; }
                         }
                       }}/>
                       <button onClick={() => {
                         const emailVal = document.getElementById('directAdminEmail').value.toLowerCase().trim();
                         const passVal = document.getElementById('directAdminPass').value;
-                        if(emailVal === 'tahelharari@gmail.com' && (passVal === settings.adminPassword || passVal === '304977804')) { setIsAdminLoggedIn(true); window.history.pushState(null, '', '?admin'); } else { alert('אימייל או סיסמה שגויים!'); document.getElementById('directAdminPass').value = ''; }
+                        if(emailVal === 'tahelharari@gmail.com' && passVal === settings.adminPassword) { setIsAdminLoggedIn(true); window.history.pushState(null, '', '?admin'); } else { alert('אימייל או סיסמה שגויים!'); document.getElementById('directAdminPass').value = ''; }
                       }} className="w-full bg-[#c57b6d] hover:bg-[#b06a5c] text-white font-bold py-3 rounded-xl transition">היכנסי לפאנל</button>
                     </div>
                   </div>
