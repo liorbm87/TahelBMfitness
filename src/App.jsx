@@ -5222,11 +5222,8 @@ export default function App() {
     if (!window.isFetchingData && gallery.length > 0) supabase.from('gallery').upsert(gallery);
   }, [gallery, isDataLoaded]);
 
-  useEffect(() => {
-    if (!isDataLoaded) return;
-    if (isInitialMount.current.settings) { isInitialMount.current.settings = false; return; }
-    if (!window.isFetchingData) supabase.from('global_app_state').upsert({ id: 1, state_data: { settings, siteVisits } });
-  }, [settings, siteVisits, isDataLoaded]);
+  // הוסר ה-useEffect ששמר אוטומטית את ההגדרות (settings) בעת שינוי בביקורים.
+  // שמירת הגדרות תתבצע מעתה אך ורק דרך הכפתור הידני בפאנל המנהלת.
 
   const [appReady, setAppReady] = useState(false);
   useEffect(() => {
