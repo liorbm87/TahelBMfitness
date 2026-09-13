@@ -3963,8 +3963,8 @@ const AdminDashboard = ({
             </div>
           </div>
 
-          <div id="accounting-report-table" className="bg-white p-3 sm:p-6 rounded-none sm:rounded-3xl shadow-md border-y sm:border border-gray-100 space-y-4 -mx-4 sm:mx-0">
-            <div className="flex justify-between items-center border-b pb-3 px-1 sm:px-0">
+          <div id="accounting-report-table" className="bg-white p-2 sm:p-6 rounded-none sm:rounded-3xl shadow-md border-y sm:border border-gray-100 space-y-3 -mx-4 sm:mx-0 w-screen sm:w-full">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center border-b pb-3 px-3 sm:px-0 gap-2">
               <h4 className="font-black text-gray-900 text-sm">פירוט תשלומים לחודש {financeMonth}</h4>
               <p className="text-xs font-bold text-emerald-600">
                 סה"כ נגבה בחודש זה: {
@@ -3980,7 +3980,7 @@ const AdminDashboard = ({
             </div>
 
             {/* פקד מיון לנייד בלבד */}
-            <div className="md:hidden flex gap-2 mb-4 bg-gray-50 p-2.5 rounded-xl border border-gray-200 mx-1">
+            <div className="md:hidden flex gap-2 mb-3 bg-gray-50 p-2 rounded-xl border border-gray-200 mx-2">
               <select 
                 value={sortConfig.key}
                 onChange={(e) => setSortConfig({ ...sortConfig, key: e.target.value })}
@@ -4045,40 +4045,32 @@ const AdminDashboard = ({
 
                     if (reg.is_punch_card_purchase) {
                       return (
-                        <tr key={reg.id} className="grid grid-cols-2 md:table-row bg-indigo-50/40 md:hover:bg-gray-50/50 border-b md:border-none border-indigo-200 mb-2 md:mb-0 p-3 md:p-0 gap-x-2 gap-y-1">
-                          <td className="col-span-2 md:col-span-1 p-0 md:p-3 font-bold text-gray-900 flex justify-between items-center md:table-cell border-b md:border-none border-indigo-100 pb-1 md:pb-0 mb-1 md:mb-0">
-                            <span>{trainee.full_name}</span>
-                            <span className="md:hidden font-black text-indigo-800 text-sm">{reg.paid_amount} ₪</span>
+                        <tr key={reg.id} className="grid grid-cols-2 md:table-row bg-indigo-50/60 md:hover:bg-gray-50/50 border-b md:border-none border-indigo-200 mb-2 md:mb-0 p-3 md:p-0 gap-x-2 gap-y-1">
+                          <td className="col-span-2 md:col-span-1 p-0 md:p-3 font-bold text-gray-900 flex justify-between items-center md:table-cell border-b md:border-none border-indigo-100 pb-1.5 md:pb-0 mb-1 md:mb-0">
+                            <span className="text-sm md:text-xs">{trainee.full_name}</span>
+                            <span className="md:hidden font-black text-indigo-900 text-sm">{reg.paid_amount} ₪</span>
                           </td>
-                          <td className="col-span-2 p-0 md:p-3 font-bold text-indigo-700 flex flex-col md:table-cell leading-tight"><span className="md:hidden font-normal text-indigo-400 text-[10px]">פריט שנרכש</span> <span>{reg.custom_title || `כרטיסייה ${reg.purchased_entries ? `(${reg.purchased_entries})` : ''}`}</span></td>
+                          <td className="col-span-1 p-0 md:p-3 font-bold text-indigo-700 flex flex-col md:table-cell"><span className="md:hidden text-indigo-400 text-[10px] font-semibold">פריט:</span> <span className="text-xs">{reg.custom_title || `כרטיסייה (${reg.purchased_entries || ''})`}</span></td>
                           <td className="hidden md:table-cell p-3 text-gray-400">---</td>
-                          <td className="col-span-2 p-0 md:p-3 font-semibold text-emerald-700 flex flex-col md:table-cell leading-tight"><span className="md:hidden font-normal text-indigo-400 text-[10px]">ת. תשלום</span> <span>{reg.payment_date ? reg.payment_date.substring(0,10).split('-').reverse().join('/') : '---'}</span></td>
+                          <td className="col-span-1 p-0 md:p-3 font-semibold text-emerald-700 flex flex-col md:table-cell"><span className="md:hidden text-indigo-400 text-[10px] font-semibold">ת. תשלום:</span> <span className="text-xs">{reg.payment_date ? reg.payment_date.substring(0,10).split('-').reverse().join('/') : '---'}</span></td>
                           <td className="hidden md:table-cell p-3 font-extrabold text-gray-900">{reg.paid_amount} ₪</td>
-                          <td className="col-span-2 p-0 md:p-3 flex justify-between items-center md:table-cell mt-1 md:mt-0">
+                          <td className="col-span-2 p-0 md:p-3 flex justify-between items-center md:table-cell pt-1 md:pt-3 border-t md:border-none border-indigo-100/60 mt-1 md:mt-0">
                             <div className="hide-on-pdf flex items-center gap-2">
-                              <span className="px-2 py-1.5 rounded-xl font-bold text-xs bg-emerald-100 text-emerald-800">שולם ✓</span>
+                              <span className="px-2 py-1 rounded-xl font-bold text-[11px] bg-emerald-100 text-emerald-800">שולם ✓</span>
                               <button onClick={() => {
-                                if(window.confirm('האם את בטוחה שברצונך למחוק רכישת כרטיסייה זו? (שימי לב: הפעולה תאפס ותמחק למתאמנת את הכרטיסייה שלה!)')) {
-                                  if(window.confirm('אזהרה 2: מחיקת הרשומה תסיר אותה לחלוטין מדוח הכספים ותבטל את הכרטיסייה למתאמנת. להמשיך?')) {
-                                    setTrainees(prev => prev.map(t => {
-                                      if (t.id === reg.user_id) {
-                                        const updatedTrainee = { ...t };
-                                        delete updatedTrainee.punch_card;
-                                        return updatedTrainee;
-                                      }
-                                      return t;
-                                    }));
-                                    supabase.from('registrations').delete().eq('id', reg.id).then();
-                                    setRegistrations(prev => prev.filter(r => r.id !== reg.id).map(r => {
-                                      if (r.user_id === reg.user_id && r.payment_status === 'punch_card') {
-                                        return { ...r, payment_status: 'unpaid', payment_date: null, paid_amount: undefined };
-                                      }
-                                      return r;
-                                    }));
-                                    alert('הפעולה בוצעה: הרשומה נמחקה, הכרטיסייה בוטלה, ואימונים שחויבו ממנה סומנו כ"לא שולם".');
-                                  }
+                                if(window.confirm('האם את בטוחה שברצונך למחוק רכישת כרטיסייה זו?')) {
+                                  setTrainees(prev => prev.map(t => {
+                                    if (t.id === reg.user_id) {
+                                      const updatedTrainee = { ...t };
+                                      delete updatedTrainee.punch_card;
+                                      return updatedTrainee;
+                                    }
+                                    return t;
+                                  }));
+                                  supabase.from('registrations').delete().eq('id', reg.id).then();
+                                  setRegistrations(prev => prev.filter(r => r.id !== reg.id));
                                 }
-                              }} className="text-red-500 hover:text-red-700 bg-red-50 p-1.5 rounded-lg" title="מחיקת רשומה מהדוח וביטול כרטיסייה"><Trash2 size={16}/></button>
+                              }} className="text-red-500 bg-red-50 p-1 rounded-lg" title="מחיקה"><Trash2 size={14}/></button>
                             </div>
                             <span className="show-on-pdf px-2.5 py-1.5 rounded-xl font-bold text-xs bg-emerald-100 text-emerald-800">שולם</span>
                           </td>
@@ -4090,12 +4082,33 @@ const AdminDashboard = ({
                     if (!workout) return null;
 
                     return (
-                      <tr key={reg.id} className="flex flex-col md:table-row bg-white md:hover:bg-gray-50/50 border md:border-none border-gray-100 rounded-2xl md:rounded-none mb-4 md:mb-0 p-3 md:p-0 shadow-sm md:shadow-none">
-                        <td className="p-2 md:p-3 font-bold text-gray-900 flex justify-between items-center md:table-cell"><span className="md:hidden font-normal text-gray-500">שם:</span> {trainee.full_name}</td>
-                        <td className="p-2 md:p-3 flex justify-between items-center md:table-cell"><span className="md:hidden font-normal text-gray-500">אימון:</span> {workout.type}</td>
-                        <td className="p-2 md:p-3 flex justify-between items-center md:table-cell"><span className="md:hidden font-normal text-gray-500">ת. אימון:</span> {workout.date.split('-').reverse().join('/')}</td>
-                        <td className="p-2 md:p-3 font-semibold text-emerald-700 flex justify-between items-center md:table-cell"><span className="md:hidden font-normal text-gray-500">ת. תשלום:</span> {reg.payment_date && reg.payment_status !== 'unpaid' ? reg.payment_date.substring(0,10).split('-').reverse().join('/') : '---'}</td>
-                        <td className="p-2 md:p-3 font-extrabold text-gray-900 flex justify-between items-center md:table-cell border-t md:border-none mt-2 md:mt-0 pt-3 md:pt-3">
+                      <tr key={reg.id} className="grid grid-cols-2 md:table-row bg-white md:hover:bg-gray-50/50 border-b md:border-none border-gray-200 mb-2 md:mb-0 p-3 md:p-0 gap-x-2 gap-y-1">
+                        <td className="col-span-2 md:col-span-1 p-0 md:p-3 font-bold text-gray-900 flex justify-between items-center md:table-cell border-b md:border-none border-gray-100 pb-1.5 md:pb-0 mb-1 md:mb-0">
+                          <span className="text-sm md:text-xs">{trainee.full_name}</span>
+                          <span className="md:hidden font-black text-gray-900 text-sm flex items-center gap-1">
+                            <input 
+                              type="number" 
+                              className="w-14 bg-gray-50 border border-gray-200 rounded p-1 text-center font-bold outline-none text-xs" 
+                              defaultValue={reg.paid_amount !== undefined ? reg.paid_amount : workout.price} 
+                              onBlur={(e) => {
+                                const newAmount = Number(e.target.value);
+                                let note = reg.discount_note || '';
+                                if (newAmount < workout.price) {
+                                  note = window.prompt('הוזן מחיר נמוך ממחיר האימון. נא להזין סיבה להנחה:', note) || note;
+                                } else {
+                                  note = '';
+                                }
+                                const updatedReg = { ...reg, paid_amount: newAmount, discount_note: note };
+                                setRegistrations(prev => prev.map(r => r.id === reg.id ? updatedReg : r));
+                                supabase.from('registrations').upsert(updatedReg).then();
+                              }}
+                            /> ₪
+                          </span>
+                        </td>
+                        <td className="col-span-1 p-0 md:p-3 flex flex-col md:table-cell font-semibold text-gray-800"><span className="md:hidden text-gray-400 text-[10px] font-semibold">אימון</span> <span className="text-xs">{workout.type}</span></td>
+                        <td className="col-span-1 p-0 md:p-3 flex flex-col md:table-cell font-medium text-gray-700"><span className="md:hidden text-gray-400 text-[10px] font-semibold">ת. אימון</span> <span className="text-xs">{workout.date.split('-').reverse().join('/')}</span></td>
+                        <td className="col-span-2 p-0 md:p-3 font-semibold text-emerald-600 flex flex-col md:table-cell"><span className="md:hidden text-gray-400 text-[10px] font-semibold">ת. תשלום</span> <span className="text-xs">{reg.payment_date && reg.payment_status !== 'unpaid' ? reg.payment_date.substring(0,10).split('-').reverse().join('/') : '---'}</span></td>
+                        <td className="hidden md:table-cell p-3 font-extrabold text-gray-900">
                           <span className="md:hidden font-normal text-gray-500">סכום:</span>
                           <span className="hide-on-pdf flex items-center gap-1">
                             <input 
