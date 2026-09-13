@@ -200,7 +200,7 @@ const MainHeader = ({ settings, isAdmin, onOpenAdminLogin, onLogout, currentUser
               ת
             </div>
             <div className="text-center">
-              <h1 className="text-3xl font-extrabold bg-gradient-to-r from-gray-900 via-amber-800 to-amber-600 bg-clip-text text-transparent">
+              <h1 translate="no" className="text-3xl font-extrabold bg-gradient-to-r from-gray-900 via-amber-800 to-amber-600 bg-clip-text text-transparent notranslate">
                 תהל בן משה
               </h1>
             </div>
@@ -5353,7 +5353,7 @@ export default function App() {
             margin-bottom: 1rem;
           }
         `}</style>
-      <div dir="rtl" className="text-gray-900 antialiased selection:bg-amber-200 relative min-h-screen">
+      <div dir="rtl" lang="he" className="text-gray-900 antialiased selection:bg-amber-200 relative min-h-screen">
         <div className="fixed inset-0 z-[-2] bg-cover bg-top h-screen w-screen bg-no-repeat" style={{ backgroundImage: `url(${settings.backgroundUrl})` }}></div>
         <div className="fixed inset-0 z-[-1] bg-gradient-to-b from-white/80 via-white/70 to-white/85 backdrop-blur-[3px]"></div>
         
