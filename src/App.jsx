@@ -7,7 +7,7 @@ import {
   Calendar, Users, User, Settings, LogOut, Check, X, CreditCard, MessageCircle, 
   Download, Upload, Plus, Trash2, AlertCircle, CheckCircle2, Clock, 
   DollarSign, Edit, Search, Send, FileText, ChevronRight, Filter, Eye, 
-  Lock, RefreshCw, Award, ChevronDown, CheckSquare, Square, Phone, ShieldAlert, Archive, UserPlus, LogIn, ListOrdered, Gamepad2, Cat, Dog, Smile, Dumbbell, Scale, Activity
+  Lock, RefreshCw, Droplet, Award, ChevronDown, CheckSquare, Square, Phone, ShieldAlert, Archive, UserPlus, LogIn, ListOrdered, Gamepad2, Cat, Dog, Smile, Dumbbell, Scale, Activity
 } from 'lucide-react';
 
 // ============================================================================
@@ -154,8 +154,19 @@ const MainHeader = ({ settings, isAdmin, onOpenAdminLogin, onLogout, currentUser
   const [isGamesModalOpen, setIsGamesModalOpen] = useState(false);
   const [activeGame, setActiveGame] = useState(null);
   const [fitBuddyClick, setFitBuddyClick] = useState(false);
+  const [showBuddyMsg, setShowBuddyMsg] = useState(true);
+  const [waterMsgActive, setWaterMsgActive] = useState(false);
   const [balanceScore, setBalanceScore] = useState(0);
   const [editForm, setEditForm] = useState({ full_name: '', phone: '', email: '' });
+
+  // מנגנון הופעה והיעלמות לסירוגין של הודעת הפיט-באדי שלא תציק ללקוחה
+  useEffect(() => {
+    if (!currentUser || !currentUser.fit_buddy_active) return;
+    const timer = setInterval(() => {
+      setShowBuddyMsg(prev => !prev);
+    }, 5000); // נעלם ומופיע כל 5 שניות
+    return () => clearInterval(timer);
+  }, [currentUser]);
 
   const openEditModal = () => {
     if (currentUser) {
@@ -228,18 +239,43 @@ const MainHeader = ({ settings, isAdmin, onOpenAdminLogin, onLogout, currentUser
           </div>
         )}
       </div>
-{/* הפיט-באדי (הטמגוצ'י) - מיקום מרווח בין הלוגו לברכת השלום */}
-      {currentUser && !isAdmin && settings.enableFitBuddy && currentUser.fit_buddy_active && (
-        <div className="flex flex-row items-center gap-3 my-2 animate-fadeIn cursor-pointer hover:scale-105 transition-transform" onClick={() => { setFitBuddyClick(true); setTimeout(() => setFitBuddyClick(false), 3000); }}>
-          <div className="bg-pink-100 text-pink-600 p-3 rounded-full shadow-md border border-pink-200">
-            <BuddyIcon size={28} />
+{/* הפיט-באדי ומעקב המים היומי */}
+      {currentUser && !isAdmin && settings.enableFitBuddy && currentUser.fit_buddy_active && (() => {
+        const todayStr = new Date().toISOString().substring(0, 10);
+        const currentWaterCount = currentUser?.water_date === todayStr ? (currentUser?.water_count || 0) : 0;
+        
+        const handleAddWater = async (e) => {
+          e.stopPropagation();
+          const newCount = currentWaterCount + 1;
+          const updated = { ...currentUser, water_count: newCount, water_date: todayStr };
+          setCurrentUser(updated);
+          setTrainees(prev => prev.map(t => t.id === updated.id ? updated : t));
+          setWaterMsgActive(true);
+          await supabase.from('trainees').upsert(updated);
+          setTimeout(() => setWaterMsgActive(false), 3000); // חוזר להודעה הרגילה אחרי 3 שניות
+        };
+
+        return (
+          <div className="flex flex-row items-center gap-2.5 my-2 animate-fadeIn cursor-pointer" onClick={() => { setFitBuddyClick(true); setTimeout(() => setFitBuddyClick(false), 3000); }}>
+            {/* כפתור כוסות מים */}
+            <div className="flex items-center gap-1 bg-blue-50 border border-blue-200 px-3 py-1.5 rounded-full shadow-sm hover:bg-blue-100 transition" onClick={handleAddWater} title="לחצי לשתיית כוס מים">
+              <Droplet size={18} className="text-blue-500 animate-pulse" />
+              <span className="text-xs font-black text-blue-800">{currentWaterCount}</span>
+            </div>
+
+            <div className="bg-pink-100 text-pink-600 p-2.5 rounded-full shadow-md border border-pink-200 hover:scale-105 transition-transform">
+              <BuddyIcon size={26} />
+            </div>
+
+            {showBuddyMsg && (
+              <div className="bg-white px-3.5 py-1.5 rounded-2xl shadow-md border border-gray-100 text-xs font-bold text-gray-700 relative whitespace-nowrap animate-fadeIn">
+                {waterMsgActive ? `יש! שתיתי היום ${currentWaterCount} כוסות מים 💧` : fitBuddyClick ? "איזה כיף שחזרת! 🤩" : buddyMsg}
+                <div className="absolute top-1/2 -right-1.5 -translate-y-1/2 w-3 h-3 bg-white rotate-45 border-t border-r border-gray-100"></div>
+              </div>
+            )}
           </div>
-          <div className="bg-white px-4 py-2 rounded-2xl shadow-md border border-gray-100 text-xs font-bold text-gray-700 relative whitespace-nowrap">
-            {fitBuddyClick ? "איזה כיף שחזרת! 🤩" : buddyMsg}
-            <div className="absolute top-1/2 -right-1.5 -translate-y-1/2 w-3 h-3 bg-white rotate-45 border-t border-r border-gray-100"></div>
-          </div>
-        </div>
-      )}
+        );
+      })()}
       {/* ברכת שלום למתאמנת מחוברת */}
       {currentUser && !isAdmin && (
         <h2 className="text-xl sm:text-2xl font-black text-gray-800 bg-white/70 px-6 py-2 rounded-full shadow-sm border border-amber-100/50 backdrop-blur-md text-center mt-[-10px]">
