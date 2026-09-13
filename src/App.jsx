@@ -1440,7 +1440,7 @@ const UserView = ({
         </div>
       )}
 
-      <div className="flex bg-white/80 p-1.5 rounded-2xl shadow-sm border border-gray-200/80">
+      <div className="flex bg-white/85 backdrop-blur-md p-1.5 rounded-2xl shadow-md border border-gray-200/80 sticky top-4 z-40 transition-all">
     <button 
       onClick={() => setActiveTab('schedule')}
       className={`flex-1 py-2.5 rounded-xl font-bold text-xs sm:text-sm transition flex items-center justify-center gap-2 ${
@@ -1526,8 +1526,10 @@ const UserView = ({
           )}
 
           {upcomingWorkouts.length === 0 ? (
-            <div className="bg-white/90 p-8 rounded-3xl text-center text-gray-500 font-bold">
-              אין אימונים פעילים כרגע
+            <div className="bg-white/90 p-10 rounded-3xl text-center flex flex-col items-center justify-center gap-3 border border-dashed border-gray-300 shadow-sm my-4">
+              <div className="bg-gray-100 p-4 rounded-full text-gray-400"><Calendar size={32} /></div>
+              <p className="text-gray-700 font-bold text-lg">אין אימונים פעילים כרגע</p>
+              <p className="text-gray-500 text-xs">לוח האימונים יתעדכן בקרוב, שווה לחזור ולבדוק! 💪</p>
             </div>
           ) : (
             upcomingWorkouts.map(workout => {
@@ -5473,8 +5475,10 @@ export default function App() {
 
         {/* העברנו את הכפתורים הצפים מחוץ לדיב של הטשטוש כדי שיישארו קבועים למסך */}
           <AccessibilityWidget />
-          <a href="https://wa.me/972545222008?text=היי%20תהל,%20אשמח%20לפרטים" target="_blank" rel="noreferrer" className="fixed bottom-6 right-6 z-[9998] bg-emerald-500 text-white p-3 rounded-full shadow-2xl hover:bg-emerald-600 transition flex items-center justify-center hover:scale-110" style={{ width: '56px', height: '56px' }} title="שלחי הודעה לתהל">
-            <MessageCircle size={32} />
+          <a href="https://wa.me/972545222008?text=היי%20תהל,%20אשמח%20לפרטים" target="_blank" rel="noreferrer" className="fixed bottom-6 right-6 z-[9998] group bg-emerald-500 text-white p-3 rounded-full shadow-2xl hover:bg-emerald-600 transition-all flex items-center justify-center hover:scale-110" style={{ width: '56px', height: '56px' }} title="שלחי הודעה לתהל">
+            <span className="absolute right-16 bg-white text-emerald-800 text-xs font-bold px-3 py-2 rounded-2xl shadow-lg border border-emerald-100 opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">דברי איתי בוואטסאפ 💚</span>
+            <MessageCircle size={32} className="relative z-10" />
+            <span className="absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-30 animate-ping z-0"></span>
           </a>
 
           {showCookieBanner && (
