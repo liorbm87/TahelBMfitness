@@ -4090,31 +4090,47 @@ const AdminDashboard = ({
                     if (!workout) return null;
 
                     return (
-                      <tr key={reg.id} className="flex flex-col md:table-row w-full bg-white md:hover:bg-gray-50/50 border md:border-none border-gray-200 rounded-2xl md:rounded-none mb-4 md:mb-0 p-4 md:p-0 shadow-md md:shadow-none gap-1">
-                        <td className="p-2 md:p-3 font-bold text-gray-900 flex justify-between items-center md:table-cell"><span className="md:hidden font-normal text-gray-500">שם:</span> {trainee.full_name}</td>
-                        <td className="p-2 md:p-3 flex justify-between items-center md:table-cell"><span className="md:hidden font-normal text-gray-500">אימון:</span> {workout.type}</td>
-                        <td className="p-2 md:p-3 flex justify-between items-center md:table-cell"><span className="md:hidden font-normal text-gray-500">ת. אימון:</span> {workout.date.split('-').reverse().join('/')}</td>
-                        <td className="p-2 md:p-3 font-semibold text-emerald-700 flex justify-between items-center md:table-cell"><span className="md:hidden font-normal text-gray-500">ת. תשלום:</span> {reg.payment_date && reg.payment_status !== 'unpaid' ? reg.payment_date.substring(0,10).split('-').reverse().join('/') : '---'}</td>
-                        <td className="p-2 md:p-3 font-extrabold text-gray-900 flex justify-between items-center md:table-cell border-t md:border-none mt-2 md:mt-0 pt-3 md:pt-3">
-                          <span className="md:hidden font-normal text-gray-500">סכום:</span>
+                      <tr key={reg.id} className="grid grid-cols-2 md:table-row w-full bg-white md:hover:bg-gray-50/50 border md:border-none border-gray-200 rounded-2xl md:rounded-none mb-4 md:mb-0 p-4 md:p-0 shadow-md md:shadow-none gap-y-3 gap-x-2">
+                        
+                        <td className="col-span-1 md:table-cell font-bold text-gray-900 flex flex-col text-right p-0 md:p-3">
+                          <span className="md:hidden font-normal text-[10px] text-gray-500 mb-0.5">שם מתאמנת</span>
+                          <span>{trainee.full_name}</span>
+                        </td>
+                        
+                        <td className="col-span-1 md:table-cell flex flex-col text-left md:text-right p-0 md:p-3">
+                          <span className="md:hidden font-normal text-[10px] text-gray-500 mb-0.5">סוג אימון</span>
+                          <span className="font-bold text-gray-800">{workout.type}</span>
+                        </td>
+                        
+                        <td className="col-span-1 md:table-cell flex flex-col text-right p-0 md:p-3 border-t md:border-none border-gray-100 pt-2 md:pt-0">
+                          <span className="md:hidden font-normal text-[10px] text-gray-500 mb-0.5">ת. אימון</span>
+                          <span className="text-gray-700">{workout.date.split('-').reverse().join('/')}</span>
+                        </td>
+                        
+                        <td className="col-span-1 md:table-cell flex flex-col text-left md:text-right p-0 md:p-3 border-t md:border-none border-gray-100 pt-2 md:pt-0 font-semibold text-emerald-700">
+                          <span className="md:hidden font-normal text-[10px] text-gray-500 mb-0.5">ת. תשלום</span>
+                          <span>{reg.payment_date && reg.payment_status !== 'unpaid' ? reg.payment_date.substring(0,10).split('-').reverse().join('/') : '---'}</span>
+                        </td>
+                        
+                        <td className="row-start-3 col-start-1 col-span-2 md:table-cell font-extrabold text-gray-900 flex justify-center md:justify-start items-center p-0 md:p-3 border-t md:border-none border-gray-100 pt-3 md:pt-3 z-10 relative">
                           <span className="hide-on-pdf flex items-center gap-1">
                             <input 
-                          type="number" 
-                          className="w-16 bg-gray-50 border border-gray-200 rounded p-1 text-center font-bold outline-none" 
-                          defaultValue={reg.paid_amount !== undefined ? reg.paid_amount : workout.price} 
-                          onBlur={(e) => {
-                            const newAmount = Number(e.target.value);
-                            let note = reg.discount_note || '';
-                            if (newAmount < workout.price) {
-                              note = window.prompt('הוזן מחיר נמוך ממחיר האימון. נא להזין סיבה להנחה (עבור דוח רו"ח):', note) || note;
-                            } else {
-                              note = '';
-                            }
-                            const updatedReg = { ...reg, paid_amount: newAmount, discount_note: note };
-                            setRegistrations(prev => prev.map(r => r.id === reg.id ? updatedReg : r));
-                            supabase.from('registrations').upsert(updatedReg).then();
-                          }}
-                        /> ₪
+                              type="number" 
+                              className="w-16 bg-gray-50 border border-gray-200 rounded p-1 text-center font-bold outline-none" 
+                              defaultValue={reg.paid_amount !== undefined ? reg.paid_amount : workout.price} 
+                              onBlur={(e) => {
+                                const newAmount = Number(e.target.value);
+                                let note = reg.discount_note || '';
+                                if (newAmount < workout.price) {
+                                  note = window.prompt('הוזן מחיר נמוך ממחיר האימון. נא להזין סיבה להנחה (עבור דוח רו"ח):', note) || note;
+                                } else {
+                                  note = '';
+                                }
+                                const updatedReg = { ...reg, paid_amount: newAmount, discount_note: note };
+                                setRegistrations(prev => prev.map(r => r.id === reg.id ? updatedReg : r));
+                                supabase.from('registrations').upsert(updatedReg).then();
+                              }}
+                            /> ₪
                             {reg.discount_note && <div className="text-[10px] text-amber-600 font-bold mt-1 max-w-[100px] leading-tight break-words">{reg.discount_note}</div>}
                           </span>
                           <span className="show-on-pdf flex flex-col items-end">
@@ -4122,12 +4138,13 @@ const AdminDashboard = ({
                             {reg.discount_note && <span className="text-[9px] text-amber-700">הערת הנחה: {reg.discount_note}</span>}
                           </span>
                         </td>
-                        <td className="p-3">
-                          <div className="hide-on-pdf flex items-center gap-2">
+                        
+                        <td className="row-start-3 col-start-1 col-span-2 md:table-cell p-0 md:p-3 pt-3 md:pt-3 pointer-events-none z-20 relative">
+                          <div className="hide-on-pdf flex justify-between items-center w-full">
                             <select 
                               value={reg.payment_status}
                               onChange={(e) => handleUpdatePaymentStatus(reg.id, e.target.value)}
-                              className={`p-1.5 rounded-xl font-bold text-xs outline-none cursor-pointer ${
+                              className={`pointer-events-auto p-1.5 rounded-xl font-bold text-xs outline-none cursor-pointer ${
                                 reg.payment_status === 'paid' ? 'bg-emerald-100 text-emerald-800' :
                                 reg.payment_status === 'punch_card' ? 'bg-blue-100 text-blue-800' : 'bg-red-100 text-red-800'
                               }`}
@@ -4152,15 +4169,16 @@ const AdminDashboard = ({
                                     setRegistrations(prev => prev.filter(r => r.id !== reg.id));
                                   }
                                 }
-                              }} className="text-red-500 hover:text-red-700 ml-1" title="מחיקת רשומה מהדוח"><Trash2 size={14}/></button>
+                              }} className="pointer-events-auto text-red-500 hover:text-red-700 bg-white p-1.5 rounded-lg border border-red-100 shadow-sm transition" title="מחיקת רשומה מהדוח"><Trash2 size={16}/></button>
                           </div>
-                          <span className={`show-on-pdf px-2.5 py-1.5 rounded-xl font-bold text-xs ${
+                          <span className={`pointer-events-auto show-on-pdf px-2.5 py-1.5 rounded-xl font-bold text-xs ${
                             reg.payment_status === 'paid' ? 'bg-emerald-100 text-emerald-800' :
                             reg.payment_status === 'punch_card' ? 'bg-blue-100 text-blue-800' : 'bg-red-100 text-red-800'
                           }`}>
                             {reg.payment_status === 'paid' ? 'שולם' : reg.payment_status === 'punch_card' ? 'כרטיסייה' : 'לא שולם'}
                           </span>
                         </td>
+                        
                       </tr>
                     );
                   })}
