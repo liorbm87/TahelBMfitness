@@ -1543,7 +1543,7 @@ const UserView = ({
                 <div 
                   key={workout.id}
                   id={`workout-${workout.id}`}
-                  className={`bg-white/95 backdrop-blur-md p-5 rounded-3xl shadow-lg border transition duration-200 scroll-mt-24 ${
+                  className={`bg-white/95 backdrop-blur-md p-5 rounded-3xl shadow-lg border transition-all duration-300 hover:-translate-y-1 hover:shadow-2xl scroll-mt-24 ${
                     isUserRegistered ? 'border-emerald-400 bg-emerald-50/20' : 'border-gray-100 hover:border-amber-300'
                   }`}
                 >
@@ -5323,6 +5323,12 @@ export default function App() {
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;700;900&display=swap'); 
         * { font-family: 'Heebo', sans-serif !important; }
+        
+        /* עיצוב פס גלילה מודרני לאפליקציה */
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #d1d5db; border-radius: 10px; }
+        ::-webkit-scrollbar-thumb:hover { background: #9ca3af; }
         .pdf-export-mode .hide-on-pdf { display: none !important; }
         .pdf-export-mode .show-on-pdf { display: inline-block !important; }
         .show-on-pdf { display: none; }
