@@ -1985,6 +1985,15 @@ const AdminDashboard = ({
     .replace(/\[קישור האימון\]/g, workoutLink);
 };
   const [financeMonth, setFinanceMonth] = useState('2026-08');
+  const [sortConfig, setSortConfig] = useState({ key: 'payment_date', direction: 'desc' }); // ברירת מחדל: ת.תשלום, מהחדש לישן
+
+  const requestSort = (key) => {
+    let direction = 'asc';
+    if (sortConfig.key === key && sortConfig.direction === 'asc') {
+      direction = 'desc';
+    }
+    setSortConfig({ key, direction });
+  };
   
   // יצירת רשימת חודשים (לפי תאריך אימון לחובות, ולפי תאריך תשלום להכנסות ששולמו)
   const availableFinanceMonths = useMemo(() => {
@@ -3972,36 +3981,55 @@ const AdminDashboard = ({
 
             <div className="overflow-x-auto">
               <table className="w-full text-right text-xs">
-                <thead>
+                <thead className="hidden md:table-header-group">
                   <tr className="bg-gray-50 text-gray-500 border-b">
-                    <th className="p-3">שם המתאמנ/ת</th>
-                    <th className="p-3">אימון</th>
-                    <th className="p-3">ת. אימון</th>
-                    <th className="p-3">ת. תשלום</th>
-                    <th className="p-3">סכום</th>
-                    <th className="p-3">סטטוס תשלום</th>
+                    <th className="p-3 cursor-pointer hover:text-gray-900 transition select-none" onClick={() => requestSort('name')}>שם המתאמנ/ת {sortConfig.key === 'name' && (sortConfig.direction === 'asc' ? '↑' : '↓')}</th>
+                    <th className="p-3 cursor-pointer hover:text-gray-900 transition select-none" onClick={() => requestSort('workout')}>אימון {sortConfig.key === 'workout' && (sortConfig.direction === 'asc' ? '↑' : '↓')}</th>
+                    <th className="p-3 cursor-pointer hover:text-gray-900 transition select-none" onClick={() => requestSort('workout_date')}>ת. אימון {sortConfig.key === 'workout_date' && (sortConfig.direction === 'asc' ? '↑' : '↓')}</th>
+                    <th className="p-3 cursor-pointer hover:text-gray-900 transition select-none" onClick={() => requestSort('payment_date')}>ת. תשלום {sortConfig.key === 'payment_date' && (sortConfig.direction === 'asc' ? '↑' : '↓')}</th>
+                    <th className="p-3 cursor-pointer hover:text-gray-900 transition select-none" onClick={() => requestSort('amount')}>סכום {sortConfig.key === 'amount' && (sortConfig.direction === 'asc' ? '↑' : '↓')}</th>
+                    <th className="p-3 cursor-pointer hover:text-gray-900 transition select-none" onClick={() => requestSort('status')}>סטטוס תשלום {sortConfig.key === 'status' && (sortConfig.direction === 'asc' ? '↑' : '↓')}</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y">
+                <tbody className="md:divide-y">
                   {registrations.filter(reg => {
                     if (reg.is_punch_card_purchase) return (reg.payment_date || reg.created_at).startsWith(financeMonth);
                     const w = workouts.find(wo => wo.id === reg.workout_id);
                     if (!w) return false;
                     const dateToCheck = (reg.payment_status !== 'unpaid' && reg.payment_date) ? reg.payment_date : w.date;
                     return dateToCheck.startsWith(financeMonth);
+                  }).sort((a, b) => {
+                    const tA = trainees.find(t => t.id === a.user_id) || {};
+                    const tB = trainees.find(t => t.id === b.user_id) || {};
+                    const wA = a.is_punch_card_purchase ? { type: 'כרטיסייה', date: a.payment_date || a.created_at, price: a.paid_amount } : workouts.find(w => w.id === a.workout_id) || {};
+                    const wB = b.is_punch_card_purchase ? { type: 'כרטיסייה', date: b.payment_date || b.created_at, price: b.paid_amount } : workouts.find(w => w.id === b.workout_id) || {};
+                    
+                    let valA, valB;
+                    switch (sortConfig.key) {
+                      case 'name': valA = tA.full_name || ''; valB = tB.full_name || ''; break;
+                      case 'workout': valA = wA.type || ''; valB = wB.type || ''; break;
+                      case 'workout_date': valA = new Date(wA.date || 0); valB = new Date(wB.date || 0); break;
+                      case 'payment_date': valA = new Date(a.payment_date || a.created_at || 0); valB = new Date(b.payment_date || b.created_at || 0); break;
+                      case 'amount': valA = a.paid_amount !== undefined ? a.paid_amount : (wA.price || 0); valB = b.paid_amount !== undefined ? b.paid_amount : (wB.price || 0); break;
+                      case 'status': valA = a.payment_status; valB = b.payment_status; break;
+                      default: valA = 0; valB = 0;
+                    }
+                    if (valA < valB) return sortConfig.direction === 'asc' ? -1 : 1;
+                    if (valA > valB) return sortConfig.direction === 'asc' ? 1 : -1;
+                    return 0;
                   }).map(reg => {
                     const trainee = trainees.find(t => t.id === reg.user_id);
                     if (!trainee) return null;
 
                     if (reg.is_punch_card_purchase) {
           return (
-            <tr key={reg.id} className="hover:bg-gray-50/50 bg-indigo-50/40">
-              <td className="p-3 font-bold text-gray-900">{trainee.full_name}</td>
-              <td className="p-3 font-bold text-indigo-700">{reg.custom_title || `כרטיסייה ${reg.purchased_entries ? `(${reg.purchased_entries} ניקובים)` : ''}`}</td>
-                          <td className="p-3 text-gray-400">---</td>
-                          <td className="p-3 font-semibold text-emerald-700">{reg.payment_date ? reg.payment_date.substring(0,10).split('-').reverse().join('/') : '---'}</td>
-                          <td className="p-3 font-extrabold text-gray-900">{reg.paid_amount} ₪</td>
-                          <td className="p-3">
+            <tr key={reg.id} className="flex flex-col md:table-row bg-indigo-50/40 md:hover:bg-gray-50/50 border md:border-none border-indigo-100 rounded-2xl md:rounded-none mb-4 md:mb-0 p-3 md:p-0 shadow-sm md:shadow-none">
+              <td className="p-2 md:p-3 font-bold text-gray-900 flex justify-between items-center md:table-cell"><span className="md:hidden font-normal text-gray-500">שם:</span> {trainee.full_name}</td>
+              <td className="p-2 md:p-3 font-bold text-indigo-700 flex justify-between items-center md:table-cell"><span className="md:hidden font-normal text-gray-500">אימון:</span> <span>{reg.custom_title || `כרטיסייה ${reg.purchased_entries ? `(${reg.purchased_entries})` : ''}`}</span></td>
+                          <td className="p-2 md:p-3 text-gray-400 flex justify-between items-center md:table-cell"><span className="md:hidden font-normal text-gray-500">ת. אימון:</span> ---</td>
+                          <td className="p-2 md:p-3 font-semibold text-emerald-700 flex justify-between items-center md:table-cell"><span className="md:hidden font-normal text-gray-500">ת. תשלום:</span> {reg.payment_date ? reg.payment_date.substring(0,10).split('-').reverse().join('/') : '---'}</td>
+                          <td className="p-2 md:p-3 font-extrabold text-gray-900 flex justify-between items-center md:table-cell border-t md:border-none mt-2 md:mt-0 pt-3 md:pt-3"><span className="md:hidden font-normal text-gray-500">סכום:</span> {reg.paid_amount} ₪</td>
+                          <td className="p-2 md:p-3 flex justify-between items-center md:table-cell">
                             <div className="hide-on-pdf flex items-center gap-2">
                               <span className="px-2 py-1.5 rounded-xl font-bold text-xs bg-emerald-100 text-emerald-800">שולם</span>
                               <button onClick={() => {
@@ -4040,13 +4068,14 @@ const AdminDashboard = ({
                     if (!workout) return null;
 
                     return (
-                      <tr key={reg.id} className="hover:bg-gray-50/50">
-                        <td className="p-3 font-bold text-gray-900">{trainee.full_name}</td>
-                        <td className="p-3">{workout.type}</td>
-                        <td className="p-3">{workout.date.split('-').reverse().join('/')}</td>
-                        <td className="p-3 font-semibold text-emerald-700">{reg.payment_date && reg.payment_status !== 'unpaid' ? reg.payment_date.substring(0,10).split('-').reverse().join('/') : '---'}</td>
-                        <td className="p-3 font-extrabold text-gray-900">
-                          <span className="hide-on-pdf">
+                      <tr key={reg.id} className="flex flex-col md:table-row bg-white md:hover:bg-gray-50/50 border md:border-none border-gray-100 rounded-2xl md:rounded-none mb-4 md:mb-0 p-3 md:p-0 shadow-sm md:shadow-none">
+                        <td className="p-2 md:p-3 font-bold text-gray-900 flex justify-between items-center md:table-cell"><span className="md:hidden font-normal text-gray-500">שם:</span> {trainee.full_name}</td>
+                        <td className="p-2 md:p-3 flex justify-between items-center md:table-cell"><span className="md:hidden font-normal text-gray-500">אימון:</span> {workout.type}</td>
+                        <td className="p-2 md:p-3 flex justify-between items-center md:table-cell"><span className="md:hidden font-normal text-gray-500">ת. אימון:</span> {workout.date.split('-').reverse().join('/')}</td>
+                        <td className="p-2 md:p-3 font-semibold text-emerald-700 flex justify-between items-center md:table-cell"><span className="md:hidden font-normal text-gray-500">ת. תשלום:</span> {reg.payment_date && reg.payment_status !== 'unpaid' ? reg.payment_date.substring(0,10).split('-').reverse().join('/') : '---'}</td>
+                        <td className="p-2 md:p-3 font-extrabold text-gray-900 flex justify-between items-center md:table-cell border-t md:border-none mt-2 md:mt-0 pt-3 md:pt-3">
+                          <span className="md:hidden font-normal text-gray-500">סכום:</span>
+                          <span className="hide-on-pdf flex items-center gap-1">
                             <input 
                           type="number" 
                           className="w-16 bg-gray-50 border border-gray-200 rounded p-1 text-center font-bold outline-none" 
