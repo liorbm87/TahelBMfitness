@@ -4,7 +4,7 @@ import { createClient } from '@supabase/supabase-js';
 import SignatureCanvas from 'react-signature-canvas';
 import html2pdf from 'html2pdf.js';
 import { 
-  Calendar, Users, Settings, LogOut, Check, X, CreditCard, MessageCircle, 
+  Calendar, Users, User, Settings, LogOut, Check, X, CreditCard, MessageCircle, 
   Download, Upload, Plus, Trash2, AlertCircle, CheckCircle2, Clock, 
   DollarSign, Edit, Search, Send, FileText, ChevronRight, Filter, Eye, 
   Lock, RefreshCw, Award, ChevronDown, CheckSquare, Square, Phone, ShieldAlert, Archive, UserPlus, LogIn, ListOrdered, Gamepad2, Cat, Dog, Smile, Dumbbell, Scale, Activity
@@ -205,18 +205,7 @@ const MainHeader = ({ settings, isAdmin, onOpenAdminLogin, onLogout, currentUser
         </button>
       )}
 
-      {/* הפיט-באדי (הטמגוצ'י) - מוצג רק אם פעיל אצל הלקוחה ותהל לא כיבתה */}
-      {currentUser && !isAdmin && settings.enableFitBuddy && currentUser.fit_buddy_active && (
-        <div className="absolute top-4 z-40 flex flex-col items-center animate-fadeIn cursor-pointer hover:-translate-y-1 transition-transform" onClick={() => { setFitBuddyClick(true); setTimeout(() => setFitBuddyClick(false), 3000); }}>
-          <div className="bg-white px-3 py-1.5 rounded-2xl shadow-md border border-gray-100 text-[10px] font-bold text-gray-700 mb-1 relative whitespace-nowrap">
-            {fitBuddyClick ? "איזה כיף שחזרת! 🤩" : buddyMsg}
-            <div className="absolute -bottom-1.5 left-1/2 -translate-x-1/2 w-3 h-3 bg-white rotate-45 border-b border-r border-gray-100"></div>
-          </div>
-          <div className="bg-pink-100 text-pink-600 p-2.5 rounded-full shadow-sm border border-pink-200">
-            <BuddyIcon size={24} />
-          </div>
-        </div>
-      )}
+      
 
       {/* לוגו מרכזי גדול */}
       <div
@@ -229,7 +218,7 @@ const MainHeader = ({ settings, isAdmin, onOpenAdminLogin, onLogout, currentUser
         ) : (
           <div className="flex flex-col items-center gap-2">
             <div className="w-20 h-20 bg-gradient-to-tr from-amber-500 to-amber-300 rounded-full flex items-center justify-center text-white font-black text-4xl shadow-xl">
-              ת
+              
             </div>
             <div className="text-center">
               <h1 translate="no" className="text-3xl font-extrabold bg-gradient-to-r from-gray-900 via-amber-800 to-amber-600 bg-clip-text text-transparent notranslate">
@@ -239,7 +228,18 @@ const MainHeader = ({ settings, isAdmin, onOpenAdminLogin, onLogout, currentUser
           </div>
         )}
       </div>
-
+{/* הפיט-באדי (הטמגוצ'י) - מיקום מרווח בין הלוגו לברכת השלום */}
+      {currentUser && !isAdmin && settings.enableFitBuddy && currentUser.fit_buddy_active && (
+        <div className="flex flex-row items-center gap-3 my-2 animate-fadeIn cursor-pointer hover:scale-105 transition-transform" onClick={() => { setFitBuddyClick(true); setTimeout(() => setFitBuddyClick(false), 3000); }}>
+          <div className="bg-pink-100 text-pink-600 p-3 rounded-full shadow-md border border-pink-200">
+            <BuddyIcon size={28} />
+          </div>
+          <div className="bg-white px-4 py-2 rounded-2xl shadow-md border border-gray-100 text-xs font-bold text-gray-700 relative whitespace-nowrap">
+            {fitBuddyClick ? "איזה כיף שחזרת! 🤩" : buddyMsg}
+            <div className="absolute top-1/2 -right-1.5 -translate-y-1/2 w-3 h-3 bg-white rotate-45 border-t border-r border-gray-100"></div>
+          </div>
+        </div>
+      )}
       {/* ברכת שלום למתאמנת מחוברת */}
       {currentUser && !isAdmin && (
         <h2 className="text-xl sm:text-2xl font-black text-gray-800 bg-white/70 px-6 py-2 rounded-full shadow-sm border border-amber-100/50 backdrop-blur-md text-center mt-[-10px]">
@@ -1152,7 +1152,7 @@ const UserView = ({
                     <div className="flex justify-center gap-4 text-xs font-bold text-gray-700 bg-gray-50/50 py-2 rounded-2xl border border-gray-100">
               <div className="flex flex-col items-center gap-1"><Award size={18} className="text-amber-500" /><span>יחס אישי</span></div>
               <div className="flex flex-col items-center gap-1"><Users size={18} className="text-pink-500" /><span>קבוצות קטנות</span></div>
-              <div className="flex flex-col items-center gap-1"><Calendar size={18} className="text-blue-500" /><span>גמישות מלאה</span></div>
+              <div className="flex flex-col items-center gap-1"><User size={18} className="text-blue-500" /><span>לנשים בלבד</span></div>
                     </div>
 
                     <div className="space-y-2 pt-1">
