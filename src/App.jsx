@@ -185,7 +185,7 @@ const MainHeader = ({ settings, isAdmin, onOpenAdminLogin, onLogout, currentUser
   };
 
   return (
-    <div className="flex flex-col items-center justify-center pt-20 sm:pt-8 pb-4 space-y-6">
+    <div className="flex flex-col items-center justify-center pt-10 sm:pt-6 pb-2 space-y-3">
       {/* לוגו מרכזי גדול */}
       <div
         onDoubleClick={onOpenAdminLogin}
@@ -193,7 +193,7 @@ const MainHeader = ({ settings, isAdmin, onOpenAdminLogin, onLogout, currentUser
 
       >
         {settings.logoUrl ? (
-          <img src={settings.logoUrl} alt="תהל כושר" className="h-48 sm:h-64 object-contain drop-shadow-2xl hover:drop-shadow-[0_0_15px_rgba(255,255,255,0.5)] transition-all duration-300" />
+          <img src={settings.logoUrl} alt="תהל כושר" className="h-36 sm:h-48 object-contain drop-shadow-2xl hover:drop-shadow-[0_0_15px_rgba(255,255,255,0.5)] transition-all duration-300" />
         ) : (
           <div className="flex flex-col items-center gap-2">
             <div className="w-20 h-20 bg-gradient-to-tr from-amber-500 to-amber-300 rounded-full flex items-center justify-center text-white font-black text-4xl shadow-xl">
@@ -1038,19 +1038,22 @@ const UserView = ({
     return (
       <div className="max-w-md mx-auto bg-white/95 backdrop-blur-md p-8 rounded-3xl shadow-xl border border-amber-100 mt-6">
         {authMode === 'landing' ? (
-          <div className="text-center space-y-6">
-            <h2 className="text-xl font-black text-gray-900 drop-shadow-sm">ברוכה הבאה, מוכנה לשינוי שלך? ✨</h2>
-            <h2 className="text-lg font-black text-gray-900 drop-shadow-sm"> אימוני כושר עם תהל בן משה 💪</h2>
-            <p className="text-gray-600 text-sm px-4">הצטרפי לקהילת הנשים שלנו לאימונים באווירה אנרגית ובריאה , יחס אישי ותוצאות אמיתיות.</p>
-            
-            <div className="flex justify-center gap-4 text-xs font-bold text-gray-700 bg-gray-50/50 py-3 rounded-2xl border border-gray-100">
+                  <div className="text-center space-y-3">
+                    <h2 className="text-xl font-black bg-gradient-to-r from-[#c57b6d] to-amber-500 bg-clip-text text-transparent drop-shadow-sm">ברוכה הבאה, מוכנה לשינוי שלך? ✨</h2>
+                    <h2 className="text-lg font-black text-gray-900 drop-shadow-sm">אימוני כושר עם תהל בן משה 💪</h2>
+                    <p className="text-gray-800 text-sm px-4 font-bold">הצטרפי לאימונים באווירה אנרגית ובריאה, יחס אישי ותוצאות אמיתיות.</p>
+                    
+                    <div className="flex justify-center gap-4 text-xs font-bold text-gray-700 bg-gray-50/50 py-2 rounded-2xl border border-gray-100">
               <div className="flex flex-col items-center gap-1"><Award size={18} className="text-amber-500" /><span>יחס אישי</span></div>
               <div className="flex flex-col items-center gap-1"><Users size={18} className="text-pink-500" /><span>קבוצות קטנות</span></div>
               <div className="flex flex-col items-center gap-1"><Calendar size={18} className="text-blue-500" /><span>גמישות מלאה</span></div>
-            </div>
+                    </div>
 
-            <div className="space-y-3">
-              <button onClick={() => setAuthMode('login')} className="w-full bg-[#c57b6d] hover:bg-[#b06a5c] text-white font-bold py-3.5 rounded-2xl shadow-lg transition flex items-center justify-center gap-2">
+                    <div className="space-y-2 pt-1">
+                      <button onClick={() => setAuthMode('login')} className="w-full bg-[#c57b6d] hover:bg-[#b06a5c] text-white font-bold py-3 rounded-2xl shadow-md transition flex items-center justify-center gap-2">
+                        <LogIn size={18} /> כניסה למשתמשת קיימת
+                      </button>
+                      <button onClick={() => setAuthMode('register')} className="w-full bg-amber-500 hover:bg-amber-600 text-white font-bold py-3 rounded-2xl shadow-md transition flex items-center justify-center gap-2">
                 <LogIn size={18} /> כניסה למשתמשת קיימת
               </button>
               <button onClick={() => setAuthMode('register')} className="w-full bg-amber-500 hover:bg-amber-600 text-white font-bold py-3.5 rounded-2xl shadow-lg transition flex items-center justify-center gap-2">
