@@ -201,8 +201,43 @@ const MainHeader = ({ settings, isAdmin, onOpenAdminLogin, onLogout, currentUser
     alert('הפרטים עודכנו בהצלחה!');
   };
 
-  const hasUpcoming = currentUser && (registrations || []).some(r => r.user_id === currentUser.id && workouts.some(w => w.id === r.workout_id && new Date(`${w.date}T${w.time}`) >= new Date()));
-  const buddyMsg = hasUpcoming ? "יששש! נרשמת לאימון! 💪" : "אני מרגיש קצת חלש... אולי נרשם לאימון? 🥺";
+  const now = new Date();
+  const userRegs = currentUser ? (registrations || []).filter(r => r.user_id === currentUser.id) : [];
+  const upcomingRegs = userRegs.map(r => workouts.find(w => w.id === r.workout_id)).filter(w => w && new Date(`${w.date}T${w.time}`) >= now);
+  upcomingRegs.sort((a, b) => new Date(`${a.date}T${a.time}`) - new Date(`${b.date}T${b.time}`));
+  const nextWorkout = upcomingRegs[0];
+
+  const nextWeekStart = new Date();
+  nextWeekStart.setDate(now.getDate() + 7);
+  const hasNextWeek = upcomingRegs.some(w => {
+    const d = new Date(`${w.date}T${w.time}`);
+    return d >= nextWeekStart;
+  });
+
+  const registeredMessages = nextWorkout ? [
+    `יששש! נרשמת ל-${nextWorkout.type}! 💪`,
+    `מחכה כבר ל-${nextWorkout.type} שלך! 🔥`,
+    `איזה פגז! ${nextWorkout.type} בדרך אלינו 🚀`
+  ] : [];
+
+  const emptyMessages = [
+    "אולי נרשם לאימון? 🥺",
+    "השרירים מתגעגעים לפעילות! בא לך לבדוק את הלו\"ז? 🏋️‍♀️",
+    "יאללה, בואי נקבע אימון חדש שיעשה לך טוב בלב! ✨"
+  ];
+
+  const noNextWeekMessages = [
+    "יש לך אימון בקרוב, אבל אולי תירשמי לאימון גם שבוע הבא? 📅",
+    "שומרים על רצף? בואי נשריין מקום גם לשבוע הבא! 💪"
+  ];
+
+  let activeMessages = emptyMessages;
+  if (nextWorkout) {
+    activeMessages = hasNextWeek ? registeredMessages : [...registeredMessages, ...noNextWeekMessages];
+  }
+  
+  const msgIndex = Math.floor(Date.now() / 6000) % activeMessages.length;
+  const buddyMsg = activeMessages[msgIndex];
   const BuddyIcon = currentUser?.fit_buddy_type === 'cat' ? Cat : currentUser?.fit_buddy_type === 'dog' ? Dog : currentUser?.fit_buddy_type === 'smile' ? Smile : currentUser?.fit_buddy_type === 'activity' ? Activity : Dumbbell;
 
   return (
