@@ -1053,9 +1053,6 @@ const UserView = ({
                       <button onClick={() => setAuthMode('login')} className="w-full bg-[#c57b6d] hover:bg-[#b06a5c] text-white font-bold py-3 rounded-2xl shadow-md transition flex items-center justify-center gap-2">
                         <LogIn size={18} /> כניסה למשתמשת קיימת
                       </button>
-                      <button onClick={() => setAuthMode('register')} className="w-full bg-amber-500 hover:bg-amber-600 text-white font-bold py-3 rounded-2xl shadow-md transition flex items-center justify-center gap-2">
-                <LogIn size={18} /> כניסה למשתמשת קיימת
-              </button>
               <button onClick={() => setAuthMode('register')} className="w-full bg-amber-500 hover:bg-amber-600 text-white font-bold py-3.5 rounded-2xl shadow-lg transition flex items-center justify-center gap-2">
                 <UserPlus size={18} /> הרשמה והצהרת בריאות
               </button>
