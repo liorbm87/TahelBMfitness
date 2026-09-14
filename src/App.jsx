@@ -1216,7 +1216,7 @@ const UserView = ({
       <div className="max-w-md mx-auto bg-white/95 backdrop-blur-md p-8 rounded-3xl shadow-xl border border-amber-100 mt-6">
         {authMode === 'landing' ? (
                   <div className="text-center space-y-3">
-                    <h2 className="text-xl font-black bg-gradient-to-r from-[#c57b6d] to-amber-500 bg-clip-text text-transparent drop-shadow-sm">ברוכה הבאה, מוכנה לשינוי שלך? ✨</h2>
+                    <h2 className="text-xl font-black bg-gradient-to-r from-[#c57b6d] to-amber-500 bg-clip-text text-transparent drop-shadow-sm">ברוכה הבאה, בואי להתחזק בדרך שמתאימה לך ✨ ✨</h2>
                     <h2 className="text-lg font-black text-gray-900 drop-shadow-sm">אימוני כושר עם תהל בן משה 💪</h2>
                     <p className="text-gray-800 text-sm px-4 font-bold">הצטרפי לאימונים באווירה אנרגית ובריאה,<br/>יחס אישי ותוצאות אמיתיות.</p>
                     
