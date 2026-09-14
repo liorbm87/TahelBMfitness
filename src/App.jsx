@@ -1218,8 +1218,6 @@ const UserView = ({
                   <div className="text-center space-y-3">
                     <h2 className="text-xl font-black bg-gradient-to-r from-[#c57b6d] to-amber-500 bg-clip-text text-transparent drop-shadow-sm">ברוכה הבאה, <br/> בואי להתחזק בדרך שמתאימה לך  ✨</h2>
                     <h2 className="text-lg font-black text-gray-900 drop-shadow-sm">אימוני כושר עם תהל בן משה 💪</h2>
-                    <p className="text-gray-800 text-sm px-4 font-bold">הצטרפי לאימונים באווירה אנרגית ובריאה,<br/>יחס אישי ותוצאות אמיתיות.</p>
-                    
                     <div className="flex justify-center gap-4 text-xs font-bold text-gray-700 bg-gray-50/50 py-2 rounded-2xl border border-gray-100">
               <div className="flex flex-col items-center gap-1"><Award size={18} className="text-amber-500" /><span>יחס אישי</span></div>
               <div className="flex flex-col items-center gap-1"><Users size={18} className="text-pink-500" /><span>קבוצות קטנות</span></div>
