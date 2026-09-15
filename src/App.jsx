@@ -2143,7 +2143,18 @@ const AdminDashboard = ({
   const [newLead, setNewLead] = useState({ full_name: '', phone: '', source: 'אינסטגרם', status: 'חדש', notes: '' });
   
   const [selectedArchivedWorkouts, setSelectedArchivedWorkouts] = useState([]);
-  const [lastDeletedItem, setLastDeletedItem] = useState(null);
+  const [lastDeletedItem, setLastDeletedItem] = useState(() => {
+    const saved = sessionStorage.getItem('tahel_last_deleted');
+    return saved ? JSON.parse(saved) : null;
+  });
+
+  useEffect(() => {
+    if (lastDeletedItem) {
+      sessionStorage.setItem('tahel_last_deleted', JSON.stringify(lastDeletedItem));
+    } else {
+      sessionStorage.removeItem('tahel_last_deleted');
+    }
+  }, [lastDeletedItem]);
 
   const handleUndoDelete = async () => {
     if (!lastDeletedItem) return;
