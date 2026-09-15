@@ -3171,8 +3171,16 @@ const AdminDashboard = ({
                 const { error } = await supabase.functions.invoke('send-push-notification', {
                   body: { type: 'payment_reminder', user_id: subs[0].user_id }
                 });
-                if (error) alert('שגיאה בשליחת פוש: ' + error.message);
-                else alert('🔔 פוש בדיקה נשלח בהצלחה! בדקי את המסך או מרכז ההתראות.');
+                if (error) {
+                  let detailedMsg = error.message;
+                  try {
+                    const errBody = await error.context.json();
+                    if (errBody && errBody.error) detailedMsg = errBody.error;
+                  } catch(e) {}
+                  alert('שגיאה מהשרת: ' + detailedMsg);
+                } else {
+                  alert('🔔 פוש בדיקה נשלח בהצלחה! בדקי את המסך או מרכז ההתראות.');
+                }
               }}
               className="bg-emerald-50 text-emerald-700 hover:bg-emerald-100 px-4 py-2 rounded-xl text-sm font-bold flex items-center gap-2 shadow-sm transition"
               title="שליחת הודעת בדיקה למכשיר מחובר"
