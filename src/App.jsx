@@ -2141,6 +2141,36 @@ const AdminDashboard = ({
 
   // סטייט ופונקציות ניהול לידים (CRM)
   const [newLead, setNewLead] = useState({ full_name: '', phone: '', source: 'אינסטגרם', status: 'חדש', notes: '' });
+  
+  const [selectedArchivedWorkouts, setSelectedArchivedWorkouts] = useState([]);
+  const [lastDeletedItem, setLastDeletedItem] = useState(null);
+
+  const handleUndoDelete = async () => {
+    if (!lastDeletedItem) return;
+    const { type, isPermanent, items } = lastDeletedItem;
+
+    if (type === 'workout') {
+      if (isPermanent) {
+        await supabase.from('workouts').upsert(items);
+        setWorkouts(prev => [...prev, ...items]);
+      } else {
+        const ids = items.map(i => i.id);
+        await supabase.from('workouts').update({ is_archived: false }).in('id', ids);
+        setWorkouts(prev => prev.map(w => ids.includes(w.id) ? { ...w, is_archived: false } : w));
+      }
+    } else if (type === 'external') {
+      if (isPermanent) {
+        await supabase.from('external_workouts').upsert(items);
+        setExternalWorkouts(prev => [...prev, ...items]);
+      } else {
+        const ids = items.map(i => i.id);
+        await supabase.from('external_workouts').update({ is_archived: false }).in('id', ids);
+        setExternalWorkouts(prev => prev.map(w => ids.includes(w.id) ? { ...w, is_archived: false } : w));
+      }
+    }
+    setLastDeletedItem(null);
+    alert('הפעולה בוטלה והאימונים שוחזרו בהצלחה!');
+  };
 
   const handleAddLead = (e) => {
     e.preventDefault();
@@ -2439,12 +2469,15 @@ const AdminDashboard = ({
     const confirmInitial = window.confirm(`האם ${actionText} אימון זה? ${effectText}`);
     if (!confirmInitial) return;
 
+    let itemsToBackup = [workoutToDelete];
+
     if (workoutToDelete.is_recurring && workoutToDelete.recurring_group_id && !isPermanent) {
       const deleteSeries = window.confirm(`אימון זה מחזורי! האם ${actionText} את כל האימונים העתידיים בסדרה?\n(לחצי "אישור" לכל הסדרה, או "ביטול" לאימון זה בלבד)`);
       
       if (deleteSeries) {
         const wDate = new Date(`${workoutToDelete.date}T${workoutToDelete.time}`);
         const idsToDelete = workouts.filter(w => w.recurring_group_id === workoutToDelete.recurring_group_id && new Date(`${w.date}T${w.time}`) >= wDate).map(w => w.id);
+        itemsToBackup = workouts.filter(w => idsToDelete.includes(w.id));
         
         if (isPermanent) {
           await supabase.from('workouts').delete().in('id', idsToDelete);
@@ -2455,6 +2488,7 @@ const AdminDashboard = ({
           await supabase.from('workouts').update({ is_archived: true }).in('id', idsToDelete);
           setWorkouts(prev => prev.map(w => idsToDelete.includes(w.id) ? { ...w, is_archived: true } : w));
         }
+        setLastDeletedItem({ type: 'workout', isPermanent, items: itemsToBackup });
         alert(`הפעולה בוצעה על ${idsToDelete.length} אימונים בהצלחה.`);
       } else {
         if (isPermanent) {
@@ -2466,6 +2500,7 @@ const AdminDashboard = ({
           await supabase.from('workouts').update({ is_archived: true }).eq('id', id);
           setWorkouts(prev => prev.map(w => w.id === id ? { ...w, is_archived: true } : w));
         }
+        setLastDeletedItem({ type: 'workout', isPermanent, items: itemsToBackup });
         alert('הפעולה על האימון הבודד בוצעה בהצלחה.');
       }
     } else {
@@ -2478,6 +2513,7 @@ const AdminDashboard = ({
         await supabase.from('workouts').update({ is_archived: true }).eq('id', id);
         setWorkouts(prev => prev.map(w => w.id === id ? { ...w, is_archived: true } : w));
       }
+      setLastDeletedItem({ type: 'workout', isPermanent, items: itemsToBackup });
       alert('הפעולה בוצעה בהצלחה.');
     }
   };
@@ -3152,7 +3188,7 @@ const AdminDashboard = ({
                               <button onClick={() => setEditExternalWorkoutData(w)} className="text-blue-500 hover:bg-blue-50 border border-transparent hover:border-blue-100 px-2 py-1.5 rounded-lg transition" title="עריכת אימון חיצוני">
                                 <Edit size={16}/>
                               </button>
-                              <button onClick={() => { if(window.confirm('האם להעביר אימון חיצוני זה לארכיון?')) { supabase.from('external_workouts').update({ is_archived: true }).eq('id', w.id).then(); setExternalWorkouts(prev => prev.map(ext => ext.id === w.id ? { ...ext, is_archived: true } : ext)); } }} className="text-red-500 hover:bg-red-50 border border-transparent hover:border-red-100 px-2 py-1.5 rounded-lg transition" title="העברה לארכיון">
+                              <button onClick={() => { if(window.confirm('האם להעביר אימון חיצוני זה לארכיון?')) { supabase.from('external_workouts').update({ is_archived: true }).eq('id', w.id).then(); setExternalWorkouts(prev => prev.map(ext => ext.id === w.id ? { ...ext, is_archived: true } : ext)); setLastDeletedItem({ type: 'external', isPermanent: false, items: [w] }); } }} className="text-red-500 hover:bg-red-50 border border-transparent hover:border-red-100 px-2 py-1.5 rounded-lg transition" title="העברה לארכיון">
                                 <Trash2 size={16}/>
                               </button>
                             </>
@@ -3967,9 +4003,24 @@ const AdminDashboard = ({
           {archiveWorkoutTab === 'studio' ? (
             <div className="bg-gray-100 border border-gray-300 p-5 rounded-3xl space-y-4 animate-fadeIn">
               <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-gray-200 pb-3">
-                <h3 className="font-extrabold text-gray-900 text-sm flex items-center gap-2">
-                  <Archive size={18} className="text-gray-600" /> היסטוריית אימוני סטודיו ({workouts.filter(w => new Date(`${w.date}T${w.time}`) < new Date() || w.is_archived).length})
-                </h3>
+                <div className="flex flex-col sm:flex-row items-center gap-3">
+                  <h3 className="font-extrabold text-gray-900 text-sm flex items-center gap-2">
+                    <Archive size={18} className="text-gray-600" /> היסטוריית אימוני סטודיו ({workouts.filter(w => new Date(`${w.date}T${w.time}`) < new Date() || w.is_archived).length})
+                  </h3>
+                  {selectedArchivedWorkouts.length > 0 && (
+                    <button 
+                      onClick={async () => {
+                        await supabase.from('workouts').update({ is_archived: false }).in('id', selectedArchivedWorkouts);
+                        setWorkouts(prev => prev.map(w => selectedArchivedWorkouts.includes(w.id) ? { ...w, is_archived: false } : w));
+                        setSelectedArchivedWorkouts([]);
+                        alert('האימונים שוחזרו בהצלחה!');
+                      }}
+                      className="bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-bold px-3 py-1.5 rounded-lg flex items-center gap-1 shadow-sm transition"
+                    >
+                      <RefreshCw size={14} /> שחזר מסומנים ({selectedArchivedWorkouts.length})
+                    </button>
+                  )}
+                </div>
               <div className="relative">
                 <Search size={16} className="absolute right-3 top-2.5 text-gray-400" />
                 <input type="text" placeholder="חיפוש בארכיון אימונים..." value={searchWorkoutQuery} onChange={(e) => setSearchWorkoutQuery(e.target.value)} className="w-full md:w-72 pl-4 pr-9 py-2 bg-white border border-gray-300 rounded-xl text-xs outline-none focus:border-amber-400 shadow-sm" />
@@ -3984,22 +4035,51 @@ const AdminDashboard = ({
               }).sort((a, b) => new Date(`${b.date}T${b.time}`) - new Date(`${a.date}T${a.time}`))
               .map(workout => {
                 const regList = registrations.filter(r => r.workout_id === workout.id);
+                const isFuture = new Date(`${workout.date}T${workout.time}`) >= new Date();
                 return (
-                  <div key={workout.id} className="bg-white/90 p-5 rounded-3xl shadow-sm border border-gray-300 grayscale-[0.2]">
+                  <div key={workout.id} className={`bg-white/90 p-5 rounded-3xl shadow-sm border border-gray-300 ${!isFuture ? 'grayscale-[0.2]' : ''}`}>
                     <div className="flex flex-col md:flex-row justify-between md:items-center gap-4">
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <span className="font-extrabold text-base text-gray-700 line-through">{workout.type}</span>
-                          <span className="bg-gray-300 text-gray-700 text-[10px] px-2 py-0.5 rounded-md font-bold">הושלם בארכיון</span>
+                      <div className="flex items-start gap-3">
+                        {isFuture && (
+                          <input 
+                            type="checkbox" 
+                            checked={selectedArchivedWorkouts.includes(workout.id)}
+                            onChange={(e) => {
+                              if (e.target.checked) setSelectedArchivedWorkouts(prev => [...prev, workout.id]);
+                              else setSelectedArchivedWorkouts(prev => prev.filter(id => id !== workout.id));
+                            }}
+                            className="mt-1.5 w-4 h-4 cursor-pointer accent-amber-500 shrink-0"
+                          />
+                        )}
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <span className={`font-extrabold text-base text-gray-700 ${!isFuture ? 'line-through' : ''}`}>{workout.type}</span>
+                            <span className="bg-gray-300 text-gray-700 text-[10px] px-2 py-0.5 rounded-md font-bold">
+                              {isFuture ? 'בארכיון (ניתן לשחזור)' : 'הושלם בארכיון'}
+                            </span>
+                          </div>
+                          <p className="text-xs text-gray-500 mt-0.5">
+                            {formatDateWithDay(workout.date)} בשעה {workout.time} | {workout.location} | <span className="font-bold">{workout.price} ₪</span>
+                          </p>
+                          <p className="text-xs text-gray-500 mt-1 font-semibold">
+                            משתתפים בפועל: {regList.length} / {workout.max_participants}
+                          </p>
                         </div>
-                        <p className="text-xs text-gray-500 mt-0.5">
-                      {formatDateWithDay(workout.date)} בשעה {workout.time} | {workout.location} | <span className="font-bold">{workout.price} ₪</span>
-                    </p>
-                        <p className="text-xs text-gray-500 mt-1 font-semibold">
-                          משתתפים בפועל: {regList.length} / {workout.max_participants}
-                        </p>
                       </div>
                       <div className="flex gap-2">
+                        {isFuture && (
+                          <button 
+                            onClick={async () => {
+                              await supabase.from('workouts').update({ is_archived: false }).eq('id', workout.id);
+                              setWorkouts(prev => prev.map(w => w.id === workout.id ? { ...w, is_archived: false } : w));
+                              alert('האימון שוחזר בהצלחה ומופיע בלוח האימונים הפעיל!');
+                            }}
+                            className="p-2 text-indigo-500 hover:bg-indigo-50 rounded-xl transition" 
+                            title="שחזר אימון"
+                          >
+                            <RefreshCw size={18} />
+                          </button>
+                        )}
                         <button 
                           onClick={() => {
                             setMessageModal({ workout, type: 'broadcast' });
@@ -4177,7 +4257,7 @@ const AdminDashboard = ({
                         <button onClick={() => setEditExternalWorkoutData(w)} className="text-blue-500 hover:bg-blue-50 border border-transparent hover:border-blue-100 px-2 py-1.5 rounded-lg transition" title="עריכת אימון עבר חיצוני">
                           <Edit size={16}/>
                         </button>
-                        <button onClick={() => { if(window.confirm('האם באמת למחוק אימון חיצוני זה מהארכיון לצמיתות?')) { supabase.from('external_workouts').delete().eq('id', w.id).then(); setExternalWorkouts(prev => prev.filter(ext => ext.id !== w.id)); } }} className="text-red-500 hover:bg-red-50 border border-transparent hover:border-red-100 px-2 py-1.5 rounded-lg transition" title="מחיקת אימון אישי לצמיתות">
+                        <button onClick={() => { if(window.confirm('האם באמת למחוק אימון חיצוני זה מהארכיון לצמיתות?')) { supabase.from('external_workouts').delete().eq('id', w.id).then(); setExternalWorkouts(prev => prev.filter(ext => ext.id !== w.id)); setLastDeletedItem({ type: 'external', isPermanent: true, items: [w] }); } }} className="text-red-500 hover:bg-red-50 border border-transparent hover:border-red-100 px-2 py-1.5 rounded-lg transition" title="מחיקת אימון אישי לצמיתות">
                           <Trash2 size={16}/>
                         </button>
                       </div>
@@ -5256,6 +5336,17 @@ const AdminDashboard = ({
         </div>
       )}
 
+      {lastDeletedItem && (
+        <div className="fixed bottom-24 right-5 z-[100] animate-fadeIn">
+          <button 
+            onClick={handleUndoDelete}
+            className="bg-gray-900 text-white px-4 py-3 rounded-2xl shadow-[0_10px_25px_rgba(0,0,0,0.3)] flex items-center gap-2 hover:bg-gray-800 transition transform hover:scale-105"
+          >
+            <RefreshCw size={18} />
+            <span className="font-bold text-sm">שחזר פעולה אחרונה (מחיקה)</span>
+          </button>
+        </div>
+      )}
     </div>
   );
 };
