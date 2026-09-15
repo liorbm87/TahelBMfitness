@@ -1704,11 +1704,11 @@ const UserView = ({
       )}
 
       {isRegistered && isApproved && ( (!hasActivePunchCard && !isBannerDismissed) || !isPrivateBannerDismissed ) && (
-        <div className="flex flex-col sm:flex-row gap-3 mb-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-3">
           {!hasActivePunchCard && !isBannerDismissed && (
-            <div className="flex-1 bg-amber-100 text-amber-900 px-4 py-2 rounded-2xl flex items-center justify-between text-xs font-bold shadow-sm cursor-pointer hover:bg-amber-200 transition" onClick={() => openWhatsApp('0545222008', 'היי תהל! אשמח לשמוע פרטים על רכישת כרטיסיית אימונים 🎟️')}>
-              <div className="flex items-center gap-2">
-                <MessageCircle size={16} />
+            <div className="bg-amber-100 text-amber-900 px-3 py-1.5 rounded-2xl flex items-center justify-between text-[11px] font-bold shadow-sm cursor-pointer hover:bg-amber-200 transition" onClick={() => openWhatsApp('0545222008', 'היי תהל! אשמח לשמוע פרטים על רכישת כרטיסיית אימונים 🎟️')}>
+              <div className="flex items-center gap-1.5">
+                <MessageCircle size={14} />
                 <span>פרטים על רכישת כרטיסייה 🎟️</span>
               </div>
               <button 
@@ -1717,18 +1717,18 @@ const UserView = ({
                   setIsBannerDismissed(true);
                   localStorage.setItem('tahel_punch_banner_hidden', 'true');
                 }} 
-                className="p-1 hover:bg-amber-300 rounded-full transition text-amber-700 shrink-0"
+                className="p-0.5 hover:bg-amber-300 rounded-full transition text-amber-700 shrink-0"
                 title="הסתר הודעה"
               >
-                <X size={16} />
+                <X size={14} />
               </button>
             </div>
           )}
           
           {!isPrivateBannerDismissed && (
-            <div className="flex-1 bg-blue-100 text-blue-900 px-4 py-2 rounded-2xl flex items-center justify-between text-xs font-bold shadow-sm cursor-pointer hover:bg-blue-200 transition" onClick={() => openWhatsApp('0545222008', 'היי תהל! אשמח לשמוע פרטים על אימון פרטי 💪✨')}>
-              <div className="flex items-center gap-2">
-                <MessageCircle size={16} />
+            <div className="bg-blue-100 text-blue-900 px-3 py-1.5 rounded-2xl flex items-center justify-between text-[11px] font-bold shadow-sm cursor-pointer hover:bg-blue-200 transition" onClick={() => openWhatsApp('0545222008', 'היי תהל! אשמח לשמוע פרטים על אימון פרטי 💪✨')}>
+              <div className="flex items-center gap-1.5">
+                <MessageCircle size={14} />
                 <span>אשמח לקבוע אימון פרטי 💪</span>
               </div>
               <button 
@@ -1737,10 +1737,10 @@ const UserView = ({
                   setIsPrivateBannerDismissed(true);
                   localStorage.setItem('tahel_private_banner_hidden', 'true');
                 }} 
-                className="p-1 hover:bg-blue-300 rounded-full transition text-blue-700 shrink-0"
+                className="p-0.5 hover:bg-blue-300 rounded-full transition text-blue-700 shrink-0"
                 title="הסתר הודעה"
               >
-                <X size={16} />
+                <X size={14} />
               </button>
             </div>
           )}
