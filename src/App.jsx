@@ -1640,7 +1640,7 @@ const UserView = ({
 
   return (
     <div className="max-w-3xl mx-auto space-y-6">
-      {isRegistered && notifPermission !== 'granted' && !isPushBannerDismissed && (
+      {isRegistered && (window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone) && notifPermission !== 'granted' && !isPushBannerDismissed && (
         <div className="bg-gradient-to-r from-pink-500 to-amber-500 text-white p-4 rounded-3xl shadow-md flex flex-col sm:flex-row justify-between items-center gap-3 transition relative">
           <button 
             onClick={() => {
@@ -3114,7 +3114,7 @@ const AdminDashboard = ({
 
   return (
     <div className="max-w-6xl mx-auto space-y-6">
-      {adminNotifPermission !== 'granted' && (
+      {(window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone) && adminNotifPermission !== 'granted' && (
         <div className="bg-emerald-600 hover:bg-emerald-700 text-white p-4 rounded-3xl shadow-md flex flex-col sm:flex-row justify-between items-center gap-3 transition">
           <div className="flex items-center gap-2">
             <MessageCircle size={22} />
