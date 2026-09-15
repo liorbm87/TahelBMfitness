@@ -838,6 +838,7 @@ const UserView = ({
   const hasActivePunchCard = currentUser?.punch_card?.entries > 0 && new Date(currentUser.punch_card.expires_at) >= new Date();
   const [isBannerDismissed, setIsBannerDismissed] = useState(() => localStorage.getItem('tahel_punch_banner_hidden') === 'true');
   const [isPrivateBannerDismissed, setIsPrivateBannerDismissed] = useState(() => localStorage.getItem('tahel_private_banner_hidden') === 'true');
+  const [isPushBannerDismissed, setIsPushBannerDismissed] = useState(false);
 
   // התראת קופצת (פעם אחת בסשן) אם יתרת הארנק עומדת לפוג ב-7 הימים הקרובים
   useEffect(() => {
@@ -1637,8 +1638,15 @@ const UserView = ({
 
   return (
     <div className="max-w-3xl mx-auto space-y-6">
-      {isRegistered && Notification.permission !== 'granted' && (
-        <div className="bg-gradient-to-r from-pink-500 to-amber-500 text-white p-4 rounded-3xl shadow-md flex flex-col sm:flex-row justify-between items-center gap-3 transition">
+      {isRegistered && Notification.permission !== 'granted' && !isPushBannerDismissed && (
+        <div className="bg-gradient-to-r from-pink-500 to-amber-500 text-white p-4 rounded-3xl shadow-md flex flex-col sm:flex-row justify-between items-center gap-3 transition relative">
+          <button 
+            onClick={() => setIsPushBannerDismissed(true)} 
+            className="absolute top-2 left-2 text-white/80 hover:text-white p-1 rounded-full transition"
+            title="סגור עד לריענון הבא"
+          >
+            <X size={16} />
+          </button>
           <div className="flex items-center gap-2">
             <MessageCircle size={22} />
             <div>
