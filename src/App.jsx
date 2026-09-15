@@ -17,6 +17,24 @@ const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || 'https://placeholder.s
 const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY || 'placeholder_key';
 const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
+const VAPID_PUBLIC_KEY = "BC3pV90PJALCDBI6I5lnWbs3u9nLyPrB1XqBo-F42NnSGlTsBkxuJpG-NFzj7F3wng1FP6gY9YtKWKU1wg9Qac8";
+
+// פונקציית עזר להמרת ה-VAPID Base64url למערך ביטים שנדרש עבור הרישום ל-Push API
+function urlBase64ToUint8Array(base64String) {
+  const padding = '='.repeat((4 - base64String.length % 4) % 4);
+  const base64 = (base64String + padding)
+    .replace(/\-/g, '+')
+    .replace(/_/g, '/');
+
+  const rawData = window.atob(base64);
+  const outputArray = new Uint8Array(rawData.length);
+
+  for (let i = 0; i < rawData.length; ++i) {
+    outputArray[i] = rawData.charCodeAt(i);
+  }
+  return outputArray;
+}
+
 // ============================================================================
 // 2. נתוני ברירת מחדל וסימולציה (LOCAL STORAGE FALLBACK)
 // ============================================================================
@@ -159,6 +177,27 @@ const MainHeader = ({ settings, isAdmin, onOpenAdminLogin, onLogout, currentUser
   const [waterMsgActive, setWaterMsgActive] = useState(false);
   const [balanceScore, setBalanceScore] = useState(0);
   const [editForm, setEditForm] = useState({ full_name: '', phone: '', email: '' });
+  const [userPushSettings, setUserPushSettings] = useState([]);
+  const [availableGlobalSettings, setAvailableGlobalSettings] = useState([]);
+
+  useEffect(() => {
+    if (isEditModalOpen && currentUser) {
+      supabase.from('notification_settings_global').select('*').eq('is_active', true).then(({data}) => data && setAvailableGlobalSettings(data));
+      supabase.from('notification_settings_user').select('*').eq('user_id', currentUser.id).then(({data}) => data && setUserPushSettings(data));
+    }
+  }, [isEditModalOpen, currentUser]);
+
+  const handleToggleUserPush = async (settingId, currentStatus) => {
+    const newStatus = !currentStatus;
+    const { error } = await supabase.from('notification_settings_user').upsert({ user_id: currentUser.id, setting_id: settingId, is_active: newStatus });
+    if (!error) {
+      setUserPushSettings(prev => {
+        const exists = prev.find(p => p.setting_id === settingId);
+        if (exists) return prev.map(p => p.setting_id === settingId ? { ...p, is_active: newStatus } : p);
+        return [...prev, { user_id: currentUser.id, setting_id: settingId, is_active: newStatus }];
+      });
+    }
+  };
 
   // מנגנון הופעה והיעלמות לסירוגין של הודעת הפיט-באדי שלא תציק ללקוחה
   useEffect(() => {
@@ -242,7 +281,7 @@ const MainHeader = ({ settings, isAdmin, onOpenAdminLogin, onLogout, currentUser
   const BuddyIcon = currentUser?.fit_buddy_type === 'cat' ? Cat : currentUser?.fit_buddy_type === 'dog' ? Dog : currentUser?.fit_buddy_type === 'smile' ? Smile : currentUser?.fit_buddy_type === 'activity' ? Activity : Dumbbell;
 
   return (
-    <div className="flex flex-col items-center justify-center pt-10 sm:pt-6 pb-2 space-y-3 relative">
+    <div className="flex flex-col items-center justify-center pt-16 sm:pt-12 pb-2 space-y-3 relative">
       
       {/* כפתור משחקי כושר צף בצד שמאל (רק אם תהל הדליקה אחד מהם) */}
       {currentUser && !isAdmin && (settings.enableFitBuddy || settings.enableBalanceGame) && (
@@ -431,7 +470,27 @@ const MainHeader = ({ settings, isAdmin, onOpenAdminLogin, onLogout, currentUser
                 <input type="password" placeholder="סיסמה נוכחית (חובה לשינוי)" onChange={e => setEditForm({...editForm, oldPassword: e.target.value})} className="w-full p-2 mb-2 bg-gray-50 border rounded-xl text-sm" />
                 <input type="password" placeholder="סיסמה חדשה" onChange={e => setEditForm({...editForm, newPassword: e.target.value})} className="w-full p-2 bg-gray-50 border rounded-xl text-sm" />
               </div>
-              <div className="bg-amber-50 p-3 rounded-xl border border-amber-100 text-[11px] text-gray-700 space-y-1">
+
+              {availableGlobalSettings.length > 0 && (
+                <div className="pt-3 border-t border-gray-100 space-y-2">
+                  <label className="block text-xs font-bold text-gray-900 mb-1 flex items-center gap-1"><MessageCircle size={14}/> אילו התראות תרצי לקבל?</label>
+                  {availableGlobalSettings.map(setting => {
+                    const userPref = userPushSettings.find(p => p.setting_id === setting.id);
+                    const isActive = userPref ? userPref.is_active : true; // ברירת מחדל: דלוק לכולם
+                    return (
+                      <div key={setting.id} className="flex justify-between items-center bg-gray-50 p-2 rounded-lg border border-gray-200">
+                        <span className="text-[11px] font-semibold text-gray-700">{setting.title}</span>
+                        <label className="relative inline-flex items-center cursor-pointer">
+                          <input type="checkbox" className="sr-only peer" checked={isActive} onChange={() => handleToggleUserPush(setting.id, isActive)} />
+                          <div className="w-7 h-4 bg-gray-300 peer-focus:outline-none rounded-full peer peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:right-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-3 after:w-3 after:transition-all peer-checked:bg-emerald-500"></div>
+                        </label>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+
+              <div className="bg-amber-50 p-3 rounded-xl border border-amber-100 text-[11px] text-gray-700 space-y-1 mt-3">
                 <p><strong>תעודת זהות:</strong> {currentUser.id_number || 'לא הוזן'}</p>
                 <p><strong>תאריך לידה:</strong> {currentUser.dob ? currentUser.dob.split('-').reverse().join('/') : 'לא הוזן'}</p>
                 <p><strong>תאריך הצהרת בריאות:</strong> {currentUser.health_declaration?.signed_at || 'לא קיים'}</p>
@@ -747,6 +806,7 @@ const UserView = ({
 
   const hasActivePunchCard = currentUser?.punch_card?.entries > 0 && new Date(currentUser.punch_card.expires_at) >= new Date();
   const [isBannerDismissed, setIsBannerDismissed] = useState(() => localStorage.getItem('tahel_punch_banner_hidden') === 'true');
+  const [isPrivateBannerDismissed, setIsPrivateBannerDismissed] = useState(() => localStorage.getItem('tahel_private_banner_hidden') === 'true');
 
   // התראת קופצת (פעם אחת בסשן) אם יתרת הארנק עומדת לפוג ב-7 הימים הקרובים
   useEffect(() => {
@@ -1561,23 +1621,47 @@ const UserView = ({
         </div>
       )}
 
-      {isRegistered && isApproved && !hasActivePunchCard && !isBannerDismissed && (
-        <div className="bg-amber-100 text-amber-900 px-4 py-2 rounded-2xl flex items-center justify-between text-xs font-bold shadow-sm mb-4 cursor-pointer hover:bg-amber-200 transition" onClick={() => openWhatsApp('0545222008', 'אשמח לשמוע פרטים על כרטיסייה')}>
-          <div className="flex items-center gap-2">
-            <MessageCircle size={16} />
-            <span>אשמח לשמוע פרטים על רכישת כרטיסייה 🎟️</span>
-          </div>
-          <button 
-            onClick={(e) => {
-              e.stopPropagation();
-              setIsBannerDismissed(true);
-              localStorage.setItem('tahel_punch_banner_hidden', 'true');
-            }} 
-            className="p-1 hover:bg-amber-300 rounded-full transition text-amber-700"
-            title="הסתר הודעה"
-          >
-            <X size={16} />
-          </button>
+      {isRegistered && isApproved && (!hasActivePunchCard && !isBannerDismissed || !isPrivateBannerDismissed) && (
+        <div className="flex flex-col sm:flex-row gap-3 mb-4">
+          {!hasActivePunchCard && !isBannerDismissed && (
+            <div className="flex-1 bg-amber-100 text-amber-900 px-4 py-2 rounded-2xl flex items-center justify-between text-xs font-bold shadow-sm cursor-pointer hover:bg-amber-200 transition" onClick={() => openWhatsApp('0545222008', 'היי תהל! אשמח לשמוע פרטים על רכישת כרטיסיית אימונים 🎟️')}>
+              <div className="flex items-center gap-2">
+                <MessageCircle size={16} />
+                <span>פרטים על רכישת כרטיסייה 🎟️</span>
+              </div>
+              <button 
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setIsBannerDismissed(true);
+                  localStorage.setItem('tahel_punch_banner_hidden', 'true');
+                }} 
+                className="p-1 hover:bg-amber-300 rounded-full transition text-amber-700"
+                title="הסתר הודעה"
+              >
+                <X size={16} />
+              </button>
+            </div>
+          )}
+          
+          {!isPrivateBannerDismissed && (
+            <div className="flex-1 bg-blue-100 text-blue-900 px-4 py-2 rounded-2xl flex items-center justify-between text-xs font-bold shadow-sm cursor-pointer hover:bg-blue-200 transition" onClick={() => openWhatsApp('0545222008', 'היי תהל! אשמח לשמוע פרטים על אימון פרטי 💪✨')}>
+              <div className="flex items-center gap-2">
+                <MessageCircle size={16} />
+                <span>אשמח לקבוע אימון פרטי 💪</span>
+              </div>
+              <button 
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setIsPrivateBannerDismissed(true);
+                  localStorage.setItem('tahel_private_banner_hidden', 'true');
+                }} 
+                className="p-1 hover:bg-blue-300 rounded-full transition text-blue-700"
+                title="הסתר הודעה"
+              >
+                <X size={16} />
+              </button>
+            </div>
+          )}
         </div>
       )}
       
@@ -2299,6 +2383,28 @@ const AdminDashboard = ({
   const [tempSettings, setTempSettings] = useState(settings);
   useEffect(() => { setTempSettings(settings); }, [settings]);
 
+  const [adminPushSettings, setAdminPushSettings] = useState([]);
+  const [globalPushSettings, setGlobalPushSettings] = useState([]);
+
+  useEffect(() => {
+    if (activeTab === 'settings') {
+      supabase.from('notification_settings_admin').select('*').order('id').then(({data}) => data && setAdminPushSettings(data));
+      supabase.from('notification_settings_global').select('*').order('id').then(({data}) => data && setGlobalPushSettings(data));
+    }
+  }, [activeTab]);
+
+  const handleToggleAdminSetting = async (id, currentStatus, table) => {
+    const newStatus = !currentStatus;
+    const { error } = await supabase.from(table).update({ is_active: newStatus }).eq('id', id);
+    if (!error) {
+      if (table === 'notification_settings_admin') {
+        setAdminPushSettings(prev => prev.map(s => s.id === id ? { ...s, is_active: newStatus } : s));
+      } else {
+        setGlobalPushSettings(prev => prev.map(s => s.id === id ? { ...s, is_active: newStatus } : s));
+      }
+    }
+  };
+
   const stats = useMemo(() => {
     const totalTraineesCount = trainees.filter(t => !t.is_archived).length;
     const pendingTraineesCount = trainees.filter(t => !t.is_approved && !t.is_archived).length;
@@ -3005,17 +3111,47 @@ const AdminDashboard = ({
                 <h4>מתאמנות בסיכון נטישה ({stats.churnRiskTrainees.length})</h4>
               </div>
               <div className="space-y-2 max-h-48 overflow-y-auto pr-2">
-                {stats.churnRiskTrainees.map(t => (
-                  <div key={t.id} className="bg-white p-3 rounded-2xl flex flex-col sm:flex-row justify-between sm:items-center gap-2 text-xs border border-pink-100">
-                    <span className="font-bold text-gray-900">{t.full_name} <span className="text-gray-500 font-normal">({t.phone})</span></span>
-                    <button 
-                      onClick={() => openWhatsApp(t.phone, `היי ${t.full_name.split(' ')[0]}, התגעגענו! מתי חוזרות לאימון? 💪`)}
-                      className="bg-emerald-500 hover:bg-emerald-600 text-white px-3 py-1.5 rounded-xl font-bold flex items-center gap-1 text-[11px] w-fit"
-                    >
-                      <MessageCircle size={14} /> סמסי בוואטסאפ
-                    </button>
-                  </div>
-                ))}
+                {stats.churnRiskTrainees.map(t => {
+                  // חישוב כמות האימונים שנקבעו סה"כ וזמן היעדרות (מהאימון האחרון)
+                  const userRegs = registrations.filter(r => r.user_id === t.id);
+                  const totalWorkoutsCount = userRegs.length;
+                  
+                  // מציאת התאריך של האימון האחרון שהיא הייתה בו
+                  const pastWorkoutsDates = userRegs.map(r => {
+                    const w = workouts.find(wo => wo.id === r.workout_id);
+                    return w ? new Date(`${w.date}T${w.time}`) : null;
+                  }).filter(d => d && d <= new Date());
+                  
+                  pastWorkoutsDates.sort((a, b) => b - a);
+                  const lastWorkoutDate = pastWorkoutsDates[0];
+                  
+                  let inactiveText = "מעולם לא הגיעה";
+                  if (lastWorkoutDate) {
+                    const diffDays = Math.floor((new Date() - lastWorkoutDate) / (1000 * 60 * 60 * 24));
+                    if (diffDays === 0) inactiveText = "הייתה היום";
+                    else if (diffDays === 1) inactiveText = "לפני יום אחד";
+                    else inactiveText = `לפני ${diffDays} ימים`;
+                  }
+
+                  return (
+                    <div key={t.id} className="bg-white p-3 rounded-2xl flex flex-col sm:flex-row justify-between sm:items-center gap-2 text-xs border border-pink-100">
+                      <div>
+                        <span className="font-bold text-gray-900">{t.full_name} <span className="text-gray-500 font-normal">({t.phone})</span></span>
+                        <div className="text-[11px] text-gray-500 mt-0.5">
+                          <span>היעדרות: <strong className="text-pink-700">{inactiveText}</strong></span>
+                          <span className="mx-2">•</span>
+                          <span>סה"כ אימונים: <strong className="text-gray-800">{totalWorkoutsCount}</strong></span>
+                        </div>
+                      </div>
+                      <button 
+                        onClick={() => openWhatsApp(t.phone, `היי ${t.full_name.split(' ')[0]}, התגעגענו! מתי חוזרות לאימון? 💪`)}
+                        className="bg-emerald-500 hover:bg-emerald-600 text-white px-3 py-1.5 rounded-xl font-bold flex items-center gap-1 text-[11px] w-fit"
+                      >
+                        <MessageCircle size={14} /> סמסי בוואטסאפ
+                      </button>
+                    </div>
+                  );
+                })}
               </div>
             </div>
           )}
@@ -4694,6 +4830,38 @@ const AdminDashboard = ({
                 className="w-full sm:w-1/2 p-3 bg-white border border-gray-300 rounded-xl text-sm font-bold shadow-sm outline-none focus:ring-2 focus:ring-amber-500"
               />
             </div>
+
+            <div className="sm:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="bg-emerald-50 p-4 rounded-2xl border border-emerald-100">
+                <h4 className="font-bold text-xs text-emerald-900 mb-3 flex items-center gap-1"><MessageCircle size={16}/> התראות למנהלת (תהל)</h4>
+                <div className="space-y-2">
+                  {adminPushSettings.map(setting => (
+                    <div key={setting.id} className="flex justify-between items-center bg-white p-2.5 rounded-xl border border-emerald-100 shadow-sm">
+                      <span className="text-[11px] font-bold text-gray-700">{setting.title}</span>
+                      <label className="relative inline-flex items-center cursor-pointer">
+                        <input type="checkbox" className="sr-only peer" checked={setting.is_active} onChange={() => handleToggleAdminSetting(setting.id, setting.is_active, 'notification_settings_admin')} />
+                        <div className="w-9 h-5 bg-gray-300 peer-focus:outline-none rounded-full peer peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:right-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-emerald-500"></div>
+                      </label>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="bg-blue-50 p-4 rounded-2xl border border-blue-100">
+                <h4 className="font-bold text-xs text-blue-900 mb-3 flex items-center gap-1"><Users size={16}/> אילו התראות לאפשר למתאמנות?</h4>
+                <div className="space-y-2">
+                  {globalPushSettings.map(setting => (
+                    <div key={setting.id} className="flex justify-between items-center bg-white p-2.5 rounded-xl border border-blue-100 shadow-sm">
+                      <span className="text-[11px] font-bold text-gray-700">{setting.title}</span>
+                      <label className="relative inline-flex items-center cursor-pointer">
+                        <input type="checkbox" className="sr-only peer" checked={setting.is_active} onChange={() => handleToggleAdminSetting(setting.id, setting.is_active, 'notification_settings_global')} />
+                        <div className="w-9 h-5 bg-gray-300 peer-focus:outline-none rounded-full peer peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:right-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-blue-500"></div>
+                      </label>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
             
             <div className="sm:col-span-2 pt-2">
               <button 
@@ -5524,6 +5692,77 @@ export default function App() {
   const [isPublicGalleryOpen, setIsPublicGalleryOpen] = useState(false);
   const [showSitePopup, setShowSitePopup] = useState(false);
   const [isDataLoaded, setIsDataLoaded] = useState(false);
+  
+  // States עבור PWA והתראות
+  const [showInstallPrompt, setShowInstallPrompt] = useState(false);
+  const [deferredPrompt, setDeferredPrompt] = useState(null);
+
+  // הוספת מנגנון רישום ל-Service Worker ושמירת ה-Push Subscription
+  const subscribeToPushNotifications = async (user) => {
+    if (!('serviceWorker' in navigator) || !('PushManager' in window)) return;
+    
+    try {
+      const registration = await navigator.serviceWorker.register('/sw.js');
+      console.log('Service Worker registered successfully');
+
+      // מחכה שה-SW יהיה מוכן
+      await navigator.serviceWorker.ready;
+
+      let subscription = await registration.pushManager.getSubscription();
+      
+      if (!subscription) {
+        subscription = await registration.pushManager.subscribe({
+          userVisibleOnly: true,
+          applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY)
+        });
+      }
+
+      // חילוץ הנתונים והמפתחות ושמירה ל-Supabase
+      const subscriptionJSON = subscription.toJSON();
+      const pushData = {
+        user_id: user.id,
+        endpoint: subscriptionJSON.endpoint,
+        p256dh: subscriptionJSON.keys.p256dh,
+        auth: subscriptionJSON.keys.auth,
+        updated_at: new Date().toISOString()
+      };
+
+      await supabase.from('push_subscriptions').upsert(pushData, { onConflict: 'endpoint' });
+      console.log('Push subscription saved to DB');
+    } catch (error) {
+      console.error('Error during service worker/push registration:', error);
+    }
+  };
+
+  // בדיקת סטטוס פוש בעת טעינת משתמש
+  useEffect(() => {
+    if (currentUser) {
+      if (Notification.permission === 'granted') {
+        subscribeToPushNotifications(currentUser);
+      } else if (Notification.permission === 'default' && !sessionStorage.getItem('push_prompt_shown')) {
+        // מציע רק פעם אחת בסשן כדי לא להציק
+        setTimeout(() => {
+          if(window.confirm('היי! נשמח לשלוח לך התראות על אימונים פנויים ועידכונים חשובים. לאשר?')) {
+            Notification.requestPermission().then(permission => {
+              if (permission === 'granted') subscribeToPushNotifications(currentUser);
+            });
+          }
+          sessionStorage.setItem('push_prompt_shown', 'true');
+        }, 3000);
+      }
+    }
+  }, [currentUser]);
+
+  // זיהוי אם אפשר להתקין את האפליקציה (PWA)
+  useEffect(() => {
+    const handleBeforeInstallPrompt = (e) => {
+      e.preventDefault();
+      setDeferredPrompt(e);
+      setShowInstallPrompt(true);
+    };
+    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+    return () => window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+  }, []);
 
   // חסימת גלילת רקע כאשר מודאל כלשהו פתוח
   useEffect(() => {
@@ -5755,6 +5994,8 @@ export default function App() {
     );
   }
 
+  const isHideFloating = isAdminLoggedIn || window.location.search.includes('admin');
+
   return (
     <ErrorBoundary>
     <Router>
@@ -5795,11 +6036,40 @@ export default function App() {
         <div className="fixed inset-0 z-[-2] bg-cover bg-top h-screen w-screen bg-no-repeat" style={{ backgroundImage: `url(${settings.backgroundUrl})` }}></div>
         <div className="fixed inset-0 z-[-1] bg-gradient-to-b from-white/80 via-white/70 to-white/85 backdrop-blur-[3px]"></div>
         
+        {/* באנר הדרכה להתקנה כ-PWA (קריטי לאייפון) */}
+        {showInstallPrompt && (
+          <div className="bg-amber-100/90 backdrop-blur border-b border-amber-200 p-3 text-center text-amber-900 text-xs sm:text-sm font-bold flex flex-col sm:flex-row items-center justify-center gap-3 relative z-[9999] shadow-md">
+            <span>💡 חווית שימוש טובה יותר באפליקציה!</span>
+            <div className="flex gap-2">
+              <button 
+                onClick={async () => {
+                  if (deferredPrompt) {
+                    deferredPrompt.prompt();
+                    const { outcome } = await deferredPrompt.userChoice;
+                    if (outcome === 'accepted') setShowInstallPrompt(false);
+                    setDeferredPrompt(null);
+                  } else {
+                    // אייפון: אין API אוטומטי, מציגים הודעת הדרכה
+                    alert('כדי להתקין את האפליקציה: \n1. לחצי על כפתור השיתוף (מרובע עם חץ למעלה) בתחתית המסך.\n2. גללי למטה ולחצי על "הוסף למסך הבית" 📱');
+                  }
+                }}
+                className="bg-amber-500 hover:bg-amber-600 text-white px-3 py-1.5 rounded-lg transition shadow-sm"
+              >
+                התקיני עכשיו
+              </button>
+              <button onClick={() => setShowInstallPrompt(false)} className="bg-transparent hover:bg-amber-200 text-amber-800 px-3 py-1.5 rounded-lg transition border border-amber-300">
+                מאוחר יותר
+              </button>
+            </div>
+          </div>
+        )}
+
         <div className="min-h-screen pb-12 relative z-10">
           
           {/* כפתורי רשתות חברתיות */}
-          <div className="absolute top-4 right-4 z-50 flex items-center gap-2">
-            <a href="https://www.facebook.com/tahel.harari/" target="_blank" rel="noreferrer" className="bg-[#1877F2] text-white p-2 rounded-full shadow-md hover:scale-110 transition-transform flex items-center justify-center w-9 h-9" title="פייסבוק">
+          {!isHideFloating && (
+            <div className="absolute top-4 right-4 z-50 flex items-center gap-2">
+              <a href="https://www.facebook.com/tahel.harari/" target="_blank" rel="noreferrer" className="bg-[#1877F2] text-white p-2 rounded-full shadow-md hover:scale-110 transition-transform flex items-center justify-center w-9 h-9" title="פייסבוק">
               <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/></svg>
             </a>
             <a href="https://www.instagram.com/tahelbenmoshe?stkn=MTBqMTltZjNmN2h5cQ==" target="_blank" rel="noreferrer" className="bg-gradient-to-tr from-[#f09433] via-[#dc2743] to-[#bc1888] text-white p-2 rounded-full shadow-md hover:scale-110 transition-transform flex items-center justify-center w-9 h-9" title="אינסטגרם">
@@ -5815,7 +6085,8 @@ export default function App() {
                 <span className="text-xs font-black whitespace-nowrap">גלריה</span>
               </button>
             )}
-          </div>
+            </div>
+          )}
 
           {isPublicGalleryOpen && (
             <div className="fixed inset-0 bg-black/90 backdrop-blur-md flex items-center justify-center p-4 z-[9999] animate-fadeIn">
@@ -5918,12 +6189,16 @@ export default function App() {
         </div>
 
         {/* העברנו את הכפתורים הצפים מחוץ לדיב של הטשטוש כדי שיישארו קבועים למסך */}
-          <AccessibilityWidget />
-          <a href="https://wa.me/972545222008?text=היי%20תהל,%20אשמח%20לפרטים" target="_blank" rel="noreferrer" className="fixed bottom-6 right-6 z-[9998] group bg-emerald-500 text-white p-3 rounded-full shadow-2xl hover:bg-emerald-600 transition-all flex items-center justify-center hover:scale-110" style={{ width: '56px', height: '56px' }} title="שלחי הודעה לתהל">
-            <span className="absolute right-16 bg-white text-emerald-800 text-xs font-bold px-3 py-2 rounded-2xl shadow-lg border border-emerald-100 opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">דברי איתי בוואטסאפ 💚</span>
-            <MessageCircle size={32} className="relative z-10" />
-            <span className="absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-30 animate-ping z-0"></span>
-          </a>
+          {!isHideFloating && (
+            <>
+              <AccessibilityWidget />
+              <a href="https://wa.me/972545222008?text=היי%20תהל,%20אשמח%20לפרטים" target="_blank" rel="noreferrer" className="fixed bottom-6 right-6 z-[9998] group bg-emerald-500 text-white p-3 rounded-full shadow-2xl hover:bg-emerald-600 transition-all flex items-center justify-center hover:scale-110" style={{ width: '56px', height: '56px' }} title="שלחי הודעה לתהל">
+                <span className="absolute right-16 bg-white text-emerald-800 text-xs font-bold px-3 py-2 rounded-2xl shadow-lg border border-emerald-100 opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">דברי איתי בוואטסאפ 💚</span>
+                <MessageCircle size={32} className="relative z-10" />
+                <span className="absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-30 animate-ping z-0"></span>
+              </a>
+            </>
+          )}
 
           {showCookieBanner && (
             <div className="fixed bottom-0 left-0 w-full bg-pink-50/95 backdrop-blur-md text-gray-900 border-t border-pink-100 p-4 z-[9999] flex flex-col sm:flex-row items-center justify-between gap-4 shadow-[0_-10px_40px_rgba(0,0,0,0.2)] text-xs sm:text-sm">
