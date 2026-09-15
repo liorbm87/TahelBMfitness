@@ -5693,6 +5693,12 @@ export default function App() {
   const [showSitePopup, setShowSitePopup] = useState(false);
   const [isDataLoaded, setIsDataLoaded] = useState(false);
   
+  // מתאמן חדש יתחיל כ-null (יצטרך להירשם), אבל האתר יזכור אותו לפי המכשיר שלו
+  const [currentUser, setCurrentUser] = useState(() => {
+    const savedUser = localStorage.getItem('tahel_current_user');
+    return savedUser ? JSON.parse(savedUser) : null;
+  });
+  
   // States עבור PWA והתראות
   const [showInstallPrompt, setShowInstallPrompt] = useState(false);
   const [deferredPrompt, setDeferredPrompt] = useState(null);
@@ -5776,12 +5782,6 @@ export default function App() {
     return () => { document.body.style.overflow = 'unset'; };
   }, [isPublicGalleryOpen, showSitePopup, isAdminLoginModalOpen]);
   
-  // מתאמן חדש יתחיל כ-null (יצטרך להירשם), אבל האתר יזכור אותו לפי המכשיר שלו
-  const [currentUser, setCurrentUser] = useState(() => {
-    const savedUser = localStorage.getItem('tahel_current_user');
-    return savedUser ? JSON.parse(savedUser) : null;
-  });
-
   useEffect(() => {
     if (currentUser) {
       localStorage.setItem('tahel_current_user', JSON.stringify(currentUser));
