@@ -3162,12 +3162,29 @@ const AdminDashboard = ({
               <h3 className="font-extrabold text-gray-900 text-lg">סיכום נתונים</h3>
             </div>
             <div className="flex gap-2">
-              <button 
-                onClick={() => setActiveTab('settings')} 
-                className="bg-gray-100 hover:bg-gray-200 text-gray-800 px-4 py-2 rounded-xl text-sm font-bold flex items-center gap-2 shadow-sm transition"
-              >
-                <Settings size={18} /> הגדרות ומיתוג
-              </button>
+            <button 
+              onClick={async () => {
+                const { data: subs } = await supabase.from('push_subscriptions').select('*').limit(1);
+                if (!subs || subs.length === 0) {
+                  return alert('⚠️ לא נמצאו מכשירים רשומים לקבלת פוש בטבלת push_subscriptions. ודאי שלחצת קודם על "הפעלי התראות ניהול".');
+                }
+                const { error } = await supabase.functions.invoke('send-push-notification', {
+                  body: { type: 'payment_reminder', user_id: subs[0].user_id }
+                });
+                if (error) alert('שגיאה בשליחת פוש: ' + error.message);
+                else alert('🔔 פוש בדיקה נשלח בהצלחה! בדקי את המסך או מרכז ההתראות.');
+              }}
+              className="bg-emerald-50 text-emerald-700 hover:bg-emerald-100 px-4 py-2 rounded-xl text-sm font-bold flex items-center gap-2 shadow-sm transition"
+              title="שליחת הודעת בדיקה למכשיר מחובר"
+            >
+              <MessageCircle size={18} /> בדיקת פוש
+            </button>
+            <button 
+              onClick={() => setActiveTab('settings')} 
+              className="bg-gray-100 hover:bg-gray-200 text-gray-800 px-4 py-2 rounded-xl text-sm font-bold flex items-center gap-2 shadow-sm transition"
+            >
+              <Settings size={18} /> הגדרות ומיתוג
+            </button>
               <button 
                 onClick={() => setActiveTab('manage_gallery')} 
                 className="bg-gradient-to-r from-purple-500 to-pink-500 hover:opacity-90 text-white px-4 py-2 rounded-xl text-sm font-bold flex items-center gap-2 shadow-md transition"
