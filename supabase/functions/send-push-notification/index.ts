@@ -40,9 +40,9 @@ Deno.serve(async (req: Request) => {
          return new Response(JSON.stringify({ message: "Admin setting is disabled" }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
       }
       
-      // מציאת ה-ID של המנהלת (תהל)
-      const { data: admins } = await supabase.from('trainees').select('id').eq('is_admin', true)
-      if (admins) usersToNotify = admins.map((a: { id: string }) => a.id)
+      // שליפת כל מכשירי הניהול הרשומים ישירות לפי הסימון is_admin_device
+      const { data: adminSubs } = await supabase.from('push_subscriptions').select('user_id').eq('is_admin_device', true)
+      if (adminSubs) usersToNotify = adminSubs.map((s: { user_id: string }) => s.user_id)
       
     } else if (user_id) {
        // שליחה למתאמנת ספציפית

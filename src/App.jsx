@@ -675,6 +675,9 @@ const AdminLoginModal = ({ isOpen, onClose, onLogin, currentPassword }) => {
     if (authError || !data.user) {
       setError('אימייל או סיסמה שגויים! החיבור נדחה על ידי שרת האבטחה.');
     } else {
+      // סימון אוטומטי של המכשיר הנוכחי כמכשיר ניהול ב-LocalStorage ובשרת
+      localStorage.setItem('tahel_is_admin_device', 'true');
+      supabase.from('push_subscriptions').update({ is_admin_device: true }).eq('user_id', data.user.id).then();
       onLogin();
       setEmailInput('');
       setPasswordInput('');
