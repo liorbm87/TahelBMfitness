@@ -838,7 +838,8 @@ const UserView = ({
   const hasActivePunchCard = currentUser?.punch_card?.entries > 0 && new Date(currentUser.punch_card.expires_at) >= new Date();
   const [isBannerDismissed, setIsBannerDismissed] = useState(() => localStorage.getItem('tahel_punch_banner_hidden') === 'true');
   const [isPrivateBannerDismissed, setIsPrivateBannerDismissed] = useState(() => localStorage.getItem('tahel_private_banner_hidden') === 'true');
-  const [isPushBannerDismissed, setIsPushBannerDismissed] = useState(false);
+  const [isPushBannerDismissed, setIsPushBannerDismissed] = useState(() => localStorage.getItem('tahel_push_banner_hidden') === 'true');
+  const [notifPermission, setNotifPermission] = useState(() => typeof window !== 'undefined' ? Notification.permission : 'default');
 
   // התראת קופצת (פעם אחת בסשן) אם יתרת הארנק עומדת לפוג ב-7 הימים הקרובים
   useEffect(() => {
@@ -1615,6 +1616,7 @@ const UserView = ({
 
   const handleTraineePushSubscribe = async () => {
     const permission = await Notification.requestPermission();
+    setNotifPermission(permission);
     if (permission === 'granted') {
       const registration = await navigator.serviceWorker.register('/sw.js');
       await navigator.serviceWorker.ready;
@@ -1638,12 +1640,15 @@ const UserView = ({
 
   return (
     <div className="max-w-3xl mx-auto space-y-6">
-      {isRegistered && Notification.permission !== 'granted' && !isPushBannerDismissed && (
+      {isRegistered && notifPermission !== 'granted' && !isPushBannerDismissed && (
         <div className="bg-gradient-to-r from-pink-500 to-amber-500 text-white p-4 rounded-3xl shadow-md flex flex-col sm:flex-row justify-between items-center gap-3 transition relative">
           <button 
-            onClick={() => setIsPushBannerDismissed(true)} 
-            className="absolute top-2 left-2 text-white/80 hover:text-white p-1 rounded-full transition"
-            title="סגור עד לריענון הבא"
+            onClick={() => {
+              setIsPushBannerDismissed(true);
+              localStorage.setItem('tahel_push_banner_hidden', 'true');
+            }} 
+            className="absolute top-2 left-2 text-white/80 hover:text-white p-1 rounded-full transition cursor-pointer"
+            title="סגור באנר"
           >
             <X size={16} />
           </button>
@@ -1698,7 +1703,7 @@ const UserView = ({
         </div>
       )}
 
-      {isRegistered && isApproved && (!hasActivePunchCard && !isBannerDismissed || !isPrivateBannerDismissed) && (
+      {isRegistered && isApproved && ( (!hasActivePunchCard && !isBannerDismissed) || !isPrivateBannerDismissed ) && (
         <div className="flex flex-col sm:flex-row gap-3 mb-4">
           {!hasActivePunchCard && !isBannerDismissed && (
             <div className="flex-1 bg-amber-100 text-amber-900 px-4 py-2 rounded-2xl flex items-center justify-between text-xs font-bold shadow-sm cursor-pointer hover:bg-amber-200 transition" onClick={() => openWhatsApp('0545222008', 'היי תהל! אשמח לשמוע פרטים על רכישת כרטיסיית אימונים 🎟️')}>
@@ -1712,7 +1717,7 @@ const UserView = ({
                   setIsBannerDismissed(true);
                   localStorage.setItem('tahel_punch_banner_hidden', 'true');
                 }} 
-                className="p-1 hover:bg-amber-300 rounded-full transition text-amber-700"
+                className="p-1 hover:bg-amber-300 rounded-full transition text-amber-700 shrink-0"
                 title="הסתר הודעה"
               >
                 <X size={16} />
@@ -1732,7 +1737,7 @@ const UserView = ({
                   setIsPrivateBannerDismissed(true);
                   localStorage.setItem('tahel_private_banner_hidden', 'true');
                 }} 
-                className="p-1 hover:bg-blue-300 rounded-full transition text-blue-700"
+                className="p-1 hover:bg-blue-300 rounded-full transition text-blue-700 shrink-0"
                 title="הסתר הודעה"
               >
                 <X size={16} />
@@ -2264,6 +2269,7 @@ const AdminDashboard = ({
   settings, setSettings, onRefresh 
 }) => {
   const isStaffOnly = currentUser?.is_staff && !window.location.search.includes('adminMode=full');
+  const [adminNotifPermission, setAdminNotifPermission] = useState(() => typeof window !== 'undefined' ? Notification.permission : 'default');
   
   const [activeTab, setActiveTab] = useState(() => {
     const saved = sessionStorage.getItem('tahel_admin_tab');
@@ -3078,6 +3084,7 @@ const AdminDashboard = ({
 
   const handleAdminPushSubscribe = async () => {
     const permission = await Notification.requestPermission();
+    setAdminNotifPermission(permission);
     if (permission === 'granted') {
       const registration = await navigator.serviceWorker.register('/sw.js');
       await navigator.serviceWorker.ready;
@@ -3107,18 +3114,20 @@ const AdminDashboard = ({
 
   return (
     <div className="max-w-6xl mx-auto space-y-6">
-      <div className="bg-emerald-600 hover:bg-emerald-700 text-white p-4 rounded-3xl shadow-md flex flex-col sm:flex-row justify-between items-center gap-3 transition">
-        <div className="flex items-center gap-2">
-          <MessageCircle size={22} />
-          <div>
-            <h4 className="font-bold text-sm">הפעלת התראות פוש לניהול במכשיר זה</h4>
-            <p className="text-[11px] opacity-90">לחצי כאן פעם אחת כדי לוודא שתקבלי עדכונים בזמן אמת על הרשמות וביטולים.</p>
+      {adminNotifPermission !== 'granted' && (
+        <div className="bg-emerald-600 hover:bg-emerald-700 text-white p-4 rounded-3xl shadow-md flex flex-col sm:flex-row justify-between items-center gap-3 transition">
+          <div className="flex items-center gap-2">
+            <MessageCircle size={22} />
+            <div>
+              <h4 className="font-bold text-sm">הפעלת התראות פוש לניהול במכשיר זה</h4>
+              <p className="text-[11px] opacity-90">לחצי כאן פעם אחת כדי לוודא שתקבלי עדכונים בזמן אמת על הרשמות וביטולים.</p>
+            </div>
           </div>
+          <button onClick={handleAdminPushSubscribe} className="bg-white text-emerald-800 hover:bg-emerald-50 px-4 py-2 rounded-xl text-xs font-extrabold shadow transition shrink-0">
+            🔔 הפעלי התראות ניהול
+          </button>
         </div>
-        <button onClick={handleAdminPushSubscribe} className="bg-white text-emerald-800 hover:bg-emerald-50 px-4 py-2 rounded-xl text-xs font-extrabold shadow transition shrink-0">
-          🔔 הפעלי התראות ניהול
-        </button>
-      </div>
+      )}
 
       <div className="bg-white/95 backdrop-blur-md p-2 rounded-3xl shadow-lg border border-gray-100 flex flex-wrap gap-1">
         {[
