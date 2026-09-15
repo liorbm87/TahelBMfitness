@@ -27,10 +27,53 @@ Deno.serve(async (req: Request) => {
     )
 
     // 3. קבלת הנתונים מהטריגר/קרון
-    const payload = await req.json()
-    const { type, title, body, user_id } = payload
+const payload = await req.json()
+const { type, user_id, workout_type } = payload
 
-    let usersToNotify: string[] = []
+let usersToNotify: string[] = []
+let finalTitle = payload.title || "תהל פיטנס 💪"
+let finalBody = payload.body || "יש לך עדכון חדש בסטודיו!"
+
+// שליפת שם הלקוחה אם קיים user_id
+let userName = "אהובה"
+if (user_id) {
+  const { data: traineeData } = await supabase.from('trainees').select('full_name').eq('id', user_id).single()
+  if (traineeData?.full_name) {
+    userName = traineeData.full_name.split(' ')[0]
+  }
+}
+
+// בניית הודעות מעוצבות ומותאמות אישית לפי סוג האירוע
+switch (type) {
+  case 'payment_reminder':
+    finalTitle = "תזכורת תשלום 💳"
+    finalBody = `היי ${userName}! 💖 ראינו שטרם הסדרת את התשלום לאימון הקרוב. נשמח להסדרה קלילה בביט!`
+    break;
+  case 'new_workout':
+    finalTitle = "אימון חדש בלו\"ז! 🔥"
+    finalBody = `היי ${userName}, אימון '${workout_type || "כושר"}' חדש מחכה לך במערכת. מהרי לתפוס מקום!`
+    break;
+  case 'waitlist_spot':
+    finalTitle = "יששש! התפנה מקום 🥳"
+    finalBody = `${userName}, הקסם קרה! התפנה לך מקום ברשימת ההמתנה לאימון ${workout_type || ""}. כנסי לשריין!`
+    break;
+  case 'workout_reminder':
+    finalTitle = "האימון שלך מתחיל עוד מעט! ⏰"
+    finalBody = `היי ${userName}, תזכורת קטנה שהאימון שלך מתחיל בעוד שעה בדיוק. קחי תיק ובואי לתת בראש! 💪`
+    break;
+  case 'birthday':
+    finalTitle = "מזל טוב ענק! 🎂🥳"
+    finalBody = `המון מזל טוב ${userName}! תהל והסטודיו מאחלים לך יום הולדת מהמם מלא בעוצמה, בריאות ואנרגיה שיא!`
+    break;
+  case 'admin_registration':
+    finalTitle = "נרשמה מתאמנת חדשה! 🎯"
+    finalBody = `הי תהל, ${userName} נרשמה בהצלחה לאימון ${workout_type || ""}.`
+    break;
+  case 'admin_cancel':
+    finalTitle = "ביטול אימון ⚠️"
+    finalBody = `עדכון: ${userName} ביטלה את השתתפותה באימון ${workout_type || ""}.`
+    break;
+}
 
     // 4. לוגיקה: למי שולחים? (מנהלת או מתאמנת ספציפית)
     if (type.startsWith('admin_')) {
@@ -67,8 +110,8 @@ Deno.serve(async (req: Request) => {
         keys: { p256dh: sub.p256dh, auth: sub.auth }
       }
       try {
-        await webpush.sendNotification(pushSubscription, JSON.stringify({ title, body }))
-      } catch (err: any) {
+    await webpush.sendNotification(pushSubscription, JSON.stringify({ title: finalTitle, body: finalBody }))
+  } catch (err: any) {
         // אם המשתמש ביטל התראות או שהטוקן פג תוקף - מוחקים מהדאטה בייס
         if (err.statusCode === 404 || err.statusCode === 410) {
           await supabase.from('push_subscriptions').delete().eq('id', sub.id)
