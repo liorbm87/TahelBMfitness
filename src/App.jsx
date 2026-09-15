@@ -42,6 +42,7 @@ const INITIAL_WAITLIST = [];
 const INITIAL_EXTERNAL_WORKOUTS = []; // אימונים פרטיים של תהל
 const INITIAL_GALLERY = [];
 const INITIAL_SITE_VISITS = [];
+const INITIAL_LEADS = [];
 
 // ============================================================================
 // 3. פונקציות עזר (WHATSAPP, CLOUDINARY, MAKE.COM, PDF)
@@ -370,8 +371,13 @@ const MainHeader = ({ settings, isAdmin, onOpenAdminLogin, onLogout, currentUser
       ) : currentUser ? (
         <div className="flex flex-col sm:flex-row items-center justify-center gap-3 w-full px-4">
           <button onClick={() => { setCurrentUser(null); window.location.reload(); }} className="bg-red-50 text-red-600 hover:bg-red-100 px-4 py-2 rounded-2xl transition flex items-center justify-center gap-2 font-bold text-sm shadow-sm border border-red-100" title="התנתקות">
-        <LogOut size={16} /> יציאה
-      </button>
+            <LogOut size={16} /> יציאה
+          </button>
+          {currentUser.is_staff && (
+            <button onClick={() => { window.history.pushState(null, '', '?admin'); window.location.reload(); }} className="bg-blue-50 text-blue-600 hover:bg-blue-100 px-4 py-2 rounded-2xl transition flex items-center justify-center gap-2 font-bold text-sm shadow-sm border border-blue-100" title="כניסת צוות">
+              <Users size={16} /> פאנל מדריכות
+            </button>
+          )}
           {currentUser.is_approved && (
             <>
               <button
@@ -2092,9 +2098,17 @@ const AdminDashboard = ({
   externalWorkouts = [], setExternalWorkouts,
   gallery = [], setGallery,
   siteVisits = [],
+  leads = [], setLeads,
+  currentUser,
   settings, setSettings, onRefresh 
 }) => {
-  const [activeTab, setActiveTab] = useState(() => sessionStorage.getItem('tahel_admin_tab') || 'overview');
+  const isStaffOnly = currentUser?.is_staff && !window.location.search.includes('adminMode=full');
+  
+  const [activeTab, setActiveTab] = useState(() => {
+    const saved = sessionStorage.getItem('tahel_admin_tab');
+    if (isStaffOnly) return 'workouts';
+    return saved || 'overview';
+  });
 
   useEffect(() => {
     sessionStorage.setItem('tahel_admin_tab', activeTab);
@@ -2278,6 +2292,23 @@ const AdminDashboard = ({
     const weeklyDistribution = { 'ראשון': 0, 'שני': 0, 'שלישי': 0, 'רביעי': 0, 'חמישי': 0, 'שישי': 0, 'שבת': 0 };
     const daysHe = ['ראשון', 'שני', 'שלישי', 'רביעי', 'חמישי', 'שישי', 'שבת'];
 
+    // חישוב זיהוי נטישה (Churn Risk)
+    const threeWeeksAgo = new Date();
+    threeWeeksAgo.setDate(threeWeeksAgo.getDate() - 21);
+    const churnRiskTrainees = trainees.filter(t => {
+      if (!t.is_approved || t.is_archived) return false;
+      if (t.punch_card && new Date(t.punch_card.expires_at) >= new Date()) return false; // לא מסמנים מי שיש לה כרטיסייה פעילה
+      
+      const hasRecentWorkout = registrations.some(r => {
+        if (r.user_id !== t.id) return false;
+        const w = workouts.find(wo => wo.id === r.workout_id);
+        if (!w) return false;
+        const wDate = new Date(`${w.date}T${w.time}`);
+        return wDate >= threeWeeksAgo; // בדקנו אם יש לה אימון ב-3 שבועות האחרונים או עתידי
+      });
+      return !hasRecentWorkout;
+    });
+
     // מעבר על כניסות פיזיות לאתר (מתוך מערך siteVisits שנשמר גלובלית) במקום הרשמות לאימונים
     (siteVisits || []).forEach(visitStr => {
       const vDate = new Date(visitStr);
@@ -2300,7 +2331,8 @@ const AdminDashboard = ({
       dailyEntries,
       weeklyEntries,
       monthlyEntries,
-      weeklyDistribution
+      weeklyDistribution,
+      churnRiskTrainees
     };
   }, [trainees, workouts, registrations, siteVisits]);
 
@@ -2789,12 +2821,13 @@ const AdminDashboard = ({
     <div className="max-w-6xl mx-auto space-y-6">
       <div className="bg-white/95 backdrop-blur-md p-2 rounded-3xl shadow-lg border border-gray-100 flex flex-wrap gap-1">
         {[
-          { id: 'overview', label: 'דשבורד', icon: Award },
-          { id: 'workouts', label: `ניהול אימונים (${workouts.filter(w => new Date(w.date + 'T' + w.time) >= new Date() && !w.is_archived).length})`, icon: Calendar },
-          { id: 'trainees', label: `מתאמנים (${stats.pendingTraineesCount ? `! ${stats.pendingTraineesCount}` : stats.totalTraineesCount})`, icon: Users },
-          { id: 'finance', label: `כספים ורו"ח ${stats.unpaidDebtsList.length ? '⚠️' : ''}`, icon: CreditCard },
-          { id: 'archive', label: 'ארכיון', icon: Archive }
-        ].map(tab => {
+          { id: 'overview', label: 'דשבורד', icon: Award, hideStaff: true },
+          { id: 'workouts', label: `ניהול אימונים (${workouts.filter(w => new Date(w.date + 'T' + w.time) >= new Date() && !w.is_archived).length})`, icon: Calendar, hideStaff: false },
+          { id: 'trainees', label: `מתאמנים (${stats.pendingTraineesCount ? `! ${stats.pendingTraineesCount}` : stats.totalTraineesCount})`, icon: Users, hideStaff: true },
+          { id: 'leads', label: `לידים (${leads.filter(l => l.status !== 'סגור/נרשם').length})`, icon: Users, hideStaff: true },
+          { id: 'finance', label: `כספים ורו"ח ${stats.unpaidDebtsList.length ? '⚠️' : ''}`, icon: CreditCard, hideStaff: true },
+          { id: 'archive', label: 'ארכיון', icon: Archive, hideStaff: true }
+        ].filter(tab => !(isStaffOnly && tab.hideStaff)).map(tab => {
           const Icon = tab.icon;
           const isActive = activeTab === tab.id;
           return (
@@ -2888,6 +2921,28 @@ const AdminDashboard = ({
               )}
             </div>
           </div>
+
+          {stats.churnRiskTrainees?.length > 0 && (
+            <div className="bg-pink-50 border-2 border-pink-200 p-5 rounded-3xl shadow-md">
+              <div className="flex items-center gap-2 text-pink-800 font-black mb-3">
+                <AlertCircle size={20} />
+                <h4>מתאמנות בסיכון נטישה ({stats.churnRiskTrainees.length})</h4>
+              </div>
+              <div className="space-y-2 max-h-48 overflow-y-auto pr-2">
+                {stats.churnRiskTrainees.map(t => (
+                  <div key={t.id} className="bg-white p-3 rounded-2xl flex flex-col sm:flex-row justify-between sm:items-center gap-2 text-xs border border-pink-100">
+                    <span className="font-bold text-gray-900">{t.full_name} <span className="text-gray-500 font-normal">({t.phone})</span></span>
+                    <button 
+                      onClick={() => openWhatsApp(t.phone, `היי ${t.full_name.split(' ')[0]}, התגעגענו! מתי חוזרות לאימון? 💪`)}
+                      className="bg-emerald-500 hover:bg-emerald-600 text-white px-3 py-1.5 rounded-xl font-bold flex items-center gap-1 text-[11px] w-fit"
+                    >
+                      <MessageCircle size={14} /> סמסי בוואטסאפ
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
           {stats.endingSeries && stats.endingSeries.length > 0 && (
             <div className="bg-amber-50 border-2 border-amber-200 p-5 rounded-3xl shadow-md flex items-center gap-3">
@@ -3151,6 +3206,7 @@ const AdminDashboard = ({
               <Calendar size={18} /> הלו"ז שלי (אימונים פרטיים וחיצוניים)
             </button>
           </div>
+          {!isStaffOnly && (
           <details className="bg-white/95 p-5 rounded-3xl shadow-md border border-gray-100 group">
             <summary className="font-extrabold text-gray-900 text-base flex items-center justify-between cursor-pointer list-none outline-none">
               <div className="flex items-center gap-2">
@@ -3309,6 +3365,7 @@ const AdminDashboard = ({
               </div>
             </form>
           </details>
+          )}
 
           <div className="space-y-4">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -3367,7 +3424,7 @@ const AdminDashboard = ({
                         {isPast && <span className="bg-gray-200 text-gray-700 text-[10px] px-2 py-0.5 rounded-md font-bold">היסטוריה (ארכיון)</span>}
                       </div>
                       <p className="text-xs text-gray-600 mt-0.5">
-                  {formatDateWithDay(workout.date)} בשעה {workout.time} {workout.duration ? `(${workout.duration} דק')` : ''} | {workout.location} | <span className="font-bold text-amber-800">{workout.price} ₪</span>
+                  {formatDateWithDay(workout.date)} בשעה {workout.time} {workout.duration ? `(${workout.duration} דק')` : ''} | {workout.location} {!isStaffOnly && <>| <span className="font-bold text-amber-800">{workout.price} ₪</span></>}
                 </p>
                       <p className="text-xs text-gray-500 mt-1 font-semibold">
                         משתתפים: {regList.length} / {workout.max_participants}
@@ -3408,24 +3465,28 @@ const AdminDashboard = ({
                         <Send size={15} /> שלח הודעה להרשמה
                       </button>
 
-                      <button 
-                        onClick={() => {
-                          setEditWorkoutData(workout);
-                          setRecurringWeeks(0);
-                          setAdditionalDates([]);
-                        }}
-                        className="p-2 text-blue-500 hover:bg-blue-50 rounded-xl transition"
-                        title="ערוך פרטי אימון"
-                      >
-                        <Edit size={18} />
-                      </button>
-                      <button 
-                        onClick={() => handleDeleteWorkout(workout.id)}
-                        className="p-2 text-red-500 hover:bg-red-50 rounded-xl transition"
-                        title="מחק אימון"
-                      >
-                        <Trash2 size={18} />
-                      </button>
+                      {!isStaffOnly && (
+                        <>
+                          <button 
+                            onClick={() => {
+                              setEditWorkoutData(workout);
+                              setRecurringWeeks(0);
+                              setAdditionalDates([]);
+                            }}
+                            className="p-2 text-blue-500 hover:bg-blue-50 rounded-xl transition"
+                            title="ערוך פרטי אימון"
+                          >
+                            <Edit size={18} />
+                          </button>
+                          <button 
+                            onClick={() => handleDeleteWorkout(workout.id)}
+                            className="p-2 text-red-500 hover:bg-red-50 rounded-xl transition"
+                            title="מחק אימון"
+                          >
+                            <Trash2 size={18} />
+                          </button>
+                        </>
+                      )}
                     </div>
                   </div>
 
@@ -3452,11 +3513,11 @@ const AdminDashboard = ({
                                   setRegistrations(prev => prev.map(reg => reg.id === r.id ? { ...reg, paid_amount: currentPrice } : reg));
                                 }
                               }}
-                              className="cursor-pointer hover:bg-gray-200 transition bg-gray-100 text-gray-800 text-[11px] px-2.5 py-1 rounded-xl font-medium flex items-center gap-1"
-                              title="לחצי כדי לשנות סטטוס תשלום"
+                              className={`${isStaffOnly ? 'pointer-events-none' : 'cursor-pointer hover:bg-gray-200'} transition bg-gray-100 text-gray-800 text-[11px] px-2.5 py-1 rounded-xl font-medium flex items-center gap-1`}
+                              title={isStaffOnly ? '' : "לחצי כדי לשנות סטטוס תשלום"}
                             >
-                              {user ? user.full_name : 'מתאמן'} | {r.paid_amount !== undefined ? r.paid_amount : workout.price} ₪
-                              <span className={`w-2 h-2 rounded-full ${r.payment_status === 'paid' || r.payment_status === 'punch_card' ? 'bg-emerald-500' : 'bg-red-500'}`}></span>
+                              {user ? user.full_name : 'מתאמן'} {!isStaffOnly && `| ${r.paid_amount !== undefined ? r.paid_amount : workout.price} ₪`}
+                              {!isStaffOnly && <span className={`w-2 h-2 rounded-full ${r.payment_status === 'paid' || r.payment_status === 'punch_card' ? 'bg-emerald-500' : 'bg-red-500'}`}></span>}
                             </span>
                           );
                         })}
@@ -3522,7 +3583,83 @@ const AdminDashboard = ({
         </div>
       )}
 
-      {activeTab === 'trainees' && (
+      {activeTab === 'leads' && !isStaffOnly && (() => {
+        const [newLead, setNewLead] = useState({ full_name: '', phone: '', source: 'אינסטגרם', status: 'חדש', notes: '' });
+        const handleAddLead = (e) => {
+          e.preventDefault();
+          const lead = { id: 'l_' + Date.now(), ...newLead, created_at: new Date().toISOString() };
+          setLeads(prev => [lead, ...prev]);
+          supabase.from('leads').upsert(lead).then();
+          setNewLead({ full_name: '', phone: '', source: 'אינסטגרם', status: 'חדש', notes: '' });
+          alert('ליד נוסף בהצלחה!');
+        };
+        const handleConvertLead = (lead) => {
+          if(!window.confirm(`האם להפוך את ${lead.full_name} למתאמנת פעילה?`)) return;
+          const newTrainee = {
+            id: 'u_' + Date.now(),
+            full_name: lead.full_name,
+            phone: lead.phone,
+            is_approved: true,
+            is_archived: false,
+            created_at: new Date().toISOString()
+          };
+          setTrainees(prev => [...prev, newTrainee]);
+          supabase.from('trainees').upsert(newTrainee).then();
+          setLeads(prev => prev.filter(l => l.id !== lead.id));
+          supabase.from('leads').delete().eq('id', lead.id).then();
+          alert('הליד הומר למתאמנת פעילה בהצלחה!');
+        };
+        return (
+        <div className="space-y-6 animate-fadeIn">
+          <div className="bg-white/95 p-5 rounded-3xl shadow-md border border-gray-100">
+            <h3 className="font-extrabold text-gray-900 text-base mb-4 flex items-center gap-2"><Plus size={18} className="text-amber-600"/> הוספת מתעניינת (ליד) חדשה</h3>
+            <form onSubmit={handleAddLead} className="grid grid-cols-1 sm:grid-cols-5 gap-3 text-xs">
+              <input required type="text" placeholder="שם מלא" value={newLead.full_name} onChange={e => setNewLead({...newLead, full_name: e.target.value})} className="p-2.5 bg-gray-50 border rounded-xl outline-none" />
+              <input required type="tel" placeholder="טלפון" value={newLead.phone} onChange={e => setNewLead({...newLead, phone: e.target.value})} className="p-2.5 bg-gray-50 border rounded-xl outline-none" />
+              <select value={newLead.source} onChange={e => setNewLead({...newLead, source: e.target.value})} className="p-2.5 bg-gray-50 border rounded-xl outline-none">
+                <option value="אינסטגרם">אינסטגרם</option>
+                <option value="פייסבוק">פייסבוק</option>
+                <option value="וואטסאפ">וואטסאפ</option>
+                <option value="אחר">אחר</option>
+              </select>
+              <input type="text" placeholder="הערות..." value={newLead.notes} onChange={e => setNewLead({...newLead, notes: e.target.value})} className="p-2.5 bg-gray-50 border rounded-xl outline-none sm:col-span-1" />
+              <button type="submit" className="bg-amber-500 hover:bg-amber-600 text-white font-bold py-2.5 rounded-xl transition shadow-sm">הוספי ליד</button>
+            </form>
+          </div>
+          <div className="space-y-3">
+            {leads.sort((a,b) => new Date(b.created_at) - new Date(a.created_at)).map(lead => (
+              <div key={lead.id} className="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 flex flex-col sm:flex-row justify-between sm:items-center gap-3">
+                <div>
+                  <h4 className="font-bold text-sm text-gray-900">{lead.full_name} <span className="font-normal text-xs text-gray-500">({lead.phone})</span></h4>
+                  <p className="text-xs text-gray-500 mt-1">מקור: {lead.source} {lead.notes && `| הערות: ${lead.notes}`}</p>
+                </div>
+                <div className="flex flex-wrap items-center gap-2">
+                  <select value={lead.status} onChange={(e) => {
+                    const updated = {...lead, status: e.target.value};
+                    setLeads(prev => prev.map(l => l.id === lead.id ? updated : l));
+                    supabase.from('leads').upsert(updated).then();
+                  }} className={`text-xs font-bold px-2 py-1.5 rounded-lg border outline-none cursor-pointer ${lead.status === 'חדש' ? 'bg-blue-50 text-blue-700 border-blue-200' : lead.status === 'בטיפול' ? 'bg-amber-50 text-amber-700 border-amber-200' : 'bg-emerald-50 text-emerald-700 border-emerald-200'}`}>
+                    <option value="חדש">חדש</option>
+                    <option value="בטיפול">בטיפול</option>
+                    <option value="סגור/נרשם">סגור/נרשם</option>
+                  </select>
+                  <button onClick={() => openWhatsApp(lead.phone, `היי ${lead.full_name.split(' ')[0]}, ראיתי שהתעניינת באימונים! אשמח לתת פרטים 🩷`)} className="bg-emerald-500 hover:bg-emerald-600 text-white text-[11px] font-bold px-3 py-1.5 rounded-lg flex items-center gap-1 shadow-sm transition">
+                    <MessageCircle size={14} /> הודעה
+                  </button>
+                  <button onClick={() => handleConvertLead(lead)} className="bg-gray-900 hover:bg-gray-800 text-white text-[11px] font-bold px-3 py-1.5 rounded-lg flex items-center gap-1 shadow-sm transition">
+                    <UserPlus size={14} /> המרה למתאמנת
+                  </button>
+                  <button onClick={() => { if(window.confirm('למחוק מתעניינת זו?')) { setLeads(prev => prev.filter(l => l.id !== lead.id)); supabase.from('leads').delete().eq('id', lead.id).then(); } }} className="text-red-500 hover:bg-red-50 p-1.5 rounded-lg transition"><Trash2 size={16}/></button>
+                </div>
+              </div>
+            ))}
+            {leads.length === 0 && <p className="text-xs text-gray-500 font-bold">אין לידים במערכת כרגע.</p>}
+          </div>
+        </div>
+        );
+      })()}
+
+      {activeTab === 'trainees' && !isStaffOnly && (
         <div className="space-y-6">
           <div className="bg-amber-50/80 border border-amber-200 p-5 rounded-3xl space-y-3">
             <h3 className="font-extrabold text-gray-900 text-sm flex items-center gap-2">
@@ -3675,6 +3812,17 @@ const AdminDashboard = ({
                       className="flex-1 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 text-xs font-bold py-2 rounded-xl flex justify-center items-center gap-1 min-w-[80px]"
                     >
                       <MessageCircle size={14} /> הודעה
+                    </button>
+                    <button 
+                      onClick={() => {
+                        const updated = { ...t, is_staff: !t.is_staff };
+                        setTrainees(prev => prev.map(tr => tr.id === t.id ? updated : tr));
+                        supabase.from('trainees').upsert(updated).then();
+                        alert(`המתאמנת הוגדרה כ${updated.is_staff ? 'מדריכה' : 'מתאמנת רגילה'}.`);
+                      }}
+                      className={`flex-1 text-xs font-bold py-2 rounded-xl flex justify-center items-center gap-1 min-w-[100px] transition ${t.is_staff ? 'bg-gray-800 text-white hover:bg-gray-700' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}
+                    >
+                      <Users size={14} /> {t.is_staff ? 'הסר ממדריכות' : 'הגדר כמדריכה'}
                     </button>
                     <button 
                       onClick={() => {
@@ -5264,6 +5412,7 @@ export default function App() {
   const [externalWorkouts, setExternalWorkouts] = useState(INITIAL_EXTERNAL_WORKOUTS);
   const [gallery, setGallery] = useState(INITIAL_GALLERY);
   const [siteVisits, setSiteVisits] = useState(INITIAL_SITE_VISITS);
+  const [leads, setLeads] = useState(INITIAL_LEADS);
   
   const [isAdminLoggedIn, setIsAdminLoggedIn] = useState(false);
   const [isAdminLoginModalOpen, setIsAdminLoginModalOpen] = useState(() => window.location.search.includes('admin'));
@@ -5391,23 +5540,25 @@ export default function App() {
       }
 
       // 2. משיכת כל שאר הנתונים מהטבלאות הנפרדות האמיתיות
-      const [traineesRes, workoutsRes, regsRes, waitlistRes, extWorkoutsRes, galleryRes] = await Promise.all([
-        supabase.from('trainees').select('*'),
-        supabase.from('workouts').select('*'),
-        supabase.from('registrations').select('*'),
-        supabase.from('waitlist').select('*'),
-        supabase.from('external_workouts').select('*'),
-        supabase.from('gallery').select('*')
-      ]);
+          const [traineesRes, workoutsRes, regsRes, waitlistRes, extWorkoutsRes, galleryRes, leadsRes] = await Promise.all([
+            supabase.from('trainees').select('*'),
+            supabase.from('workouts').select('*'),
+            supabase.from('registrations').select('*'),
+            supabase.from('waitlist').select('*'),
+            supabase.from('external_workouts').select('*'),
+            supabase.from('gallery').select('*'),
+            supabase.from('leads').select('*')
+          ]);
 
-      if (traineesRes.data) setTrainees(traineesRes.data);
-      if (workoutsRes.data) setWorkouts(workoutsRes.data);
-      if (regsRes.data) setRegistrations(regsRes.data);
-      if (waitlistRes.data) setWaitlist(waitlistRes.data);
-      if (extWorkoutsRes.data) setExternalWorkouts(extWorkoutsRes.data);
-      if (galleryRes.data) setGallery(galleryRes.data);
+          if (traineesRes.data) setTrainees(traineesRes.data);
+          if (workoutsRes.data) setWorkouts(workoutsRes.data);
+          if (regsRes.data) setRegistrations(regsRes.data);
+          if (waitlistRes.data) setWaitlist(waitlistRes.data);
+          if (extWorkoutsRes.data) setExternalWorkouts(extWorkoutsRes.data);
+          if (galleryRes.data) setGallery(galleryRes.data);
+          if (leadsRes && leadsRes.data) setLeads(leadsRes.data);
 
-    } catch (err) {
+        } catch (err) {
       console.error("Error loading from Supabase:", err);
     } finally {
       setIsDataLoaded(true);
@@ -5618,8 +5769,8 @@ export default function App() {
                   registrations={registrations}
                 />
                 <main className="px-4">
-                  {isAdminLoggedIn ? (
-                    <AdminDashboard workouts={workouts} setWorkouts={setWorkouts} trainees={trainees} setTrainees={setTrainees} registrations={registrations} setRegistrations={setRegistrations} waitlist={waitlist} setWaitlist={setWaitlist} externalWorkouts={externalWorkouts} setExternalWorkouts={setExternalWorkouts} gallery={gallery} setGallery={setGallery} siteVisits={siteVisits} settings={settings} setSettings={setSettings} onRefresh={loadGlobalState} />
+                  {isAdminLoggedIn || currentUser?.is_staff ? (
+                    <AdminDashboard currentUser={currentUser} workouts={workouts} setWorkouts={setWorkouts} trainees={trainees} setTrainees={setTrainees} registrations={registrations} setRegistrations={setRegistrations} waitlist={waitlist} setWaitlist={setWaitlist} externalWorkouts={externalWorkouts} setExternalWorkouts={setExternalWorkouts} gallery={gallery} setGallery={setGallery} siteVisits={siteVisits} leads={leads} setLeads={setLeads} settings={settings} setSettings={setSettings} onRefresh={loadGlobalState} />
                   ) : (
                     <div className="text-center py-20">אנא התחברי למערכת...</div>
                   )}
@@ -5649,8 +5800,8 @@ export default function App() {
               <>
                 <MainHeader settings={settings} isAdmin={isAdminLoggedIn} onOpenAdminLogin={() => setIsAdminLoginModalOpen(true)} onLogout={() => { setIsAdminLoggedIn(false); window.history.pushState(null, '', '/'); }} currentUser={currentUser} setCurrentUser={setCurrentUser} setTrainees={setTrainees} onRefresh={loadGlobalState} workouts={workouts} registrations={registrations} />
                 <main className="px-4">
-                  {isAdminLoggedIn ? (
-                    <AdminDashboard workouts={workouts} setWorkouts={setWorkouts} trainees={trainees} setTrainees={setTrainees} registrations={registrations} setRegistrations={setRegistrations} waitlist={waitlist} setWaitlist={setWaitlist} externalWorkouts={externalWorkouts} setExternalWorkouts={setExternalWorkouts} gallery={gallery} setGallery={setGallery} siteVisits={siteVisits} settings={settings} setSettings={setSettings} onRefresh={loadGlobalState} />
+                  {isAdminLoggedIn || (currentUser?.is_staff && window.location.search.includes('admin')) ? (
+                    <AdminDashboard currentUser={currentUser} workouts={workouts} setWorkouts={setWorkouts} trainees={trainees} setTrainees={setTrainees} registrations={registrations} setRegistrations={setRegistrations} waitlist={waitlist} setWaitlist={setWaitlist} externalWorkouts={externalWorkouts} setExternalWorkouts={setExternalWorkouts} gallery={gallery} setGallery={setGallery} siteVisits={siteVisits} leads={leads} setLeads={setLeads} settings={settings} setSettings={setSettings} onRefresh={loadGlobalState} />
                   ) : (
                     <UserView trainees={trainees} setTrainees={setTrainees} workouts={workouts} registrations={registrations} setRegistrations={setRegistrations} waitlist={waitlist} setWaitlist={setWaitlist} currentUser={currentUser} setCurrentUser={setCurrentUser} settings={settings} />
                   )}
