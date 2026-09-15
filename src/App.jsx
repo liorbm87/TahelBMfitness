@@ -2138,6 +2138,35 @@ const AdminDashboard = ({
 
   const [editExternalWorkoutData, setEditExternalWorkoutData] = useState(null);
   const [archiveMainTab, setArchiveMainTab] = useState('trainees'); // 'trainees' | 'workouts'
+
+  // סטייט ופונקציות ניהול לידים (CRM)
+  const [newLead, setNewLead] = useState({ full_name: '', phone: '', source: 'אינסטגרם', status: 'חדש', notes: '' });
+
+  const handleAddLead = (e) => {
+    e.preventDefault();
+    const lead = { id: 'l_' + Date.now(), ...newLead, created_at: new Date().toISOString() };
+    setLeads(prev => [lead, ...prev]);
+    supabase.from('leads').upsert(lead).then();
+    setNewLead({ full_name: '', phone: '', source: 'אינסטגרם', status: 'חדש', notes: '' });
+    alert('ליד נוסף בהצלחה!');
+  };
+
+  const handleConvertLead = (lead) => {
+    if(!window.confirm(`האם להפוך את ${lead.full_name} למתאמנת פעילה?`)) return;
+    const newTrainee = {
+      id: 'u_' + Date.now(),
+      full_name: lead.full_name,
+      phone: lead.phone,
+      is_approved: true,
+      is_archived: false,
+      created_at: new Date().toISOString()
+    };
+    setTrainees(prev => [...prev, newTrainee]);
+    supabase.from('trainees').upsert(newTrainee).then();
+    setLeads(prev => prev.filter(l => l.id !== lead.id));
+    supabase.from('leads').delete().eq('id', lead.id).then();
+    alert('הליד הומר למתאמנת פעילה בהצלחה!');
+  };
   const [archiveWorkoutTab, setArchiveWorkoutTab] = useState('studio'); // 'studio' | 'external'
   const [archiveExternalStudioFilter, setArchiveExternalStudioFilter] = useState('');
 
@@ -3583,33 +3612,7 @@ const AdminDashboard = ({
         </div>
       )}
 
-      {activeTab === 'leads' && !isStaffOnly && (() => {
-        const [newLead, setNewLead] = useState({ full_name: '', phone: '', source: 'אינסטגרם', status: 'חדש', notes: '' });
-        const handleAddLead = (e) => {
-          e.preventDefault();
-          const lead = { id: 'l_' + Date.now(), ...newLead, created_at: new Date().toISOString() };
-          setLeads(prev => [lead, ...prev]);
-          supabase.from('leads').upsert(lead).then();
-          setNewLead({ full_name: '', phone: '', source: 'אינסטגרם', status: 'חדש', notes: '' });
-          alert('ליד נוסף בהצלחה!');
-        };
-        const handleConvertLead = (lead) => {
-          if(!window.confirm(`האם להפוך את ${lead.full_name} למתאמנת פעילה?`)) return;
-          const newTrainee = {
-            id: 'u_' + Date.now(),
-            full_name: lead.full_name,
-            phone: lead.phone,
-            is_approved: true,
-            is_archived: false,
-            created_at: new Date().toISOString()
-          };
-          setTrainees(prev => [...prev, newTrainee]);
-          supabase.from('trainees').upsert(newTrainee).then();
-          setLeads(prev => prev.filter(l => l.id !== lead.id));
-          supabase.from('leads').delete().eq('id', lead.id).then();
-          alert('הליד הומר למתאמנת פעילה בהצלחה!');
-        };
-        return (
+      {activeTab === 'leads' && !isStaffOnly && (
         <div className="space-y-6 animate-fadeIn">
           <div className="bg-white/95 p-5 rounded-3xl shadow-md border border-gray-100">
             <h3 className="font-extrabold text-gray-900 text-base mb-4 flex items-center gap-2"><Plus size={18} className="text-amber-600"/> הוספת מתעניינת (ליד) חדשה</h3>
@@ -3656,8 +3659,7 @@ const AdminDashboard = ({
             {leads.length === 0 && <p className="text-xs text-gray-500 font-bold">אין לידים במערכת כרגע.</p>}
           </div>
         </div>
-        );
-      })()}
+      )}
 
       {activeTab === 'trainees' && !isStaffOnly && (
         <div className="space-y-6">
