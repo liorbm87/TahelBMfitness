@@ -473,6 +473,34 @@ const MainHeader = ({ settings, isAdmin, onOpenAdminLogin, onLogout, currentUser
 
               {availableGlobalSettings.length > 0 && (
                 <div className="pt-3 border-t border-gray-100 space-y-2">
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      const permission = await Notification.requestPermission();
+                      if (permission === 'granted') {
+                        const registration = await navigator.serviceWorker.register('/sw.js');
+                        await navigator.serviceWorker.ready;
+                        const subscription = await registration.pushManager.subscribe({
+                          userVisibleOnly: true,
+                          applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY)
+                        });
+                        const subJson = subscription.toJSON();
+                        await supabase.from('push_subscriptions').upsert({
+                          user_id: currentUser.id,
+                          endpoint: subJson.endpoint,
+                          p256dh: subJson.keys.p256dh,
+                          auth: subJson.keys.auth,
+                          updated_at: new Date().toISOString()
+                        }, { onConflict: 'endpoint' });
+                        alert('ההתראות הופעלו בהצלחה במכשיר זה! 🎉');
+                      } else {
+                        alert('ההרשמה לדפדפן נדחתה. יש לאפשר התראות בהגדרות הדפדפן.');
+                      }
+                    }}
+                    className="w-full bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-300 py-2.5 px-3 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 mb-3 shadow-sm cursor-pointer"
+                  >
+                    🔔 לחצי כאן להפעלת התראות פוש במכשיר זה
+                  </button>
                   <label className="block text-xs font-bold text-gray-900 mb-1 flex items-center gap-1"><MessageCircle size={14}/> אילו התראות תרצי לקבל?</label>
                   {availableGlobalSettings.map(setting => {
                     const userPref = userPushSettings.find(p => p.setting_id === setting.id);
@@ -1584,8 +1612,46 @@ const UserView = ({
 
   const myWaitlistEntries = (waitlist || []).filter(w => w?.user_id === currentUser?.id);
 
+  const handleTraineePushSubscribe = async () => {
+    const permission = await Notification.requestPermission();
+    if (permission === 'granted') {
+      const registration = await navigator.serviceWorker.register('/sw.js');
+      await navigator.serviceWorker.ready;
+      const subscription = await registration.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY)
+      });
+      const subJson = subscription.toJSON();
+      await supabase.from('push_subscriptions').upsert({
+        user_id: currentUser.id,
+        endpoint: subJson.endpoint,
+        p256dh: subJson.keys.p256dh,
+        auth: subJson.keys.auth,
+        updated_at: new Date().toISOString()
+      }, { onConflict: 'endpoint' });
+      alert('ההתראות הופעלו בהצלחה! מעתה תקבלי עדכונים חשובים ישירות למכשירך 🚀');
+    } else {
+      alert('הרשאת ההתראות נדחתה בדפדפן.');
+    }
+  };
+
   return (
     <div className="max-w-3xl mx-auto space-y-6">
+      {isRegistered && Notification.permission !== 'granted' && (
+        <div className="bg-gradient-to-r from-pink-500 to-amber-500 text-white p-4 rounded-3xl shadow-md flex flex-col sm:flex-row justify-between items-center gap-3 transition">
+          <div className="flex items-center gap-2">
+            <MessageCircle size={22} />
+            <div>
+              <h4 className="font-bold text-sm">הישארי מעודכנת! הפעילי התראות פוש</h4>
+              <p className="text-[11px] opacity-95">לקבלת תזכורות על אימונים, שינויים בלו"ז והתראות מרשימת ההמתנה.</p>
+            </div>
+          </div>
+          <button onClick={handleTraineePushSubscribe} className="bg-white text-pink-700 hover:bg-pink-50 px-4 py-2 rounded-xl text-xs font-extrabold shadow transition shrink-0 cursor-pointer">
+            🔔 הפעלי התראות
+          </button>
+        </div>
+      )}
+
       {isRegistered && isRenewalNeeded && authMode !== 'register' && (
         <div className="bg-red-50 border border-red-200 p-4 rounded-3xl flex flex-col sm:flex-row items-center justify-between gap-4 shadow-sm animate-fadeIn">
           <div className="flex items-center gap-3">
@@ -3002,8 +3068,50 @@ const AdminDashboard = ({
     }
   };
 
+  const handleAdminPushSubscribe = async () => {
+    const permission = await Notification.requestPermission();
+    if (permission === 'granted') {
+      const registration = await navigator.serviceWorker.register('/sw.js');
+      await navigator.serviceWorker.ready;
+      const subscription = await registration.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY)
+      });
+      const subJson = subscription.toJSON();
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        await supabase.from('push_subscriptions').upsert({
+          user_id: user.id,
+          endpoint: subJson.endpoint,
+          p256dh: subJson.keys.p256dh,
+          auth: subJson.keys.auth,
+          is_admin_device: true,
+          updated_at: new Date().toISOString()
+        }, { onConflict: 'endpoint' });
+        alert('התראות הניהול הופעלו בהצלחה במכשיר זה! מעתה תקבלי פוש על כל אירוע. 🚀');
+      } else {
+        alert('יש לוודא שאת מחוברת כמנהלת.');
+      }
+    } else {
+      alert('הרשאת ההתראות נדחתה בדפדפן.');
+    }
+  };
+
   return (
     <div className="max-w-6xl mx-auto space-y-6">
+      <div className="bg-emerald-600 hover:bg-emerald-700 text-white p-4 rounded-3xl shadow-md flex flex-col sm:flex-row justify-between items-center gap-3 transition">
+        <div className="flex items-center gap-2">
+          <MessageCircle size={22} />
+          <div>
+            <h4 className="font-bold text-sm">הפעלת התראות פוש לניהול במכשיר זה</h4>
+            <p className="text-[11px] opacity-90">לחצי כאן פעם אחת כדי לוודא שתקבלי עדכונים בזמן אמת על הרשמות וביטולים.</p>
+          </div>
+        </div>
+        <button onClick={handleAdminPushSubscribe} className="bg-white text-emerald-800 hover:bg-emerald-50 px-4 py-2 rounded-xl text-xs font-extrabold shadow transition shrink-0">
+          🔔 הפעלי התראות ניהול
+        </button>
+      </div>
+
       <div className="bg-white/95 backdrop-blur-md p-2 rounded-3xl shadow-lg border border-gray-100 flex flex-wrap gap-1">
         {[
           { id: 'overview', label: 'דשבורד', icon: Award, hideStaff: true },
@@ -3108,12 +3216,15 @@ const AdminDashboard = ({
           </div>
 
           {stats.churnRiskTrainees?.length > 0 && (
-            <div className="bg-pink-50 border-2 border-pink-200 p-5 rounded-3xl shadow-md">
-              <div className="flex items-center gap-2 text-pink-800 font-black mb-3">
-                <AlertCircle size={20} />
-                <h4>מתאמנות בסיכון נטישה ({stats.churnRiskTrainees.length})</h4>
-              </div>
-              <div className="space-y-2 max-h-48 overflow-y-auto pr-2">
+            <details className="bg-pink-50 border-2 border-pink-200 p-5 rounded-3xl shadow-md group">
+              <summary className="font-black text-pink-900 text-sm flex items-center justify-between cursor-pointer list-none outline-none select-none">
+                <div className="flex items-center gap-2">
+                  <AlertCircle size={20} />
+                  <span>מתאמנות בסיכון נטישה ({stats.churnRiskTrainees.length})</span>
+                </div>
+                <ChevronDown size={18} className="group-open:rotate-180 transition-transform text-pink-700" />
+              </summary>
+              <div className="space-y-2 max-h-48 overflow-y-auto pr-2 mt-4 pt-3 border-t border-pink-200/60">
                 {stats.churnRiskTrainees.map(t => {
                   // חישוב כמות האימונים שנקבעו סה"כ וזמן היעדרות (מהאימון האחרון)
                   const userRegs = registrations.filter(r => r.user_id === t.id);
@@ -3156,7 +3267,7 @@ const AdminDashboard = ({
                   );
                 })}
               </div>
-            </div>
+            </details>
           )}
 
           {stats.endingSeries && stats.endingSeries.length > 0 && (
@@ -4835,9 +4946,12 @@ const AdminDashboard = ({
             </div>
 
             <div className="sm:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div className="bg-emerald-50 p-4 rounded-2xl border border-emerald-100">
-                <h4 className="font-bold text-xs text-emerald-900 mb-3 flex items-center gap-1"><MessageCircle size={16}/> התראות למנהלת (תהל)</h4>
-                <div className="space-y-2">
+              <details className="bg-emerald-50 p-4 rounded-2xl border border-emerald-100 group shadow-sm">
+                <summary className="font-bold text-xs text-emerald-900 flex items-center justify-between cursor-pointer list-none outline-none select-none">
+                  <div className="flex items-center gap-1.5"><MessageCircle size={16}/><span>התראות למנהלת (תהל)</span></div>
+                  <ChevronDown size={16} className="group-open:rotate-180 transition-transform text-emerald-700" />
+                </summary>
+                <div className="space-y-2 mt-3 pt-3 border-t border-emerald-200/60">
                   {adminPushSettings.map(setting => (
                     <div key={setting.id} className="flex justify-between items-center bg-white p-2.5 rounded-xl border border-emerald-100 shadow-sm">
                       <span className="text-[11px] font-bold text-gray-700">{setting.title}</span>
@@ -4848,11 +4962,14 @@ const AdminDashboard = ({
                     </div>
                   ))}
                 </div>
-              </div>
+              </details>
 
-              <div className="bg-blue-50 p-4 rounded-2xl border border-blue-100">
-                <h4 className="font-bold text-xs text-blue-900 mb-3 flex items-center gap-1"><Users size={16}/> אילו התראות לאפשר למתאמנות?</h4>
-                <div className="space-y-2">
+              <details className="bg-blue-50 p-4 rounded-2xl border border-blue-100 group shadow-sm">
+                <summary className="font-bold text-xs text-blue-900 flex items-center justify-between cursor-pointer list-none outline-none select-none">
+                  <div className="flex items-center gap-1.5"><Users size={16}/><span>אילו התראות לאפשר למתאמנות?</span></div>
+                  <ChevronDown size={16} className="group-open:rotate-180 transition-transform text-blue-700" />
+                </summary>
+                <div className="space-y-2 mt-3 pt-3 border-t border-blue-200/60">
                   {globalPushSettings.map(setting => (
                     <div key={setting.id} className="flex justify-between items-center bg-white p-2.5 rounded-xl border border-blue-100 shadow-sm">
                       <span className="text-[11px] font-bold text-gray-700">{setting.title}</span>
@@ -4863,7 +4980,7 @@ const AdminDashboard = ({
                     </div>
                   ))}
                 </div>
-              </div>
+              </details>
             </div>
             
             <div className="sm:col-span-2 pt-2">
